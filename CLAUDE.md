@@ -66,7 +66,8 @@ Until then, keep their code and tests: they are the regression net for shared en
 ## Current Verified Baseline (2026-11-02)
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
-- Full suite: 32 test files, 190 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Rotation Lab editor page: http://localhost:3000/rotation-lab.html (second Vite entry, `rotation-lab.html`, `src/RotationLab/ui/`). The original app at `/` is untouched.
+- Full suite: 33 test files, 197 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
 - Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).
 - Reference repo for formulas: local clone at `C:\Dev\gear-planner` (xivgear; the author permits reuse). Search it locally instead of fetching from GitHub.
 - Headless simulation exists: `src/RotationLab/simulation/RotationSimulator.ts`.
@@ -85,6 +86,7 @@ Check the actual working tree and test results before continuing.
   field initializer: the controller builds a GameState while its own module is still loading.
 - Damage only "lands" when the host calls `Potency.resolve()`. Without a per-game host, a headless
   GameState reports into the global controller.
+- The engine has circular imports (e.g. `Resources.ts` ↔ `Jobs/BLM.ts`) that only initialize in the original app's load order. Any new browser entry point must import `Components/Main` first (see `src/RotationLab/ui/main.tsx`). Otherwise the page is blank with "can't access lexical declaration 'resourceInfos' before initialization". **Vitest and the production build do not reproduce this; only the dev server (native ES modules) does.** To verify a page headlessly, run its entry from a dev server in Node with HTTP loader hooks and jsdom.
 - `DEFAULT_CONFIG` is Black Mage's config. Use `makeDefaultConfig("VPR")` for Viper.
 - `DamageStatistics.ts` is a UI view-model bound to the global controller. Aggregate from
   `ActionNode`/`Potency` (as `RotationSimulator.result()` does) instead.
@@ -96,8 +98,9 @@ Check the actual working tree and test results before continuing.
 1. (Done) Per-simulation party buffs and downtime.
 2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
 3. (Done) Persistence model, validation, result cache and workspace storage: `src/RotationLab/models/`, `simulation/SimulationManager.ts`, `storage/WorkspaceStore.ts`. When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When the document shape changes, bump `SCHEMA_VERSION` and add a migration in `models/validation.ts`.
-4. **Next:** vertical editor and two-slot comparison UI on top of `SimulationCache` and the workspace store.
-5. Dragoon support through the same simulator.
+4. (Done, first version) Vertical editor page; see handoff section 0.3e.
+5. **Next:** two-slot comparison (cumulative damage over time, DPS at arbitrary cutoffs, overtake time), then editor polish (undo/redo, drag-and-drop, copy/paste).
+6. Dragoon support through the same simulator.
 
 Prioritize simulation correctness before large UI changes.
 

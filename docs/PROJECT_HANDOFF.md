@@ -113,6 +113,26 @@ Sections 1–28 below preserve the original handoff. Where a section was wrong o
   - `serializeWorkspace` / `parseWorkspace` handle file export and import.
 - **Tests:** `rotationLabPersistence.test.ts`, 17 tests.
 
+## 0.3e Session 2: vertical editor (first version)
+
+- **Location:** a separate page at http://localhost:3000/rotation-lab.html, chosen by the user so the original app cannot be affected. `rotation-lab.html` is registered as a second Vite build input in `vite.config.mts`.
+- **Components** in `src/RotationLab/ui/`: `RotationLabApp`, `RotationTable`, `SkillPalette`, `ScenarioPanel`. Pure edit operations and row building are in `editor/rotationEdits.ts`.
+- **Features:**
+  - Palette of the job's hotbar buttons, plus wait and jump steps. Clicking inserts after the selected row and selects the new row.
+  - Vertical table with step number, time, icon, the action that actually executed (with "pressed X" when a combo replaced it), potency, expected damage and notes. Invalid steps are highlighted with their reasons. oGCDs are indented.
+  - Keyboard: ↑/↓ select, Alt+↑/↓ move, Del remove, Ctrl+D duplicate, Esc deselect.
+  - Summary: expected damage, DPS, potency, auto-attack damage, pending damage, GCDs, end time and validity.
+  - Scenario panel: stats with job defaults as placeholders, weapon delay, gemdraught grade, end mode or cutoff, party buffs and downtime.
+  - Multiple rotations and scenarios: new, duplicate, rename, delete. JSON export and import; imports never overwrite existing ids.
+- **Persistence:** saves to `localStorage` on every change, but only when every document validates. Otherwise a "not saved until fixed" banner is shown, because invalid documents would be rejected on reload.
+- **Performance:** a 300-action (about 10.5-minute) rotation simulates in about 16 ms, so the editor re-simulates synchronously and no Web Worker is needed yet.
+- **Tests:** `rotationLabEditor.test.tsx`, 7 tests. Edit operations, plus the real page rendered in jsdom and driven with user-event. jsdom lacks `scrollIntoView`, so the tests stub it.
+- **Not yet:** undo/redo, drag-and-drop, copy/paste of row groups, comparison view, and per-row display of active buffs or resources.
+- **Blank-page bug, found by the user and fixed:** the page's first engine import was `GameConfig`, which loads `Resources.ts`. That pulls in `Jobs/BLM.ts` before `Resources.ts` finishes initializing, giving a TDZ error on `resourceInfos`. Fix: `main.tsx` imports `Components/Main` first, reproducing the original app's module order.
+  - Vitest and the production bundle both loaded fine with and without the fix, so neither can catch this.
+  - It was reproduced and the fix verified by loading the dev server's native ES modules in Node, using HTTP loader hooks plus jsdom and the React refresh preamble.
+  - A proper fix would remove the cycles, e.g. making `Resources.ts`'s `BLMState` import type-only. That is an engine change and has not been done.
+
 ## 0.4 Known limitations
 
 - Expected damage only for VPR at levels 80/90/100 (section 0.3b).
@@ -1961,8 +1981,9 @@ This should eventually be independent of a global controller.
 | 7. Expected damage | Done for VPR in session 2 (section 0.3b); workbook cross-check pending |
 | Party buffs / downtime per simulation | Done in session 2 (section 0.3c) |
 | Persistence model, validation, cache, storage | Done in session 2 (section 0.3d) |
-| 8. Vertical editor | **Next** (section 25) |
-| 9–10 | Not started |
+| 8. Vertical editor | First version done in session 2 (section 0.3e); polish pending |
+| 9. Rotation comparison | **Next** (section 25) |
+| 10. Combat mode support | Not started |
 | 11. Codebase reduction | Planned; see below |
 
 ## Phase 1: Confirm the current repository state
@@ -2242,12 +2263,12 @@ The latest verified development result is:
 
 **Isolated headless Viper simulation with expected damage (section 0.3b); full suite 163 passed + 9 expected-fail.**
 
-Party buffs, downtime, persistence and caching are done (sections 0.3c and 0.3d). Next milestone: **the vertical editor and two-slot comparison UI.**
+Party buffs, downtime, persistence, caching and the first editor are done (sections 0.3c–0.3e). Next milestone: **two-slot comparison.**
 
 1. Run the full suite and typecheck to confirm the baseline.
-2. Agree with the user on where the Rotation Lab UI lives. It must not break the upstream app.
-3. Build the editor on `RotationDocument` and `SimulationCache`, with the workspace store for persistence. Keep simulation out of React components.
-4. Measure recalculation time on long rotations before optimizing.
+2. Compare two rotations under one scenario. Both go through `SimulationCache`, so editing one does not re-simulate the other.
+3. Show cumulative expected damage over time from `damageEvents`, DPS at arbitrary cutoffs, the time one rotation overtakes the other, and the difference in burst windows.
+4. Keep the comparison maths in a pure, tested module, separate from the chart component.
 
 Focus first on correctness. Do not start a large new UI or implement speculative Evercold mechanics before these are validated.
 

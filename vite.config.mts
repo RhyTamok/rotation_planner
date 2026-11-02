@@ -19,6 +19,13 @@ export default defineConfig({
 	},
 	build: {
 		outDir: "build",
+		rollupOptions: {
+			// The Rotation Lab is a separate page so it cannot affect the original app.
+			input: {
+				main: "index.html",
+				rotationLab: "rotation-lab.html",
+			},
+		},
 	},
 	// Compatibility with migration from jest
 	test: {
