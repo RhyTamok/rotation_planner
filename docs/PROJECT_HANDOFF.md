@@ -92,6 +92,27 @@ Sections 1–28 below preserve the original handoff. Where a section was wrong o
   - `result.assumptions` was replaced by `result.encounter`, which echoes the resolved windows.
 - **Tests:** `rotationLabEncounter.test.ts`, 7 tests. Per-action parity with the real controller using `Timeline.addBuffMarkers` / `addMarker(Untargetable)`: start times, potency including masking, and auto-attack snapshot times. Also covers damage-multiplier and crit buffs, windows outside the snapshot, downtime masking, isolation, and validation.
 
+## 0.3d Session 2: persistence model and result cache
+
+- **`models/Rotation.ts`: `RotationDocument`**
+  - Contains `schemaVersion`, `id`, `name`, `job`, `ruleset { mode, version }`, `entries` (each with a stable `id` and a `RotationStep`) and `updatedAt`.
+  - `AVAILABLE_RULESETS` lists what this build can simulate: `reborn: "reborn-dt-1"`, `evolved: undefined`.
+  - The engine has no game patch identifier, so ruleset versions are maintained by Rotation Lab. **Bump the version whenever job mechanics or potency data change.**
+- **`models/Scenario.ts`: `ScenarioDocument`**, the shared comparison conditions:
+  - A whitelist of stats: level, main, WD, party bonus, crit, DH, det, SkS, tenacity, countdown.
+  - Weapon delay, tincture grade, party buffs, downtime, and the end condition (default `"settled"`; use a numeric cutoff for comparisons).
+  - `scenarioToOptions()` converts it to simulator options.
+- **`models/validation.ts`:** validates everything loaded from storage or files and returns readable errors. Checks include actions via `jobHasSkill`, party buffs via the party buff table, levels 70/80/90/100, target numbers and windows. Future schema migrations go here.
+- **`simulation/SimulationManager.ts`:**
+  - `simulateDocument()`: throws for a combat mode that is not implemented, and reports `rulesetMismatch` when a rotation was saved under another ruleset version.
+  - `SimulationCache`: LRU of 64 entries, keyed by `stableStringify` of job, ruleset, steps and scenario options only. Names, ids and timestamps are excluded. Results are deep-frozen and shared, and are re-labelled with the caller's rotation id.
+- **`storage/WorkspaceStore.ts`:**
+  - One JSON workspace in `localStorage` (`rotationLab.workspace`).
+  - `parseWorkspace` keeps valid documents and reports skipped ones.
+  - Unreadable storage is copied to `rotationLab.workspace.corrupt` before anything can overwrite it.
+  - `serializeWorkspace` / `parseWorkspace` handle file export and import.
+- **Tests:** `rotationLabPersistence.test.ts`, 17 tests.
+
 ## 0.4 Known limitations
 
 - Expected damage only for VPR at levels 80/90/100 (section 0.3b).
@@ -1939,7 +1960,9 @@ This should eventually be independent of a global controller.
 | 6. Multi-rotation simulation | Independent simulators done; caching not started |
 | 7. Expected damage | Done for VPR in session 2 (section 0.3b); workbook cross-check pending |
 | Party buffs / downtime per simulation | Done in session 2 (section 0.3c) |
-| 8–10 | Not started; persistence model and cache come first (section 25) |
+| Persistence model, validation, cache, storage | Done in session 2 (section 0.3d) |
+| 8. Vertical editor | **Next** (section 25) |
+| 9–10 | Not started |
 | 11. Codebase reduction | Planned; see below |
 
 ## Phase 1: Confirm the current repository state
@@ -2219,13 +2242,12 @@ The latest verified development result is:
 
 **Isolated headless Viper simulation with expected damage (section 0.3b); full suite 163 passed + 9 expected-fail.**
 
-Party buffs and downtime are done (section 0.3c). Next milestone: **rotation persistence model and result cache.**
+Party buffs, downtime, persistence and caching are done (sections 0.3c and 0.3d). Next milestone: **the vertical editor and two-slot comparison UI.**
 
 1. Run the full suite and typecheck to confirm the baseline.
-2. Define a versioned, serializable rotation document: schema version, patch/ruleset, job, mode, steps, and the shared scenario (stats, weapon delay, tincture grade, party buffs, downtime, cutoff).
-3. Add a pure function from document to `simulateRotation` input and options. Cache results keyed by the full serialized inputs.
-4. Local persistence: browser storage with export/import as JSON files.
-5. Then start the vertical editor and two-slot comparison UI on top of this.
+2. Agree with the user on where the Rotation Lab UI lives. It must not break the upstream app.
+3. Build the editor on `RotationDocument` and `SimulationCache`, with the workspace store for persistence. Keep simulation out of React components.
+4. Measure recalculation time on long rotations before optimizing.
 
 Focus first on correctness. Do not start a large new UI or implement speculative Evercold mechanics before these are validated.
 

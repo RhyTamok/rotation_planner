@@ -66,7 +66,7 @@ Until then, keep their code and tests: they are the regression net for shared en
 ## Current Verified Baseline (2026-11-02)
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
-- Full suite: 31 test files, 173 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Full suite: 32 test files, 190 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
 - Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).
 - Reference repo for formulas: local clone at `C:\Dev\gear-planner` (xivgear; the author permits reuse). Search it locally instead of fetching from GitHub.
 - Headless simulation exists: `src/RotationLab/simulation/RotationSimulator.ts`.
@@ -95,8 +95,8 @@ Check the actual working tree and test results before continuing.
 
 1. (Done) Per-simulation party buffs and downtime.
 2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
-3. **Next:** rotation persistence model (schema version, patch, ruleset) and a result cache keyed by all simulation inputs.
-4. Vertical editor and two-slot comparison UI on top of `RotationSimulator`.
+3. (Done) Persistence model, validation, result cache and workspace storage: `src/RotationLab/models/`, `simulation/SimulationManager.ts`, `storage/WorkspaceStore.ts`. When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When the document shape changes, bump `SCHEMA_VERSION` and add a migration in `models/validation.ts`.
+4. **Next:** vertical editor and two-slot comparison UI on top of `SimulationCache` and the workspace store.
 5. Dragoon support through the same simulator.
 
 Prioritize simulation correctness before large UI changes.
