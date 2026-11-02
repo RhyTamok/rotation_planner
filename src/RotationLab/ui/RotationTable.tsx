@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 
 import { ShellJob } from "../../Game/Data/Jobs";
 import { EditorRow } from "../editor/rotationEdits";
+import { GaugeValue, trackedGauges } from "../rules/resourceTracking";
 import { RotationStep } from "../simulation/types";
 import { actionName, skillIconUrl } from "./SkillPalette";
 
@@ -70,7 +71,81 @@ function StepCell(props: {
 			{" "}
 			(pressed {actionName(step.action)})
 		</span>}
+		<label className="rl-delay" title="Extra delay after the action becomes usable">
+			+
+			<input
+				type="number"
+				min={0}
+				step={0.1}
+				value={step.delay ?? 0}
+				aria-label="Delay seconds"
+				onClick={(e) => e.stopPropagation()}
+				onChange={(e) => {
+					const delay = parseNumber(e.target.value);
+					if (delay === undefined || delay < 0) return;
+					const rest = { ...step };
+					delete rest.delay;
+					onUpdate(delay > 0 ? { ...rest, delay } : rest);
+				}}
+			/>
+			s
+		</label>
 	</>;
+}
+
+function GaugeCell(props: { gauge?: GaugeValue }) {
+	const { gauge } = props;
+	if (!gauge) return null;
+	if (gauge.max > 5) return <>{gauge.amount}</>;
+	return <span className="rl-pips" aria-label={`${gauge.amount} of ${gauge.max}`}>
+		{Array.from({ length: gauge.max }, (_, i) => <span
+			key={i}
+			className={i < gauge.amount ? "rl-pip rl-pip-on" : "rl-pip"}
+		/>)}
+	</span>;
+}
+
+function rowNotes(row: EditorRow): { text: string; kind: "error" | "warning" | "" }[] {
+	const { action, error } = row;
+	if (error) return [{ text: error.message, kind: "error" }];
+	if (!action) return [];
+	const notes: { text: string; kind: "error" | "warning" | "" }[] = [];
+	if (!action.valid) notes.push({ text: action.invalidReasons.join("; "), kind: "error" });
+	if (action.pullHold !== undefined) {
+		notes.push({ text: `held ${formatNumber(action.pullHold, 2)} s to land at 0 s`, kind: "" });
+	}
+	if (action.gcdDelay !== undefined) {
+		notes.push(
+			action.clipped
+				? { text: `clipped GCD by ${formatNumber(action.gcdDelay, 2)} s`, kind: "warning" }
+				: { text: `GCD delayed ${formatNumber(action.gcdDelay, 2)} s`, kind: "" },
+		);
+	}
+	if ((action.pendingDamage ?? 0) > 0) notes.push({ text: "lands after cutoff", kind: "" });
+	return notes;
+}
+
+// Active timers at the selected row, or at the last action before it (e.g. for a wait row).
+function TimerPanel(props: { rows: EditorRow[]; selectedId?: string }) {
+	const { rows, selectedId } = props;
+	const end = selectedId ? rows.findIndex((r) => r.entry.id === selectedId) : rows.length - 1;
+	const row = rows
+		.slice(0, end + 1)
+		.reverse()
+		.find((r) => r.action);
+	const timers = row?.action?.resources.timers ?? [];
+	return <div className="rl-timers" aria-label="Timers">
+		<span className="rl-timers-title">{row ? `After #${row.index + 1}` : "Timers"}</span>
+		{timers.length === 0 ? (
+			<span className="rl-note">no active timers</span>
+		) : (
+			timers.map((t) => <span className="rl-timer" key={t.label}>
+				{t.label}
+				{t.stacks > 1 && ` ×${t.stacks}`}
+				{t.remaining !== undefined && <b> {formatNumber(t.remaining, 1)}</b>}
+			</span>)
+		)}
+	</div>;
 }
 
 export function RotationTable(props: {
@@ -87,7 +162,10 @@ export function RotationTable(props: {
 		selectedRef.current?.scrollIntoView({ block: "nearest" });
 	}, [selectedId]);
 
+	const gauges = trackedGauges(job);
+
 	return <div className="rl-table-wrap" tabIndex={0} onKeyDown={onKeyDown} aria-label="Rotation">
+		{rows.length > 0 && <TimerPanel rows={rows} selectedId={selectedId} />}
 		{rows.length === 0 ? (
 			<div className="rl-empty">Click a skill in the palette to start the rotation.</div>
 		) : (
@@ -99,6 +177,9 @@ export function RotationTable(props: {
 						<th>Action</th>
 						<th className="rl-num">Potency</th>
 						<th className="rl-num">Damage</th>
+						{gauges.map((g) => <th className="rl-gauge" key={g.key}>
+							{g.label}
+						</th>)}
 						<th>Notes</th>
 					</tr>
 				</thead>
@@ -111,7 +192,6 @@ export function RotationTable(props: {
 							action && !action.isGCD ? "rl-ogcd" : "",
 							invalid ? "rl-invalid" : "",
 						].join(" ");
-						const pending = (action?.pendingDamage ?? 0) > 0;
 						return <tr
 							key={entry.id}
 							className={classes}
@@ -138,13 +218,19 @@ export function RotationTable(props: {
 										(action.expectedDamage ?? 0) + (action.pendingDamage ?? 0),
 									)}
 							</td>
-							<td className={`rl-note ${invalid ? "rl-error" : ""}`}>
-								{error?.message ??
-									(action && !action.valid
-										? action.invalidReasons.join("; ")
-										: pending
-											? "lands after cutoff"
-											: "")}
+							{gauges.map((g) => <td className="rl-gauge" key={g.key}>
+								<GaugeCell
+									gauge={action?.resources.gauges.find((x) => x.key === g.key)}
+								/>
+							</td>)}
+							<td className="rl-note">
+								{rowNotes(row).map((n, i) => <span
+									key={i}
+									className={n.kind ? `rl-${n.kind}` : undefined}
+								>
+									{i > 0 && " · "}
+									{n.text}
+								</span>)}
 							</td>
 						</tr>;
 					})}

@@ -9,6 +9,8 @@ import { Potency, PotencyModifierType } from "../../Game/Potency";
 import { Buff } from "../../Game/Buffs";
 import { ActionNode, skillNode } from "../../Controller/Record";
 import { DamageModel, getDefaultWeaponDelay, isDamageModelSupported } from "../damage/DamageModel";
+import { EncounterViolation, isDamaging, needsTarget } from "../rules/encounterRules";
+import { ResourceSnapshot, snapshotResources } from "../rules/resourceTracking";
 import { RecordingHost } from "./RecordingHost";
 import {
 	DamageEvent,
@@ -26,6 +28,9 @@ import {
 const MAX_SETTLE_SECONDS = 60;
 const SETTLE_STEP_SECONDS = 0.5;
 
+// Below this, time differences are floating-point noise.
+const TIME_EPSILON = 1e-6;
+
 interface ExecutedSkill {
 	stepIndex: number;
 	requestedAction: ActionKey;
@@ -34,6 +39,11 @@ interface ExecutedSkill {
 	startTime: number;
 	lockEndTime: number;
 	isGCD: boolean;
+	ruleViolations: string[];
+	pullHold?: number;
+	// GCDs only: display time at which the next GCD becomes ready.
+	nextGcdReadyTime?: number;
+	resources: ResourceSnapshot;
 }
 
 // One independent simulation: its own GameConfig, GameState and host.
@@ -47,9 +57,12 @@ export class RotationSimulator {
 	readonly damageModel?: DamageModel;
 	readonly #tinctureBonus: number;
 	readonly #encounter: RotationResult["encounter"];
+	readonly #encounterRules: boolean;
 	#executed: ExecutedSkill[] = [];
 	#errors: StepError[] = [];
 	#stepCount = 0;
+	// With encounter rules: display time at which the first damaging action landed (the pull).
+	#pullTime?: number;
 
 	constructor(job: ShellJob, options: SimulationOptions = {}) {
 		const config = new GameConfig({ ...makeDefaultConfig(job), ...options.config, job });
@@ -72,6 +85,7 @@ export class RotationSimulator {
 		// Same as Controller.#applyResourceOverrides after a restart.
 		config.initialResourceOverrides.forEach((override) => override.applyTo(this.game));
 		this.#tincturePotencyMultiplier = options.tincturePotencyMultiplier ?? 1;
+		this.#encounterRules = options.encounterRules ?? false;
 
 		const weaponDelay = options.weaponDelay ?? getDefaultWeaponDelay(job);
 		if (weaponDelay !== undefined) {
@@ -98,12 +112,22 @@ export class RotationSimulator {
 		return this.game.getDisplayTime();
 	}
 
+	// With encounter rules: when the first damaging action landed, if one has been used.
+	get pullTime(): number | undefined {
+		return this.#pullTime;
+	}
+
 	step(step: ActionKey | RotationStep) {
 		const stepIndex = this.#stepCount++;
 		const normalized: RotationStep =
 			typeof step === "string" ? { type: "skill", action: step } : step;
 		if (normalized.type === "skill") {
-			this.#useSkill(stepIndex, normalized.action, normalized.targets ?? [1]);
+			this.#useSkill(
+				stepIndex,
+				normalized.action,
+				normalized.targets ?? [1],
+				normalized.delay ?? 0,
+			);
 		} else if (normalized.type === "wait") {
 			this.#tick(normalized.seconds);
 		} else {
@@ -120,19 +144,53 @@ export class RotationSimulator {
 	}
 
 	// Mirrors Controller.#useSkill in manual tick mode, including its handling of invalid skills.
-	#useSkill(stepIndex: number, requestedAction: ActionKey, targetList: number[]) {
+	// `delay` counts from when the action first becomes usable (normally the end of the previous
+	// animation lock), so it always moves the action later.
+	#useSkill(stepIndex: number, requestedAction: ActionKey, targetList: number[], delay: number) {
 		let status = this.game.getSkillAvailabilityStatus(requestedAction);
-		this.#tick(status.timeTillAvailable);
+		this.#tick(status.timeTillAvailable + delay);
 
-		const executedAction = getConditionalReplacement(requestedAction, this.game);
+		let executedAction = getConditionalReplacement(requestedAction, this.game);
 		status = this.game.getSkillAvailabilityStatus(executedAction);
+
+		let pullHold: number | undefined;
+		let landsAtPull = false;
+		if (
+			this.#encounterRules &&
+			this.#pullTime === undefined &&
+			status.status.ready() &&
+			isDamaging(this.game, executedAction)
+		) {
+			landsAtPull = true;
+			const landing = this.game.getDisplayTime() + status.timeTillDamageApplication;
+			if (landing < -TIME_EPSILON) {
+				pullHold = -landing;
+				this.#tick(pullHold);
+				executedAction = getConditionalReplacement(requestedAction, this.game);
+				status = this.game.getSkillAvailabilityStatus(executedAction);
+			}
+		}
+
+		const ruleViolations: string[] = [];
+		if (
+			this.#encounterRules &&
+			this.#untargetable(this.game.getDisplayTime()) &&
+			needsTarget(this.game, executedAction)
+		) {
+			ruleViolations.push(EncounterViolation.NoTarget);
+			landsAtPull = false;
+		}
+
 		const node = skillNode(executedAction, this.#filterTargetList(targetList, executedAction));
 		const actionIndex = this.#executed.length;
 
 		node.tmp_startLockTime = this.game.time;
-		if (status.status.ready()) {
+		if (status.status.ready() && ruleViolations.length === 0) {
 			this.game.useSkill(executedAction, node, actionIndex);
 			node.tmp_invalid_reasons = [];
+			if (landsAtPull) {
+				this.#pullTime = this.game.getDisplayTime() + status.timeTillDamageApplication;
+			}
 		} else {
 			this.game.useInvalidSkill(executedAction, node);
 			node.tmp_invalid_reasons = status.status.unavailableReasons;
@@ -141,18 +199,51 @@ export class RotationSimulator {
 		node.tmp_startLockTime = this.game.time;
 		node.tmp_endLockTime = this.game.time + lockDuration;
 
-		this.#executed.push({
+		const isGCD = this.game.skillsList.get(executedAction).cdName === "cd_GCD";
+		const startTime = this.game.getDisplayTime();
+		const executed: ExecutedSkill = {
 			stepIndex,
 			requestedAction,
 			executedAction,
 			node,
-			startTime: this.game.getDisplayTime(),
-			lockEndTime: this.game.getDisplayTime() + lockDuration,
-			isGCD: this.game.skillsList.get(executedAction).cdName === "cd_GCD",
-		});
+			startTime,
+			lockEndTime: startTime + lockDuration,
+			isGCD,
+			ruleViolations,
+			pullHold,
+			nextGcdReadyTime: isGCD
+				? startTime + this.game.cooldowns.get("cd_GCD").timeTillNextStackAvailable()
+				: undefined,
+			resources: { gauges: [], timers: [] },
+		};
+		this.#executed.push(executed);
 
 		// Manual mode fast-forwards to the end of the animation lock.
 		this.#tick(lockDuration);
+		executed.resources = snapshotResources(this.game);
+	}
+
+	// How late each GCD was pressed relative to the previous GCD's recast, and whether the oGCD
+	// right before it caused that by holding the animation lock past the GCD becoming ready.
+	#gcdDelays(): Map<ExecutedSkill, { gcdDelay: number; clipped: boolean }> {
+		const delays = new Map<ExecutedSkill, { gcdDelay: number; clipped: boolean }>();
+		let lastGcd: ExecutedSkill | undefined;
+		this.#executed.forEach((e, i) => {
+			if (!e.isGCD) return;
+			if (lastGcd?.nextGcdReadyTime !== undefined) {
+				const gcdDelay = e.startTime - lastGcd.nextGcdReadyTime;
+				if (gcdDelay > TIME_EPSILON) {
+					const previous = this.#executed[i - 1];
+					const clipped =
+						!previous.isGCD &&
+						Math.abs(e.startTime - previous.lockEndTime) < TIME_EPSILON &&
+						(e.pullHold ?? 0) === 0;
+					delays.set(e, { gcdDelay, clipped });
+				}
+			}
+			lastGcd = e;
+		});
+		return delays;
 	}
 
 	// Same rules as Controller.filterTargetList, evaluated against this simulation's game.
@@ -282,9 +373,11 @@ export class RotationSimulator {
 
 	result(id: string): RotationResult {
 		const model = this.damageModel;
+		const gcdDelays = this.#gcdDelays();
 		const actions: SimulatedAction[] = this.#executed.map((e) => {
 			const potency = this.#nodePotency(e.node);
 			const damage = model ? this.#nodeDamage(model, e.node) : undefined;
+			const invalidReasons: string[] = [...e.node.tmp_invalid_reasons, ...e.ruleViolations];
 			return {
 				stepIndex: e.stepIndex,
 				requestedAction: e.requestedAction,
@@ -292,8 +385,12 @@ export class RotationSimulator {
 				startTime: e.startTime,
 				lockEndTime: e.lockEndTime,
 				isGCD: e.isGCD,
-				valid: e.node.tmp_invalid_reasons.length === 0,
-				invalidReasons: [...e.node.tmp_invalid_reasons],
+				valid: invalidReasons.length === 0,
+				invalidReasons,
+				pullHold: e.pullHold,
+				gcdDelay: gcdDelays.get(e)?.gcdDelay,
+				clipped: gcdDelays.get(e)?.clipped,
+				resources: e.resources,
 				appliedPotency: potency.applied,
 				pendingPotency: potency.snapshottedButPending,
 				expectedDamage: damage?.applied,
@@ -368,8 +465,23 @@ export function simulateRotation(
 	options: SimulationOptions = {},
 	job: ShellJob = "VPR",
 ): RotationResult {
-	const simulator = new RotationSimulator(job, options);
-	input.steps.forEach((step) => simulator.step(step));
-	simulator.finish(options.end);
-	return simulator.result(input.id);
+	const run = (runOptions: SimulationOptions) => {
+		const simulator = new RotationSimulator(job, runOptions);
+		input.steps.forEach((step) => simulator.step(step));
+		simulator.finish(runOptions.end);
+		return simulator;
+	};
+	const simulator = run(options);
+	const late = simulator.pullTime ?? 0;
+	if (!options.encounterRules || late <= TIME_EPSILON) {
+		return simulator.result(input.id);
+	}
+	// The first hit defines 0 s. It landed late, so the pull happened earlier than the countdown
+	// assumed: lengthen the countdown so the same inputs put the first hit exactly at 0 s.
+	const countdown = options.config?.countdown ?? makeDefaultConfig(job).countdown;
+	const result = run({
+		...options,
+		config: { ...options.config, countdown: countdown + late },
+	}).result(input.id);
+	return { ...result, countdownExtension: late };
 }

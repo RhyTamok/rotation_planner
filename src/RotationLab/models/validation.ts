@@ -63,6 +63,9 @@ function validateStep(job: ShellJob, step: unknown, where: string, errors: strin
 		) {
 			errors.push(`${where}: targets must be integers from 1 to ${MAX_ABILITY_TARGETS}`);
 		}
+		if (s.delay !== undefined && !(isFiniteNumber(s.delay) && s.delay >= 0)) {
+			errors.push(`${where}: delay must be a non-negative number`);
+		}
 	} else if (s.type === "wait") {
 		if (!isFiniteNumber(s.seconds) || s.seconds < 0) {
 			errors.push(`${where}: wait seconds must be a non-negative number`);

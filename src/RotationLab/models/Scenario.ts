@@ -65,5 +65,6 @@ export function scenarioToOptions(scenario: ScenarioDocument): SimulationOptions
 		partyBuffs: scenario.partyBuffs.map((w) => ({ ...w })),
 		downtime: scenario.downtime.map((w) => ({ ...w })),
 		end: scenario.end,
+		encounterRules: true,
 	};
 }

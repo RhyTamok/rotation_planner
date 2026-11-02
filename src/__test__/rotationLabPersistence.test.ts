@@ -131,6 +131,7 @@ describe("Rotation Lab - scenario documents", () => {
 			partyBuffs: [{ buff: BuffType.TechnicalFinish, time: 7 }],
 			downtime: [{ start: 60, end: 70 }],
 			end: 120,
+			encounterRules: true,
 		});
 	});
 

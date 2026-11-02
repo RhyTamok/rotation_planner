@@ -1,14 +1,17 @@
-import { BuffType, SkillUnavailableReason, Warning } from "../../Game/Common";
+import { BuffType, Warning } from "../../Game/Common";
 import { ConfigData } from "../../Game/GameConfig";
 import { ActionKey } from "../../Game/Data";
 import { PotencyModifierType } from "../../Game/Potency";
 import { GemdraughtGrade } from "../damage/DamageModel";
+import { ResourceSnapshot } from "../rules/resourceTracking";
 
 // Units: every time in this module is engine *display time* in seconds, the same clock the
 // XIV in the Shell UI shows (negative during the countdown, 0 at the pull).
 
 export type RotationStep =
-	| { type: "skill"; action: ActionKey; targets?: number[] }
+	// `delay`: extra seconds to wait after the action first becomes usable (normally the end of
+	// the previous animation lock), e.g. to place an oGCD later in a GCD gap.
+	| { type: "skill"; action: ActionKey; targets?: number[]; delay?: number }
 	// Idle for a fixed duration.
 	| { type: "wait"; seconds: number }
 	// Idle until the given display time; invalid if that time has already passed.
@@ -56,6 +59,9 @@ export interface SimulationOptions {
 	// Weapon delay in seconds; drives auto-attack timing and damage. Defaults to the job's value.
 	weaponDelay?: number;
 	end?: SimulationEnd;
+	// Enforce the Lab's pull and downtime rules (rules/encounterRules.ts). Off by default so that
+	// plain simulations stay comparable with the upstream controller.
+	encounterRules?: boolean;
 }
 
 export interface SimulatedAction {
@@ -66,7 +72,17 @@ export interface SimulatedAction {
 	lockEndTime: number;
 	isGCD: boolean;
 	valid: boolean;
-	invalidReasons: SkillUnavailableReason[];
+	// Engine reasons (SkillUnavailableReason) or Lab encounter rules (EncounterViolation).
+	invalidReasons: string[];
+	// Seconds the action was held so that its damage lands exactly at the pull (0 s).
+	pullHold?: number;
+	// GCDs only: seconds between the GCD becoming ready and this GCD being pressed.
+	gcdDelay?: number;
+	// True if that delay came from the animation lock of the oGCD just before (a clip), rather
+	// than from a deliberate wait or delay.
+	clipped?: boolean;
+	// Gauges and timers at the end of this action's animation lock.
+	resources: ResourceSnapshot;
 	// Potency (including DoT ticks) that landed before the simulation stopped.
 	appliedPotency: number;
 	// Potency that snapshotted but had not landed yet.
@@ -107,6 +123,9 @@ export interface RotationResult {
 	// False if any step was invalid. Invalid skills still roll their locks, as in upstream replay.
 	valid: boolean;
 	endTime: number;
+	// With encounter rules: seconds added to the countdown because the first hit would otherwise
+	// have landed after 0 s. Pre-pull actions moved earlier by this much.
+	countdownExtension?: number;
 	actions: SimulatedAction[];
 	damageEvents: DamageEvent[];
 	warnings: Warning[];

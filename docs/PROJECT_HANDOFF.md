@@ -133,6 +133,52 @@ Sections 1–28 below preserve the original handoff. Where a section was wrong o
   - It was reproduced and the fix verified by loading the dev server's native ES modules in Node, using HTTP loader hooks plus jsdom and the React refresh preamble.
   - A proper fix would remove the cycles, e.g. making `Resources.ts`'s `BLMState` import type-only. That is an engine change and has not been done.
 
+## 0.3f User feedback on the first editor (backlog, not yet implemented)
+
+The user confirmed that the page loads and that timelines can be built. They listed seven issues, none urgent:
+
+1. **Pull timing.** The 5 s countdown lets non-damaging actions (e.g. Gemdraught) be used before the pull. A damaging action is valid only if its damage *lands* at or after 0 s, so a GCD with 0.6 s application delay may be pressed at −0.6 s. Currently nothing enforces this. The user offered further guidelines.
+2. **Combo icons.** The palette always shows base buttons. After Reaving Fangs, the Reaving Fangs button should turn into Swiftskin's Sting as the in-game hotbar does. The table already shows the executed action once the button is pressed again.
+3. **Free oGCD placement.** A normal GCD leaves room for two oGCDs and Uncoiled Fury for three, but placement must not be locked to fixed slots. The user wants to delay an oGCD within the GCD gap (e.g. Serpent's Ire slightly later), or place one in the middle.
+4. **Party buff visual.** Buffs change the numbers but the table does not show where they start and end.
+5. **Cooldowns in the palette.** E.g. Serpent's Ire (120 s) should show when it is next available.
+6. **Recommendations.** Suggest next actions from a ruleset to be agreed on (e.g. after Reaving Fangs, Swiftskin's Sting or Hunter's Sting).
+7. **Downtime enforcement.** Downtime only zeroes damage today; damaging actions are still accepted. It should behave like the pre-pull countdown.
+
+Analysis (session 2):
+
+- **Items 1 and 7** are one rule: a damaging hit may not land before 0 s or inside downtime. It belongs in the simulator (per-action validity), not the UI. `SimulatedAction` already has the application time and `DamageEvent.hitTarget`.
+- **Items 2 and 5** both need the game state at the insertion point. Simulating up to the selected row is cheap (a full 300-action run takes about 16 ms). The palette can then show `getConditionalReplacement` and the remaining cooldown for each button.
+- **Item 3** needs a per-entry timing control, plus a clip warning when an oGCD delays the next GCD. Waits are already supported by the simulator.
+- **Item 4** is a buff column or bar beside the table, built from `result.encounter.partyBuffs`.
+- **Item 6** depends on a written ruleset and should come after comparison.
+
+The user's answers on the rules:
+
+- **Pull:** the first damaging action always lands at exactly 0 s, whatever the clock says when it is pressed. A tincture at −5 s is intentional.
+- **Downtime:** actions that need a target are invalid. That covers damaging actions, plus Arm's Length, Leg Sweep and Slither. Vicepit needs no target: it is usable and still grants the Den buffs.
+- **Ghosting:** an action pressed before downtime that lands inside it applies its effects but deals no damage.
+- **oGCD timing:** set as a delay on top of the animation lock.
+- **New request:** per-row resource tracking (Rattling Coil, Serpent Offerings, Anguine Tribute), with combo and buff timers shown above the table.
+
+## 0.3g Session 2: encounter rules, oGCD delay, resource tracking (items 1, 3, 7 and the new request; done)
+
+- **`SimulationOptions.encounterRules`** (`rules/encounterRules.ts`). Off by default, so parity with upstream is unchanged. `scenarioToOptions` turns it on, so the editor always uses it.
+  - **Pull.** The first damaging action pressed out of combat is held until its damage lands at 0 s (`SimulatedAction.pullHold`).
+    - If it would land after 0 s, `simulateRotation` re-runs with the countdown lengthened by the lateness, so pre-pull actions move earlier. This is reported as `result.countdownExtension`.
+    - "Damaging" means `potencyFn > 0`, the same test the engine uses to start combat.
+  - **Downtime.** An action that needs a target, pressed while the boss is untargetable, becomes invalid with `EncounterViolation.NoTarget` and rolls its lock like any other invalid action. The targetless and targeted-utility lists are explicit sets in `encounterRules.ts`.
+  - **Ghosting** needed no code: `onConfirm` effects apply at press time and the untargetable mask zeroes damage on landing. Upstream `VPR.ts` already withholds Vicepit's Rattling Coil during downtime.
+- **Skill steps take an optional `delay`** (validated as ≥ 0, no schema bump since the field is optional).
+  - It counts from when the action first becomes usable, which for a weave is the end of the previous animation lock. This way a delay is never absorbed by a wait for combat or cooldown.
+- **GCD drift.** Each GCD reports `gcdDelay`, the time between the GCD becoming ready and being pressed. `clipped` is set when the oGCD right before it caused that delay.
+- **Resources.** Each action has a `resources` snapshot (`rules/resourceTracking.ts`) taken at the end of its animation lock: gauges, plus the active timers mirroring the upstream VPR gauge.
+  - The table shows gauges per row. Timers for the selected row are in a sticky bar above the table.
+  - The delay input sits in the action cell. Notes show the pull hold, clipping and GCD delays.
+- **Tests:** `rotationLabEncounterRules.test.ts`, 10 tests.
+- **Still open from 0.3f:** combo icons and cooldowns in the palette (items 2 and 5), party buff bars (4), recommendations (6).
+- **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
+
 ## 0.4 Known limitations
 
 - Expected damage only for VPR at levels 80/90/100 (section 0.3b).
@@ -2263,7 +2309,7 @@ The latest verified development result is:
 
 **Isolated headless Viper simulation with expected damage (section 0.3b); full suite 163 passed + 9 expected-fail.**
 
-Party buffs, downtime, persistence, caching and the first editor are done (sections 0.3c–0.3e). Next milestone: **two-slot comparison.**
+Party buffs, downtime, persistence, caching and the first editor are done (sections 0.3c–0.3e). The user's editor feedback is in section 0.3f. The order of that backlog relative to comparison is still to be agreed with the user. Next milestone: **two-slot comparison.**
 
 1. Run the full suite and typecheck to confirm the baseline.
 2. Compare two rotations under one scenario. Both go through `SimulationCache`, so editing one does not re-simulate the other.

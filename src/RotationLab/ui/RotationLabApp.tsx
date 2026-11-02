@@ -317,6 +317,11 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			{simulation.error && <div className="rl-banner">
 				Cannot simulate: {simulation.error}
 			</div>}
+			{result?.countdownExtension !== undefined && <div className="rl-banner">
+				The first hit landed {formatNumber(result.countdownExtension, 2)} s after the
+				countdown ended. The pull is defined by the first hit, so the countdown was
+				lengthened and earlier actions moved earlier by that much.
+			</div>}
 			{simulation.sim?.rulesetMismatch && <div className="rl-banner">
 				Saved for ruleset {simulation.sim.rulesetMismatch.saved.version}; simulated with{" "}
 				{simulation.sim.rulesetMismatch.current.version}.
