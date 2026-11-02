@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 import { ShellJob } from "../../Game/Data/Jobs";
 import { GameConfig, makeDefaultConfig } from "../../Game/GameConfig";
@@ -13,6 +13,7 @@ import {
 	resolveGear,
 } from "../models/GearSet";
 import { newId, RotationDocument } from "../models/Rotation";
+import { importFromXivgear } from "../import/xivgear";
 import { formatNumber } from "./format";
 import { NumberInput } from "./ScenarioPanel";
 
@@ -39,6 +40,64 @@ function withStat(stats: GearStats, key: GearStatKey, value: number | undefined)
 function baseGcd(job: ShellJob, level: number, stats: GearStats): number {
 	const config = new GameConfig({ ...makeDefaultConfig(job), ...stats, level, job });
 	return config.adjustedSksGCD(2.5);
+}
+
+function XivgearImportForm(props: {
+	job: ShellJob;
+	level: number;
+	onImported: (gearSets: GearSetDocument[]) => void;
+	fetchFn?: typeof fetch;
+}) {
+	const [link, setLink] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [status, setStatus] = useState<{ text: string; error: boolean }>();
+
+	const run = async () => {
+		setBusy(true);
+		setStatus(undefined);
+		try {
+			const result = await importFromXivgear(link, props.job, props.fetchFn);
+			props.onImported(result.gearSets);
+			const notes = [...result.warnings];
+			if (result.level !== undefined && result.level !== props.level) {
+				notes.push(
+					`the sheet is for level ${result.level}, the scenario uses ${props.level}`,
+				);
+			}
+			const names = result.gearSets.map((g) => g.name).join(", ");
+			setStatus({
+				text:
+					`Imported ${result.gearSets.length} gear set(s): ${names}.` +
+					(notes.length > 0 ? ` Note: ${notes.join("; ")}.` : ""),
+				error: false,
+			});
+			setLink("");
+		} catch (e) {
+			setStatus({ text: (e as Error).message, error: true });
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return <div className="rl-xivgear">
+		<div className="rl-gear-actions">
+			<input
+				aria-label="xivgear link"
+				placeholder="xivgear.app link (set or sheet)"
+				value={link}
+				onChange={(e) => setLink(e.target.value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" && link.trim() && !busy) void run();
+				}}
+			/>
+			<button disabled={busy || !link.trim()} onClick={() => void run()}>
+				{busy ? "Importing…" : "Import"}
+			</button>
+		</div>
+		{status && <p className={`rl-note ${status.error ? "rl-error" : ""}`} role="status">
+			{status.text}
+		</p>}
+	</div>;
 }
 
 // The current rotation's gear: which set it uses, that set's values, and this rotation's own
@@ -117,6 +176,15 @@ export function GearPanel(props: {
 				</button>
 			</>}
 		</div>
+		<XivgearImportForm
+			job={job}
+			level={level}
+			onImported={(imported) => {
+				onGearSetsChange([...gearSets, ...imported]);
+				// A single set is clearly meant for this rotation; sheets just add their sets.
+				if (imported.length === 1) setRotation({ gearSetId: imported[0].id });
+			}}
+		/>
 		<p className="rl-note">
 			GCD {formatNumber(gcd, 2)} s
 			{overrideCount > 0 &&

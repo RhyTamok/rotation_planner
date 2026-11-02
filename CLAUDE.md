@@ -68,7 +68,8 @@ Until then, keep their code and tests: they are the regression net for shared en
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
 - Rotation Lab editor page: http://localhost:3000/rotation-lab.html (second Vite entry, `rotation-lab.html`, `src/RotationLab/ui/`). The original app at `/` is untouched.
 - Character stats live in per-rotation gear sets (`models/GearSet.ts`, `resolveGear`); scenarios hold only shared fight settings. Stored format is `SCHEMA_VERSION` 2; migrations live in `storage/migrations.ts` (handoff 0.3j).
-- Full suite: 37 test files, 239 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Gear sets can be imported from xivgear links (`import/xivgear.ts`, handoff 0.3k); stats come from xivgear's API, never recomputed here.
+- Full suite: 38 test files, 243 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
 - Editor scenarios use nominal GCD lengths: `fps` defaults to 0, which disables XIV in the Shell's frame-rate tax (`XIVMath.afterFpsTax`). Upstream defaults to 60 fps, which turns 2.12 s into about 2.133 s.
 - Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>` (the project's formatter). Do not use plain `prettier`: it is not installed, and npx fetches stock prettier, which reformats JSX differently.
 - Editor scenarios simulate with `encounterRules` on: the first hit lands at exactly 0 s, targeted actions are invalid in downtime, and ghosting is allowed. Handoff section 0.3g.
@@ -104,7 +105,7 @@ Check the actual working tree and test results before continuing.
 3. (Done) Persistence model, validation, result cache and workspace storage: `src/RotationLab/models/`, `simulation/SimulationManager.ts`, `storage/WorkspaceStore.ts`. When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When the document shape changes, bump `SCHEMA_VERSION` and add a migration step in `storage/migrations.ts`.
 4. (Done, first version) Vertical editor page; see handoff section 0.3e.
 5. User feedback backlog on the editor: handoff section 0.3f. Pull timing, downtime enforcement, oGCD delay and resource tracking are done (0.3g). The palette state at the insertion point and the party buff lanes are done too (0.3h). Still open: recommendations, after comparison.
-6. (Done, first version) Two-rotation comparison: `comparison/compare.ts` and `ui/ComparisonView.tsx`, handoff section 0.3i. **Next:** the user's review of it, then the xivgear link import for gear sets (agreed design in handoff 0.3k), editor polish (undo/redo, copy/paste) and recommendations.
+6. (Done, first version) Two-rotation comparison: `comparison/compare.ts` and `ui/ComparisonView.tsx`, handoff section 0.3i. xivgear gear set import done (0.3k). **Next:** the user's review, then editor polish (undo/redo, copy/paste) and recommendations.
 7. Dragoon support through the same simulator.
 
 Prioritize simulation correctness before large UI changes.

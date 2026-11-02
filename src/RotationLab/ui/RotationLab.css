@@ -438,6 +438,29 @@ select {
 	border-radius: 3px;
 }
 
+.rl-gear-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 4px 0;
+}
+
+.rl-overrides {
+	margin: 8px 0;
+}
+
+.rl-overrides summary {
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--rl-muted);
+	margin-bottom: 4px;
+}
+
+.rl-xivgear input {
+	flex: 1;
+	min-width: 0;
+}
+
 .rl-debug-toggle {
 	margin-left: auto;
 	color: var(--rl-muted);

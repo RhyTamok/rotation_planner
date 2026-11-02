@@ -259,7 +259,20 @@ The user's answers on the rules:
   - Import remaps clashing gear-set ids, and rotations follow.
   - The comparison simulates each rotation with its own gear and names both sets.
 
-## 0.3k Planned: xivgear gear set import (agreed, not started)
+## 0.3k xivgear gear set import (done)
+
+- **Implementation:**
+  - `import/xivgear.ts` calls `https://api.xivgear.app/fulldata?url=<link>`. This current form accepts set, sheet and BiS links and parses them server-side; upstream's `/fulldata/<id>` is deprecated.
+  - `parseFullData` makes one gear set per set, skipping separators and naming each after its set:
+    - main stat = the highest of `gearStats` STR/DEX/INT/MND, before party bonus and medicine, as upstream does;
+    - substats = `computedStats` crit, dhit, det, skillspeed and tenacity, which include food (verified in xivgear's `finalizeStatsInt`);
+    - WD and delay = `wdPhys` and `weaponDelay`.
+  - Another job's sheet is refused. Sets with missing stats are skipped with a warning.
+- **UI:** a link field plus Import in the gear panel. A single set is assigned to the current rotation; a sheet only adds its sets. Warns when the sheet's level differs from the scenario's.
+- **Verified live (2026-11-02):** the public VPR BiS sheet (`?page=bis|vpr|current`) returned 14 entries, including separators. `gearStats` dexterity 6491 matched computed dexterity 6815 at 5 % party bonus. Delay was 2.64.
+- **Tests:** `rotationLabXivgear.test.ts` (4 tests, fixture-based, no network).
+
+Original plan, for reference:
 
 - **Route:** paste an xivgear share link, either a single set or a whole sheet. Fetch `https://api.xivgear.app/fulldata/<id>`, which returns computed stats. Upstream already does this in `src/Components/PlaybackControl.tsx` (around line 1007); reuse that parsing, don't reimplement it.
 - **Rejected:** importing xivgear's JSON export file. It holds item and materia IDs only, so it would need an item database plus xivgear's meld, food and cap rules.
