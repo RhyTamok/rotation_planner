@@ -211,7 +211,22 @@ The user's answers on the rules:
   - The table draws them in a column after Time: the icon on the first covered row of each window, then a coloured bar. The tooltip gives the window and the time left.
   - Coverage uses the action's start time with both ends inclusive, as in `GameState.getPartyBuffs`. A test checks that the covered rows are exactly the ones whose potency the buff raises.
   - Tests: `rotationLabBuffLanes.test.ts`, 3 tests.
-- **Still open:** recommendations (item 6), then comparison.
+- **Still open:** recommendations (item 6).
+
+## 0.3i Session 3: two-rotation comparison (first version)
+
+- **Maths:** `comparison/compare.ts` (pure, no React).
+  - `cumulativeSeries` builds a step series of landed hits from `damageEvents`, including auto-attacks. It uses expected damage when both results have a damage model and falls back to potency otherwise.
+  - Query functions: `totalAt`, `dpsAt` (from the pull), `totalBetween` (inclusive window), `differenceSeries` (A − B) and `leadChanges` (ties don't end a lead).
+  - `burstWindows` merges overlapping party-buff windows.
+  - `compareRotations` combines these into a single report.
+  - Tests: `rotationLabCompare.test.ts`, including a check that the series reproduces the simulator's own total and DPS.
+- **UI:** an Edit / Compare toggle in the header. `ui/ComparisonView.tsx` takes the table and palette area.
+  - Picks rotations A and B and simulates both through the shared `SimulationCache` under the selected scenario.
+  - **Lead chart:** one SVG step line of A − B, with a zero line, shaded burst windows, dashed cutoffs, a crosshair tooltip and "A ahead / B ahead" labels.
+  - **Tables:** totals and DPS at the end time plus any user-added cutoffs; a lead-change list; damage per burst window.
+  - Colours use the page's tokens, so dark mode follows automatically. Rotations are identified by name, not colour.
+- **Not yet:** comparison settings are not persisted (cutoffs reset on reload); more than two rotations; cumulative lines per rotation; the chart has not been visually reviewed in a browser by Claude.
 - **Note:** the editor's numbers use the system locale (`toLocaleString`). Tests compare against `formatNumber`, not literal strings.
 - **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
 

@@ -28,6 +28,7 @@ import {
 import { formatNumber, RotationTable } from "./RotationTable";
 import { ScenarioPanel } from "./ScenarioPanel";
 import { SkillPalette } from "./SkillPalette";
+import { ComparisonView } from "./ComparisonView";
 
 // Stable empty list, so the table's memoized buff lanes are not rebuilt on every render.
 const NO_BUFFS: Required<PartyBuffWindow>[] = [];
@@ -92,6 +93,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	const [rotationId, setRotationId] = useState(initial.workspace.rotations[0].id);
 	const [scenarioId, setScenarioId] = useState(initial.workspace.scenarios[0].id);
 	const [selectedId, setSelectedId] = useState<string>();
+	const [mode, setMode] = useState<"edit" | "compare">("edit");
 	const cache = useMemo(() => new SimulationCache(), []);
 	const fileInput = useRef<HTMLInputElement>(null);
 
@@ -229,6 +231,14 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	return <div className="rl-app">
 		<header className="rl-top">
 			<h1>Rotation Lab</h1>
+			<div className="rl-modes" role="group" aria-label="View">
+				<button aria-pressed={mode === "edit"} onClick={() => setMode("edit")}>
+					Edit
+				</button>
+				<button aria-pressed={mode === "compare"} onClick={() => setMode("compare")}>
+					Compare
+				</button>
+			</div>
 			<select
 				aria-label="Rotation"
 				value={rotation.id}
@@ -351,29 +361,46 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 
 		<ScenarioPanel job={JOB} scenario={scenario} onChange={replaceScenario} />
 
-		<RotationTable
-			job={JOB}
-			rows={rows}
-			selectedId={selectedId}
-			onSelect={setSelectedId}
-			onUpdateStep={(id, step) => replaceRotation(updateStep(rotation, id, step))}
-			onRemove={remove}
-			partyBuffs={result?.encounter.partyBuffs ?? NO_BUFFS}
-			onMove={(id, beforeIndex) => {
-				replaceRotation(moveEntryBefore(rotation, id, beforeIndex));
-				setSelectedId(id);
-			}}
-			onKeyDown={onTableKeyDown}
-		/>
+		{mode === "compare" ? (
+			simulation.error ? (
+				<section className="rl-compare">
+					<div className="rl-banner">Cannot compare: {simulation.error}</div>
+				</section>
+			) : (
+				<ComparisonView
+					rotations={workspace.rotations}
+					scenario={scenario}
+					cache={cache}
+					defaultA={rotation.id}
+				/>
+			)
+		) : (
+			<>
+				<RotationTable
+					job={JOB}
+					rows={rows}
+					selectedId={selectedId}
+					onSelect={setSelectedId}
+					onUpdateStep={(id, step) => replaceRotation(updateStep(rotation, id, step))}
+					onRemove={remove}
+					partyBuffs={result?.encounter.partyBuffs ?? NO_BUFFS}
+					onMove={(id, beforeIndex) => {
+						replaceRotation(moveEntryBefore(rotation, id, beforeIndex));
+						setSelectedId(id);
+					}}
+					onKeyDown={onTableKeyDown}
+				/>
 
-		<SkillPalette
-			job={JOB}
-			level={level}
-			prefix={prefix}
-			options={scenarioOptions}
-			countdownExtension={result?.countdownExtension}
-			onInsert={insert}
-		/>
+				<SkillPalette
+					job={JOB}
+					level={level}
+					prefix={prefix}
+					options={scenarioOptions}
+					countdownExtension={result?.countdownExtension}
+					onInsert={insert}
+				/>
+			</>
+		)}
 
 		<footer className="rl-footer">
 			Keys: ↑/↓ select · Alt+↑/↓ move · Del remove · Ctrl+D duplicate · Esc deselect. Built on{" "}

@@ -208,6 +208,33 @@ describe("Rotation Lab - editor page", () => {
 		expect(storage.data.get(WORKSPACE_KEY)).toBe(savedBefore);
 	});
 
+	it("compares two rotations at cutoffs", async () => {
+		const user = userEvent.setup();
+		render(<RotationLabApp storage={memoryStorage()} />);
+		const palette = screen.getByRole("complementary", { name: "Skill palette" });
+		const reaving = within(palette).getByRole("button", { name: /Reaving Fangs/ });
+		await user.click(reaving);
+		await user.click(reaving);
+		await user.click(screen.getByRole("button", { name: "Duplicate" }));
+		// Add a third GCD to the copy only, so it ends up ahead. (The button now shows the combo
+		// finisher, so it is clicked by reference rather than looked up by name again.)
+		await user.click(reaving);
+
+		await user.click(screen.getByRole("button", { name: "Compare" }));
+		// The copy is the current rotation, so it is A by default and the original is B.
+		const comparison = screen.getByRole("region", { name: "Comparison" });
+		expect(within(comparison).getAllByTestId("cutoff-row")).toHaveLength(1);
+		expect(comparison.textContent).toMatch(/A: .*\(copy\) pulls ahead/);
+		expect(comparison.textContent).not.toContain("overtakes");
+
+		await user.type(
+			within(comparison).getByRole("spinbutton", { name: "Cutoff seconds" }),
+			"1",
+		);
+		await user.click(within(comparison).getByRole("button", { name: "Add cutoff" }));
+		expect(within(comparison).getAllByTestId("cutoff-row")).toHaveLength(2);
+	});
+
 	it("removes a row with its × button and shows debug timing columns", async () => {
 		const user = userEvent.setup();
 		render(<RotationLabApp storage={memoryStorage()} />);

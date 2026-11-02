@@ -249,6 +249,122 @@ select {
 	background: var(--rl-bg);
 }
 
+.rl-modes {
+	display: inline-flex;
+	gap: 2px;
+	margin-right: 12px;
+}
+
+.rl-modes button[aria-pressed="true"] {
+	background: var(--rl-accent-soft);
+	border-color: var(--rl-accent);
+	font-weight: 600;
+}
+
+/* Comparison view: takes the table and palette columns. */
+.rl-compare {
+	grid-column: table-start / palette-end;
+	grid-row: table;
+	overflow-y: auto;
+	padding: 10px 16px;
+}
+
+.rl-compare h2 {
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--rl-muted);
+	margin: 16px 0 6px;
+}
+
+.rl-compare-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+}
+
+.rl-compare-table {
+	width: auto;
+}
+
+.rl-compare-table th {
+	position: static;
+}
+
+.rl-compare-list {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.rl-chart {
+	position: relative;
+	max-width: 960px;
+}
+
+.rl-chart svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.rl-chart-line {
+	fill: none;
+	stroke: var(--rl-accent);
+	stroke-width: 2;
+	stroke-linejoin: round;
+}
+
+.rl-chart-zero {
+	stroke: var(--rl-muted);
+	stroke-width: 1;
+}
+
+.rl-chart-grid {
+	stroke: var(--rl-border);
+	stroke-width: 1;
+}
+
+.rl-chart-window {
+	fill: var(--rl-accent-soft);
+}
+
+.rl-chart-cutoff {
+	stroke: var(--rl-muted);
+	stroke-width: 1;
+	stroke-dasharray: 4 4;
+}
+
+.rl-chart-crosshair {
+	stroke: var(--rl-text);
+	stroke-width: 1;
+	pointer-events: none;
+}
+
+.rl-chart-label {
+	fill: var(--rl-muted);
+	font-size: 12px;
+}
+
+.rl-chart-value {
+	fill: var(--rl-text);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.rl-chart-tooltip {
+	position: absolute;
+	top: 8px;
+	transform: translateX(8px);
+	pointer-events: none;
+	padding: 6px 8px;
+	font-size: 12px;
+	background: var(--rl-bg);
+	border: 1px solid var(--rl-border);
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
 /* Party buff lanes: one 18px column per buff; icon on the first covered row, then a bar. */
 .rl-table .rl-buffs {
 	padding: 0 4px;
