@@ -4,16 +4,10 @@ import { ShellJob } from "../../Game/Data/Jobs";
 import { EditorRow } from "../editor/rotationEdits";
 import { GaugeValue, trackedGauges } from "../rules/resourceTracking";
 import { RotationStep } from "../simulation/types";
+import { formatNumber } from "./format";
 import { actionName, skillIconUrl } from "./SkillPalette";
 
-export function formatNumber(x: number | undefined, digits = 0): string {
-	return x === undefined
-		? ""
-		: x.toLocaleString(undefined, {
-				minimumFractionDigits: digits,
-				maximumFractionDigits: digits,
-			});
-}
+export { formatNumber };
 
 function parseNumber(text: string): number | undefined {
 	const x = Number(text);

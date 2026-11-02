@@ -13,7 +13,7 @@ import {
 	updateStep,
 } from "../editor/rotationEdits";
 import { createRotation, newId, RotationDocument } from "../models/Rotation";
-import { createScenario, ScenarioDocument } from "../models/Scenario";
+import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import { parseRotationDocument, parseScenarioDocument } from "../models/validation";
 import { SimulationCache } from "../simulation/SimulationManager";
 import { RotationStep } from "../simulation/types";
@@ -116,6 +116,13 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	}, [cache, rotation, scenario]);
 	const result = simulation.sim?.result;
 	const rows = useMemo(() => buildRows(rotation, result), [rotation, result]);
+	// The palette shows the hotbar at the insertion point: after the selected row, or at the end.
+	const prefix = useMemo(() => {
+		const index = rotation.entries.findIndex((e) => e.id === selectedId);
+		const end = index < 0 ? rotation.entries.length : index + 1;
+		return rotation.entries.slice(0, end).map((e) => e.step);
+	}, [rotation, selectedId]);
+	const scenarioOptions = useMemo(() => scenarioToOptions(scenario), [scenario]);
 
 	const replaceRotation = (next: RotationDocument) =>
 		setWorkspace((ws) => ({
@@ -355,7 +362,14 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			onKeyDown={onTableKeyDown}
 		/>
 
-		<SkillPalette job={JOB} level={level} onInsert={insert} />
+		<SkillPalette
+			job={JOB}
+			level={level}
+			prefix={prefix}
+			options={scenarioOptions}
+			countdownExtension={result?.countdownExtension}
+			onInsert={insert}
+		/>
 
 		<footer className="rl-footer">
 			Keys: ↑/↓ select · Alt+↑/↓ move · Del remove · Ctrl+D duplicate · Esc deselect. Built on{" "}

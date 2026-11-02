@@ -197,6 +197,16 @@ The user's answers on the rules:
   - Each row has a × remove button and a ⠿ drag handle (HTML5 drag-and-drop, `moveEntryBefore` in `rotationEdits.ts`).
   - A "Debug" toggle on the timers bar adds Δ GCD and Δ action columns (gaps between start times). It is remembered in `localStorage` (`rotationLab.debugColumns`).
 - **Tests:** 216 passed + 9 expected-fail in 34 files.
+- **Palette at the insertion point (items 2 and 5, done).**
+  - `editor/paletteState.ts` `hotbarStateAfter` simulates the rotation up to the selected row (or all rows when none is selected).
+    - It runs on the full result's clock: the countdown is lengthened by `countdownExtension`.
+    - It reports, per base button: the action that would execute (`getConditionalReplacement`), XIV in the Shell's hotbar cooldown overlay (`cooldownOverlaySeconds`: oGCDs and charge GCDs only), charges, usability (requirements, ignoring cooldown waits) and proc highlight.
+  - The palette heading shows the insertion time.
+  - Clicking still inserts the base button, as pressing it in game would.
+  - If the scenario is invalid mid-edit, the palette falls back to the plain hotbar.
+  - `formatNumber` moved to `ui/format.ts` to avoid a `SkillPalette` ↔ `RotationTable` import cycle; `RotationTable` re-exports it.
+  - Tests: `rotationLabPalette.test.ts`, 5 tests.
+- **Still open:** party buff bars (item 4), recommendations (item 6), then comparison.
 - **Note:** the editor's numbers use the system locale (`toLocaleString`). Tests compare against `formatNumber`, not literal strings.
 - **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
 
