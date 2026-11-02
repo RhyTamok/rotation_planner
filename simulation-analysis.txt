@@ -1,0 +1,378 @@
+﻿
+===== src\Controller\Controller.ts : 195-260 =====
+  195: 	// todo: can probably somehow get rid of this because it should largely overlaps with #bInSandbox
+  196: 	displayingUpToDateGameState = true;
+  197: 	#lastTickDuration: number = 0; // used during record loads to resolve legacy wait durations
+  198: 	lastSkillTime: number = 0; // used for WaitSince.LastSkill; updated in #useSkill
+  199: 
+  200: 	undoStack: UndoStack;
+  201: 
+  202: 	constructor() {
+  203: 		this.timeScale = 1;
+  204: 		this.shouldLoop = false;
+  205: 		this.queuedPastes = 0;
+  206: 		this.tickMode = TickMode.RealTimeAutoPause;
+  207: 		this.cooldownDisplayMode = "center";
+  208: 		this.roundCooldownUp = false;
+  209: 		this.keybindEnabled = true;
+  210: 		this.hotbarOneOnBottom = false;
+  211: 		this.hotbarLayout = [];
+  212: 		const selectedTargets = Array<boolean>(MAX_ABILITY_TARGETS).fill(false);
+  213: 		selectedTargets[0] = true;
+  214: 		this.#targetSelectionSnapshot = { selected: selectedTargets, primary: 0 };
+  215: 		this.isDialogOpen = false;
+  216: 
+  217: 		this.timeline = new Timeline();
+  218: 		this.timeline.reset();
+  219: 
+  220: 		this.#presetLinesManager = new PresetLinesManager();
+  221: 
+  222: 		this.gameConfig = new GameConfig(DEFAULT_CONFIG);
+  223: 		this.game = getGameState(this.gameConfig);
+  224: 
+  225: 		this.record = new Record();
+  226: 		this.record.config = this.gameConfig;
+  227: 		this.imageExportConfig = {
+  228: 			wrapThresholdSeconds: JSON.parse(getCachedValue("img: wrapThresholdSeconds") ?? "0"),
+  229: 			includeTime: JSON.parse(getCachedValue("img: includeTime") ?? "true"),
+  230: 		};
+  231: 		this.clipboardMode = (getCachedValue("radio: clipboardMode") ?? "plain") as ClipboardMode;
+  232: 
+  233: 		this.#lastDamageApplicationTime = -this.gameConfig.countdown; // left of timeline origin
+  234: 
+  235: 		// meaningless at the beginning
+  236: 		this.savedHistoricalGame = this.game;
+  237: 		this.savedHistoricalRecord = this.record;
+  238: 		this.undoStack = new UndoStack();
+  239: 
+  240: 		// Capture the default skill order before restart, then let the new GameState copy it.
+  241: 		this.#loadHotbarLayout();
+  242: 		this.#requestRestart();
+  243: 	}
+  244: 
+  245: 	// Load the active job's saved hotbar. If nothing is stored, fill rows from the default
+  246: 	// DisplayedSkills order. If the controller's active job just changed, then the caller MUST
+  247: 	// clear the active layout first so the new GameState uses the correct skill list.
+  248: 	#loadHotbarLayout() {
+  249: 		const layout =
+  250: 			loadHotbarForJob(this.game.job) ??
+  251: 			this.game.displayedSkills.getDefaultHotbarLayout(this.game);
+  252: 		this.hotbarLayout = layout;
+  253: 		setActiveHotbarLayout(layout);
+  254: 		this.game.displayedSkills = new DisplayedSkills(
+  255: 			this.game.job,
+  256: 			this.game.config.level,
+  257: 			layout,
+  258: 		);
+  259: 	}
+  260: 
+
+===== src\Game\Jobs\index.ts : 1-95 =====
+    1: import { GameConfig } from "../GameConfig";
+    2: import { GameState } from "../GameState";
+    3: import { BLMState } from "./BLM";
+    4: import { BRDState } from "./BRD";
+    5: import { DNCState } from "./DNC";
+    6: import { DRGState } from "./DRG";
+    7: import { GNBState } from "./GNB";
+    8: import { MCHState } from "./MCH";
+    9: import { PCTState } from "./PCT";
+   10: import { RDMState } from "./RDM";
+   11: import { RPRState } from "./RPR";
+   12: import { SAMState } from "./SAM";
+   13: import { SMNState } from "./SMN";
+   14: import { SGEState } from "./SGE";
+   15: import { WARState } from "./WAR";
+   16: import { PLDState } from "./PLD";
+   17: import { DRKState } from "./DRK";
+   18: import { ASTState } from "./AST";
+   19: import { SCHState } from "./SCH";
+   20: import { WHMState } from "./WHM";
+   21: import { NINState } from "./NIN";
+   22: import { MNKState } from "./MNK";
+   23: import { VPRState } from "./VPR";
+   24: import { BLUState } from "./BLU";
+   25: 
+   26: export function getGameState(config: GameConfig): GameState {
+   27: 	switch (config.job) {
+   28: 		// Tanks
+   29: 		case "PLD":
+   30: 			return new PLDState(config);
+   31: 		case "WAR":
+   32: 			return new WARState(config);
+   33: 		case "DRK":
+   34: 			return new DRKState(config);
+   35: 		case "GNB":
+   36: 			return new GNBState(config);
+   37: 
+   38: 		// Healers
+   39: 		case "WHM":
+   40: 			return new WHMState(config);
+   41: 		case "SCH":
+   42: 			return new SCHState(config);
+   43: 		case "AST":
+   44: 			return new ASTState(config);
+   45: 		case "SGE":
+   46: 			return new SGEState(config);
+   47: 
+   48: 		// Melee
+   49: 		case "MNK":
+   50: 			return new MNKState(config);
+   51: 		case "DRG":
+   52: 			return new DRGState(config);
+   53: 		case "NIN":
+   54: 			return new NINState(config);
+   55: 		case "SAM":
+   56: 			return new SAMState(config);
+   57: 		case "RPR":
+   58: 			return new RPRState(config);
+   59: 		case "VPR":
+   60: 			return new VPRState(config);
+   61: 
+   62: 		// Ranged
+   63: 		case "BRD":
+   64: 			return new BRDState(config);
+   65: 		case "MCH":
+   66: 			return new MCHState(config);
+   67: 		case "DNC":
+   68: 			return new DNCState(config);
+   69: 
+   70: 		// Casters
+   71: 		case "BLM":
+   72: 			return new BLMState(config);
+   73: 		case "SMN":
+   74: 			return new SMNState(config);
+   75: 		case "RDM":
+   76: 			return new RDMState(config);
+   77: 		case "PCT":
+   78: 			return new PCTState(config);
+   79: 
+   80: 		// Limited
+   81: 		case "BLU":
+   82: 			return new BLUState(config);
+   83: 	}
+   84: 	return new GameState(config);
+   85: }
+
+===== src\Game\GameState.ts : 115-175 =====
+  115: 	petSkills: ActionKey[] = [];
+  116: 	hotSkills: ActionKey[] = [];
+  117: 	#exclusiveDots: Map<ResourceKey, ResourceKey[]> = new Map();
+  118: 	#exclusiveHots: Map<ResourceKey, ResourceKey[]> = new Map();
+  119: 	autoStartTimes: number[];
+  120: 	autoStopTimes: number[];
+  121: 	fakeAutoActionNodes: ActionNode[] = [];
+  122: 
+  123: 	constructor(config: GameConfig) {
+  124: 		this.config = config;
+  125: 		this.rng = seedrandom(config.randomSeed);
+  126: 		this.nonProcRng = seedrandom(config.randomSeed + "_nonProcs");
+  127: 		this.lucidTickOffset = this.nonProcRng() * 3.0;
+  128: 		this.dotTickOffset = this.nonProcRng() * 3.0;
+  129: 		this.hotTickOffset = this.nonProcRng() * 3.0;
+  130: 
+  131: 		// TIME (raw time which starts at 0 regardless of countdown)
+  132: 		this.time = 0;
+  133: 
+  134: 		// RESOURCES (checked when using skills)
+  135: 		// and skill CDs (also a form of resource)
+  136: 		this.resources = new ResourceState(this);
+  137: 		// Debuffs are registered when the corresponding DoT status is registered.
+  138: 		this.debuffs = new DebuffState(this);
+  139: 		this.cooldowns = new CoolDownState(this);
+  140: 		getAllResources(this.job).forEach((info, rsc) => {
+  141: 			if (info.isCoolDown) {
+  142: 				// always start cooldowns at their max stacks (overrides will be applied later)
+  143: 				this.cooldowns.set(
+  144: 					new CoolDown(
+  145: 						rsc as CooldownKey,
+  146: 						info.cdPerStack,
+  147: 						info.maxStacks,
+  148: 						info.maxStacks,
+  149: 					),
+  150: 				);
+  151: 			} else if (RESOURCES[rsc as ResourceKey].specialDebuff) {
+  152: 				this.debuffs.initialize(rsc as ResourceKey);
+  153: 			} else {
+  154: 				this.resources.set(
+  155: 					new Resource(
+  156: 						rsc as ResourceKey,
+  157: 						info.maxValue,
+  158: 						info.defaultValue,
+  159: 						info.warnOnOvercap,
+  160: 					),
+  161: 				);
+  162: 			}
+  163: 		});
+  164: 		// GCD, movement, and animation locks are treated as special since they do not appear
+  165: 		// in resource overrides
+  166: 		let adjustedGCD = 2.5;
+  167: 		switch (JOBS[this.job].role) {
+  168: 			case "TANK":
+  169: 			case "MELEE":
+  170: 			case "RANGED":
+  171: 				adjustedGCD = config.adjustedSksGCD();
+  172: 				break;
+  173: 			case "HEALER":
+  174: 			case "CASTER":
+  175: 				adjustedGCD = config.adjustedGCD();
+
+===== src\Controller\DamageStatistics.ts : 1-85 =====
+    1: import { controller as ctl } from "./Controller";
+    2: import { ActionNode, ActionType } from "./Record";
+    3: import { BuffType } from "../Game/Common";
+    4: import {
+    5: 	DamageStatisticsData,
+    6: 	DamageStatisticsMode,
+    7: 	DamageStatsDoTTableEntry,
+    8: 	DamageStatsMainTableEntry,
+    9: 	SelectedStatisticsData,
+   10: 	DamageStatsDoTTableSummary,
+   11: } from "../Components/DamageStatistics";
+   12: import { PotencyModifier, PotencyModifierType } from "../Game/Potency";
+   13: import { ActionKey, ResourceKey } from "../Game/Data";
+   14: import { LIMIT_BREAK_ACTIONS } from "../Game/Data/Shared/LimitBreak";
+   15: 
+   16: // TODO autogenerate everything here
+   17: 
+   18: const AFUISkills = new Set<ActionKey>([
+   19: 	"BLIZZARD",
+   20: 	"FIRE",
+   21: 	"BLIZZARD_II",
+   22: 	"FIRE_II",
+   23: 	"BLIZZARD_III",
+   24: 	"FIRE_III",
+   25: 	"FREEZE",
+   26: 	"FLARE",
+   27: 	"BLIZZARD_IV",
+   28: 	"FIRE_IV",
+   29: 	"DESPAIR",
+   30: 	"HIGH_FIRE_II",
+   31: 	"HIGH_BLIZZARD_II",
+   32: 	"FLARE_STAR",
+   33: ]);
+   34: 
+   35: // source of truth
+   36: const excludedFromStats = new Set<ActionKey | "DoT">([]);
+   37: 
+   38: type ExpandedNode = {
+   39: 	displayedModifiers: PotencyModifierType[];
+   40: 	// base potency on a single target
+   41: 	basePotency: number;
+   42: 	calculationModifiers: PotencyModifier[];
+   43: 	falloff: number;
+   44: 	targetList: number[];
+   45: };
+   46: 
+   47: export const bossIsUntargetable = (displayTime: number) => {
+   48: 	return ctl.getUntargetableMask() && ctl.timeline.duringUntargetable(displayTime);
+   49: };
+   50: 
+   51: export const getTargetableDurationBetween = (startDisplayTime: number, endDisplayTime: number) => {
+   52: 	return ctl.getUntargetableMask()
+   53: 		? ctl.timeline.getTargetableDurationBetween(startDisplayTime, endDisplayTime)
+   54: 		: endDisplayTime - startDisplayTime;
+   55: };
+   56: 
+   57: function isDoTNode(node: ActionNode) {
+   58: 	return node.info.type === ActionType.Skill && ctl.game.dotSkills.includes(node.info.skillName);
+   59: }
+   60: 
+   61: function expandDoTNode(node: ActionNode, dotName: ResourceKey, targetNumber: number) {
+   62: 	console.assert(isDoTNode(node), `${node.getNameForMessage()} is not registered as a dot skill`);
+   63: 	const mainPotency = node.getInitialPotency();
+   64: 	const entry: DamageStatsDoTTableEntry = {
+   65: 		castTime: node.tmp_startLockTime ? node.tmp_startLockTime - ctl.gameConfig.countdown : 0,
+   66: 		applicationTime: node.applicationTime ? node.applicationTime - ctl.gameConfig.countdown : 0,
+   67: 		displayedModifiers: [],
+   68: 		gap: 0,
+   69: 		override: 0,
+   70: 		mainPotencyHit: true,
+   71: 		baseMainPotency: 0,
+   72: 		baseDotPotency: 0,
+   73: 		initialHitCalculationModifiers: [],
+   74: 		tickCalculationModifiers: [],
+   75: 		totalNumTicks: 0,
+   76: 		numHitTicks: 0,
+   77: 		potencyWithoutPot: 0,
+   78: 		potPotency: 0,
+   79: 		partyBuffPotency: 0,
+   80: 		mainHitFalloff: mainPotency?.falloff ?? 0,
+   81: 	};
+   82: 
+   83: 	entry.gap = node.getOverTimeGap(dotName, "damage", targetNumber);
+   84: 	entry.override = node.getOverTimeOverrideAmount(dotName, "damage", targetNumber);
+   85: 	entry.baseMainPotency = mainPotency?.base ?? 0;
+
+===== src\Controller\DamageStatistics.ts : 335-405 =====
+  335: }
+  336: 
+  337: export interface DamageStatsDoTTrackingData {
+  338: 	tableRows: DamageStatsDoTTableEntry[];
+  339: 	summary: DamageStatsDoTTableSummary;
+  340: 	lastDoT?: ActionNode; // for tracking DoT gap / override
+  341: }
+  342: 
+  343: export function calculateDamageStats(props: {
+  344: 	tinctureBuffPercentage: number;
+  345: 	lastDamageApplicationTime: number;
+  346: }): DamageStatisticsData {
+  347: 	let mode = DamageStatisticsMode.Normal;
+  348: 	if (!ctl.displayingUpToDateGameState) mode = DamageStatisticsMode.Historical;
+  349: 	if (ctl.record.getFirstSelection()) {
+  350: 		mode = DamageStatisticsMode.Selected;
+  351: 	}
+  352: 	// if mode is selected,
+  353: 	// for main table: only iterate selected
+  354: 	// for dot table: as if prev and after don't exist?
+  355: 
+  356: 	const totalPotency = { applied: 0, pending: 0 };
+  357: 	const gcdSkills = { applied: 0, pending: 0 };
+  358: 
+  359: 	// has a list of entries, initially empty
+  360: 	// take each skill node, find its corresponding entry and add itself to it
+  361: 	// - depending on the specific skill, rules for dividing / finding entries could be different (some need AF123, some just eno)
+  362: 	// - if there's no existing entry, create one.
+  363: 	// sort the entries according to some rule, then return.
+  364: 
+  365: 	const mainTable: DamageStatsMainTableEntry[] = [];
+  366: 	const mainTableSummary = {
+  367: 		totalPotencyWithoutPot: 0,
+  368: 		totalPotPotency: 0,
+  369: 		totalPartyBuffPotency: 0,
+  370: 	};
+  371: 
+  372: 	const dotTables: Map<ResourceKey, Map<number, DamageStatsDoTTrackingData>> = new Map();
+  373: 
+  374: 	const skillPotencies: Map<ActionKey, number> = new Map();
+  375: 
+  376: 	const processNodeFn = (node: ActionNode) => {
+  377: 		if (node.info.type === ActionType.Skill) {
+  378: 			const skillName = node.info.skillName;
+  379: 			const checked = getSkillOrDotInclude(skillName);
+  380: 			const isLimitBreak = skillName in LIMIT_BREAK_ACTIONS;
+  381: 
+  382: 			// gcd count
+  383: 			const skillInfo = ctl.game.skillsList.get(skillName);
+  384: 			if (skillInfo.cdName === "cd_GCD" && checked) {
+  385: 				if (node.hitBoss(bossIsUntargetable)) {
+  386: 					gcdSkills.applied++;
+  387: 				} else if (!node.resolved()) {
+  388: 					gcdSkills.pending++;
+  389: 				}
+  390: 			}
+  391: 
+  392: 			// potency
+  393: 			const p = node.getPotency({
+  394: 				tincturePotencyMultiplier: ctl.getTincturePotencyMultiplier(),
+  395: 				untargetable: bossIsUntargetable,
+  396: 				includePartyBuffs: true,
+  397: 				includeSplash: true,
+  398: 				excludeDoT: isDoTNode(node) && !getSkillOrDotInclude("DoT"),
+  399: 			});
+  400: 			if (checked && !isLimitBreak) {
+  401: 				totalPotency.applied += p.applied;
+  402: 				totalPotency.pending += p.snapshottedButPending;
+  403: 			}
+  404: 
+  405: 			// main table
