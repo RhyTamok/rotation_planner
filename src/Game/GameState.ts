@@ -48,6 +48,7 @@ import {
 	makePositionalModifier,
 } from "./Potency";
 import { Buff } from "./Buffs";
+import { SimulationHost } from "./SimulationHost";
 
 import { SkillButtonViewInfo } from "../Components/Skills";
 import { ReactNode } from "react";
@@ -119,6 +120,17 @@ export class GameState {
 	autoStartTimes: number[];
 	autoStopTimes: number[];
 	fakeAutoActionNodes: ActionNode[] = [];
+	#host?: SimulationHost;
+
+	// Falls back to the global controller lazily: the controller constructs a GameState while
+	// its own module is still initializing, so it cannot be referenced at construction time.
+	get host(): SimulationHost {
+		return this.#host ?? controller;
+	}
+
+	setHost(host: SimulationHost) {
+		this.#host = host;
+	}
 
 	constructor(config: GameConfig) {
 		this.config = config;
@@ -237,7 +249,7 @@ export class GameState {
 				const gainAmount = this.captureManaRegenAmount();
 				mana.gain(gainAmount);
 				const currentAmount = mana.availableAmount();
-				controller.reportManaTick(
+				this.host.reportManaTick(
 					game.time,
 					"+" + gainAmount + " (MP=" + currentAmount + ")",
 				);
@@ -284,7 +296,7 @@ export class GameState {
 						msg += " (" + lucid.tickCount + "/7)";
 					}
 					msg += " (MP=" + mana.availableAmount() + ")";
-					controller.reportLucidTick(this.time, msg);
+					this.host.reportLucidTick(this.time, msg);
 				}
 			}
 			// queue the next tick
@@ -320,7 +332,7 @@ export class GameState {
 
 			// increment count
 			if (this.getDisplayTime() >= 0) {
-				controller.reportDotTick(this.time);
+				this.host.reportDotTick(this.time);
 			}
 
 			// queue the next tick
@@ -338,7 +350,7 @@ export class GameState {
 
 			// increment count
 			if (this.getDisplayTime() >= 0) {
-				controller.reportHotTick(this.time);
+				this.host.reportHotTick(this.time);
 			}
 
 			// queue the next tick
@@ -525,13 +537,13 @@ export class GameState {
 		this.fakeAutoActionNodes.push(autoNode);
 		this.addEvent(
 			new Event("aa applied", AUTO_DELAY, () => {
-				controller.resolvePotency(potency);
+				this.host.resolvePotency(potency);
 				if (!this.hasResourceAvailable("IN_COMBAT")) {
 					this.resources.get("IN_COMBAT").gain(1);
 				}
 			}),
 		);
-		controller.reportAutoTick(this.time);
+		this.host.reportAutoTick(this.time);
 		// Assume all effects are resolved on snapshot rather than on application.
 		this.jobSpecificOnAutoAttack();
 	}
@@ -623,7 +635,7 @@ export class GameState {
 		const resourceInfo = getResourceInfo(this.job, rscType) as ResourceInfo;
 		if (this.hasResourceAvailable(rscType)) {
 			if (resourceInfo.warnOnOvercap && stacks >= resource.availableAmount()) {
-				controller.reportWarning({ kind: "overcap", rsc: rscType });
+				this.host.reportWarning({ kind: "overcap", rsc: rscType });
 			}
 			if (resourceInfo.maxTimeout > 0) {
 				resource.overrideTimer(this, resourceInfo.maxTimeout);
@@ -702,7 +714,7 @@ export class GameState {
 						];
 						// Since we may be resolving an AoE dot, check if this was already resolved.
 						if (!p?.hasResolved()) {
-							controller.resolveOverTimePotency(p, kind);
+							this.host.resolveOverTimePotency(p, kind);
 						}
 						// on-tick effects should still occur once per target
 						this.onResolveOverTimeTick(effect, kind);
@@ -726,7 +738,7 @@ export class GameState {
 					const p = effectBuff.node.getOverTimePotencies(effect, kind)[
 						effectBuff.tickCount
 					];
-					controller.resolveOverTimePotency(p, kind);
+					this.host.resolveOverTimePotency(p, kind);
 					this.onResolveOverTimeTick(effect, kind);
 				}
 				effectBuff.tickCount++;
@@ -902,10 +914,10 @@ export class GameState {
 					// We assume that changing the untargetable track will force a re-simulation,
 					// so this will always be reliable.
 					const now = this.getDisplayTime();
-					if (!controller.timeline.duringUntargetable(now)) {
+					if (!this.host.timeline.duringUntargetable(now)) {
 						this.onAutoAttack();
 					} else {
-						nextAutoDelay = controller.timeline.nextTargetableAfter(now) - now;
+						nextAutoDelay = this.host.timeline.nextTargetableAfter(now) - now;
 					}
 				}
 				this.addEvent(autoAttackEvent(nextAutoDelay));
@@ -1232,7 +1244,7 @@ export class GameState {
 			// to WHM Thin Air and SCH Recitation if the buffs fall off mid-cast
 			const manaCost = skill.manaCostFn(this);
 			if (manaCost > this.resources.get("MANA").availableAmount()) {
-				controller.reportInterruption({
+				this.host.reportInterruption({
 					failNode: node,
 					failIndex: actionIndex,
 				});
@@ -1286,13 +1298,13 @@ export class GameState {
 			this.addEvent(
 				new Event(skill.name + " applied", skill.applicationDelay, () => {
 					if (potency) {
-						controller.resolvePotency(potency);
+						this.host.resolvePotency(potency);
 						if (!this.hasResourceAvailable("IN_COMBAT")) {
 							this.resources.get("IN_COMBAT").gain(1);
 						}
 					}
 					if (healingPotency) {
-						controller.resolveHealingPotency(healingPotency);
+						this.host.resolveHealingPotency(healingPotency);
 					}
 					skill.onApplication(this, node);
 				}),
@@ -1338,7 +1350,7 @@ export class GameState {
 					if (skill.validateAttempt(this)) {
 						onSpellConfirm();
 					} else {
-						controller.reportInterruption({
+						this.host.reportInterruption({
 							failNode: node,
 							failIndex: actionIndex,
 						});
@@ -1492,20 +1504,20 @@ export class GameState {
 			this.addEvent(
 				new Event(skill.name + " applied", skill.applicationDelay, () => {
 					if (potency) {
-						controller.resolvePotency(potency);
+						this.host.resolvePotency(potency);
 					}
 					if (healingPotency) {
-						controller.resolveHealingPotency(healingPotency);
+						this.host.resolveHealingPotency(healingPotency);
 					}
 					skill.onApplication(this, node);
 				}),
 			);
 		} else {
 			if (potency) {
-				controller.resolvePotency(potency);
+				this.host.resolvePotency(potency);
 			}
 			if (healingPotency) {
-				controller.resolveHealingPotency(healingPotency);
+				this.host.resolveHealingPotency(healingPotency);
 			}
 			skill.onApplication(this, node);
 		}
@@ -1589,10 +1601,10 @@ export class GameState {
 			this.addEvent(
 				new Event(skill.name + " applied", skill.applicationDelay, () => {
 					if (potency) {
-						controller.resolvePotency(potency);
+						this.host.resolvePotency(potency);
 					}
 					if (healingPotency) {
-						controller.resolveHealingPotency(healingPotency);
+						this.host.resolveHealingPotency(healingPotency);
 					}
 					skill.onApplication(this, node);
 				}),
@@ -1624,7 +1636,7 @@ export class GameState {
 					if (skill.validateAttempt(this)) {
 						onLimitBreakConfirm();
 					} else {
-						controller.reportInterruption({
+						this.host.reportInterruption({
 							failNode: node,
 							failIndex: actionIndex,
 						});
@@ -1740,7 +1752,7 @@ export class GameState {
 				// Make sure the timer is canceled to avoid this warning
 				const rscInfo = getResourceInfo(this.job, rsc.type) as ResourceInfo;
 				if (rscInfo.warnOnTimeout) {
-					controller.reportWarning({ kind: "timeout", rsc: rsc.type });
+					this.host.reportWarning({ kind: "timeout", rsc: rsc.type });
 				}
 			},
 		});
@@ -1802,7 +1814,7 @@ export class GameState {
 						kind,
 						targetNumber,
 					);
-					controller.reportOverTimeDrop(this.getDisplayTime(), removeEffect, kind, [
+					this.host.reportOverTimeDrop(this.getDisplayTime(), removeEffect, kind, [
 						targetNumber,
 					]);
 					effectGap = 0;
@@ -1846,7 +1858,7 @@ export class GameState {
 					effectBuff.gain(1);
 
 					const otName = kind === "damage" ? " DoT" : " HoT";
-					controller.reportOverTimeStart(this.getDisplayTime(), effectName, kind, [
+					this.host.reportOverTimeStart(this.getDisplayTime(), effectName, kind, [
 						targetNumber,
 					]);
 					this.debuffs.addDebuffEvent({
@@ -1856,7 +1868,7 @@ export class GameState {
 						delay: effectDuration,
 						fnOnRsc: (rsc) => {
 							rsc.consume(1);
-							controller.reportOverTimeDrop(this.getDisplayTime(), effectName, kind, [
+							this.host.reportOverTimeDrop(this.getDisplayTime(), effectName, kind, [
 								targetNumber,
 							]);
 						},
@@ -1901,7 +1913,7 @@ export class GameState {
 					this.resources.timeTillReady(removeEffect),
 				kind,
 			);
-			controller.reportOverTimeDrop(
+			this.host.reportOverTimeDrop(
 				this.getDisplayTime(),
 				removeEffect,
 				kind,
@@ -1928,19 +1940,14 @@ export class GameState {
 			effectBuff.gain(1);
 
 			const otName = kind === "damage" ? " DoT" : " HoT";
-			controller.reportOverTimeStart(
-				this.getDisplayTime(),
-				effectName,
-				kind,
-				node.targetList,
-			);
+			this.host.reportOverTimeStart(this.getDisplayTime(), effectName, kind, node.targetList);
 			this.resources.addResourceEvent({
 				rscType: effectName,
 				name: "drop " + effectName + otName,
 				delay: effectDuration,
 				fnOnRsc: (rsc) => {
 					rsc.consume(1);
-					controller.reportOverTimeDrop(
+					this.host.reportOverTimeDrop(
 						this.getDisplayTime(),
 						effectName,
 						kind,
@@ -1958,11 +1965,11 @@ export class GameState {
 		// Immediately tick any ground-targeted effects on application
 		if (this.#groundTargetDoTs.includes(effectName)) {
 			this.handleDoTTick(effectName);
-			controller.reportDotTick(this.time, effectName);
+			this.host.reportDotTick(this.time, effectName);
 		}
 		if (this.#groundTargetHoTs.includes(effectName)) {
 			this.handleHoTTick(effectName);
-			controller.reportHotTick(this.time, effectName);
+			this.host.reportHotTick(this.time, effectName);
 		}
 	}
 
@@ -1992,7 +1999,7 @@ export class GameState {
 
 		for (let i = 0; i < effectTicks; i++) {
 			const overtimePotency = new Potency({
-				config: controller.record.config ?? controller.gameConfig,
+				config: this.config,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: props.skillName,
 				aspect: props.aspect ?? Aspect.Other,
@@ -2263,7 +2270,7 @@ export class GameState {
 
 	getPartyBuffs(time: number) {
 		const buffCollection = new Map<BuffType, PotencyModifier>();
-		const buffMarkers = controller.timeline.getBuffMarkers();
+		const buffMarkers = this.host.timeline.getBuffMarkers();
 		buffMarkers
 			.filter((marker) => {
 				return marker.time <= time && marker.time + marker.duration >= time;

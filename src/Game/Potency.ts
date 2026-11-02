@@ -980,18 +980,18 @@ export class Potency {
 		const level = this.config.level;
 		const base = XIVMath.calculateDamage(
 			level,
-			controller.gameConfig.criticalHit,
-			controller.gameConfig.directHit,
-			controller.gameConfig.determination,
+			this.config.criticalHit,
+			this.config.directHit,
+			this.config.determination,
 			1,
 			critBonus,
 			dhBonus,
 		);
 		const buffed = XIVMath.calculateDamage(
 			level,
-			controller.gameConfig.criticalHit,
-			controller.gameConfig.directHit,
-			controller.gameConfig.determination,
+			this.config.criticalHit,
+			this.config.directHit,
+			this.config.determination,
 			1,
 			1 + critBonus,
 			1 + dhBonus,
@@ -1004,18 +1004,18 @@ export class Potency {
 		const level = this.config.level;
 		const base = XIVMath.calculateDamage(
 			level,
-			controller.gameConfig.criticalHit,
-			controller.gameConfig.directHit,
-			controller.gameConfig.determination,
+			this.config.criticalHit,
+			this.config.directHit,
+			this.config.determination,
 			1,
 			critBonus,
 			dhBonus,
 		);
 		const buffed = XIVMath.calculateDamage(
 			level,
-			controller.gameConfig.criticalHit,
-			controller.gameConfig.directHit,
-			controller.gameConfig.determination,
+			this.config.criticalHit,
+			this.config.directHit,
+			this.config.determination,
 			1,
 			1 + critBonus,
 			dhBonus,

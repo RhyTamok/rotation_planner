@@ -87,6 +87,8 @@ export class Resource extends ResourceOrCooldown {
 	pendingChange?: Event;
 
 	#lastExpirationTime?: number;
+	// The game this resource is registered with; set by ResourceState/DebuffState.
+	owner?: GameState;
 
 	constructor(
 		type: ResourceKey,
@@ -113,7 +115,7 @@ export class Resource extends ResourceOrCooldown {
 	}
 	gain(amount: number) {
 		if (this.warnOnOvercap && this.currentValue + amount > this.maxValue) {
-			controller.reportWarning({ kind: "overcap", rsc: this.type });
+			(this.owner?.host ?? controller).reportWarning({ kind: "overcap", rsc: this.type });
 		}
 		super.gain(amount);
 	}
@@ -147,8 +149,7 @@ export class Resource extends ResourceOrCooldown {
 	consume(amount: number) {
 		super.consume(amount);
 		if (this.currentValue === 0) {
-			// note: might not want to access controller here
-			this.#lastExpirationTime = controller.game.getDisplayTime();
+			this.#lastExpirationTime = (this.owner ?? controller.game).getDisplayTime();
 		}
 	}
 }
@@ -276,6 +277,7 @@ export class ResourceState {
 	}
 
 	set(resource: Resource) {
+		resource.owner = this.game;
 		this.#map.set(resource.type, resource);
 	}
 
@@ -348,6 +350,7 @@ export class DebuffState {
 				info.warnOnOvercap,
 			);
 			rsc.tickCount = 0;
+			rsc.owner = this.game;
 			this.#debuffMaps[i].set(rscType, rsc as OverTimeBuff);
 		}
 	}
@@ -382,6 +385,7 @@ export class DebuffState {
 			console.error("targetNumber " + targetNumber + " is out of range");
 			return;
 		}
+		resource.owner = this.game;
 		this.#debuffMaps[targetNumber - 1].set(resource.type, resource);
 	}
 

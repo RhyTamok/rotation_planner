@@ -1,5 +1,6 @@
 import { GameConfig } from "../GameConfig";
 import { GameState } from "../GameState";
+import { SimulationHost } from "../SimulationHost";
 import { BLMState } from "./BLM";
 import { BRDState } from "./BRD";
 import { DNCState } from "./DNC";
@@ -23,7 +24,16 @@ import { MNKState } from "./MNK";
 import { VPRState } from "./VPR";
 import { BLUState } from "./BLU";
 
-export function getGameState(config: GameConfig): GameState {
+// `host` receives the state's simulation events; when omitted, the global controller is used.
+export function getGameState(config: GameConfig, host?: SimulationHost): GameState {
+	const state = createGameState(config);
+	if (host) {
+		state.setHost(host);
+	}
+	return state;
+}
+
+function createGameState(config: GameConfig): GameState {
 	switch (config.job) {
 		// Tanks
 		case "PLD":

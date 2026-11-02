@@ -1,6 +1,5 @@
 // Skill and state declarations for VPR.
 
-import { controller } from "../../Controller/Controller";
 import { VPRStatusPropsGenerator } from "../../Components/Jobs/VPR";
 import { StatusPropsGenerator } from "../../Components/StatusDisplay";
 import { ActionNode } from "../../Controller/Record";
@@ -323,7 +322,7 @@ const makeVPRWeaponskill = (
 				}
 				FOLLOWUP_STATUSES.forEach((key) => {
 					if (state.tryConsumeResource(key, true)) {
-						controller.reportWarning({ kind: "overwrite", rsc: key });
+						state.host.reportWarning({ kind: "overwrite", rsc: key });
 					}
 				});
 			},
@@ -652,7 +651,7 @@ finishers.forEach(([name, applicationDelay, location, consumes, applies, replace
 					state.hasResourceAvailable(rsc),
 				)
 			) {
-				controller.reportWarning({ kind: "custom", en: "incorrect combo ender!" });
+				state.host.reportWarning({ kind: "custom", en: "incorrect combo ender!" });
 			}
 		},
 		extendedStatus: applies,
@@ -956,7 +955,7 @@ makeVPRWeaponskill("VICEPIT", 70, {
 			// If used during an untargetable phase, do not gain the coil.
 			// We don't apply this logic to Vicewinder because it is sometimes necessary to
 			// press Vicepit during untargetable phases to prepare a twinblade button.
-			if (!controller.timeline.duringUntargetable(state.getDisplayTime())) {
+			if (!state.host.timeline.duringUntargetable(state.getDisplayTime())) {
 				state.resources.get("RATTLING_COIL").gain(1);
 			}
 		}
@@ -1140,7 +1139,7 @@ fangsAndBloods.forEach(
 			onConfirm: (state) => {
 				state.tryConsumeResource(tracker);
 				if (!state.hasResourceAvailable(consumes)) {
-					controller.reportWarning({
+					state.host.reportWarning({
 						kind: "custom",
 						en: `unbuffed twin${which} ability!`,
 					});

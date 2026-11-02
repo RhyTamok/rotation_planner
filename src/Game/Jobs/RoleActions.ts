@@ -18,7 +18,6 @@ import {
 } from "../Skills";
 import { OverTimeBuff, EventTag, makeResource, CoolDown } from "../Resources";
 import type { GameState } from "../GameState";
-import { controller } from "../../Controller/Controller";
 import { SHARED_LIMIT_BREAK_RESOURCES, LimitBreakResourceKey } from "../Data/Shared/LimitBreak";
 
 //#region Helper functions
@@ -27,7 +26,7 @@ import { SHARED_LIMIT_BREAK_RESOURCES, LimitBreakResourceKey } from "../Data/Sha
 // And so do limit breaks! :(
 const cancelDualcast = (state: GameState) => {
 	if (state.job === "RDM" && state.tryConsumeResource("DUALCAST")) {
-		controller.reportWarning({ kind: "custom", en: "dualcast dropped" });
+		state.host.reportWarning({ kind: "custom", en: "dualcast dropped" });
 	}
 };
 
