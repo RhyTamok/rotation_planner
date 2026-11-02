@@ -16,7 +16,7 @@ import { createRotation, newId, RotationDocument } from "../models/Rotation";
 import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import { parseRotationDocument, parseScenarioDocument } from "../models/validation";
 import { SimulationCache } from "../simulation/SimulationManager";
-import { RotationStep } from "../simulation/types";
+import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import {
 	KeyValueStorage,
 	loadWorkspace,
@@ -28,6 +28,9 @@ import {
 import { formatNumber, RotationTable } from "./RotationTable";
 import { ScenarioPanel } from "./ScenarioPanel";
 import { SkillPalette } from "./SkillPalette";
+
+// Stable empty list, so the table's memoized buff lanes are not rebuilt on every render.
+const NO_BUFFS: Required<PartyBuffWindow>[] = [];
 
 const JOB = "VPR" as const;
 
@@ -355,6 +358,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			onSelect={setSelectedId}
 			onUpdateStep={(id, step) => replaceRotation(updateStep(rotation, id, step))}
 			onRemove={remove}
+			partyBuffs={result?.encounter.partyBuffs ?? NO_BUFFS}
 			onMove={(id, beforeIndex) => {
 				replaceRotation(moveEntryBefore(rotation, id, beforeIndex));
 				setSelectedId(id);

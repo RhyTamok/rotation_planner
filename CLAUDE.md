@@ -67,7 +67,7 @@ Until then, keep their code and tests: they are the regression net for shared en
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
 - Rotation Lab editor page: http://localhost:3000/rotation-lab.html (second Vite entry, `rotation-lab.html`, `src/RotationLab/ui/`). The original app at `/` is untouched.
-- Full suite: 35 test files, 221 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Full suite: 36 test files, 224 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
 - Editor scenarios use nominal GCD lengths: `fps` defaults to 0, which disables XIV in the Shell's frame-rate tax (`XIVMath.afterFpsTax`). Upstream defaults to 60 fps, which turns 2.12 s into about 2.133 s.
 - Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>` (the project's formatter). Do not use plain `prettier`: it is not installed, and npx fetches stock prettier, which reformats JSX differently.
 - Editor scenarios simulate with `encounterRules` on: the first hit lands at exactly 0 s, targeted actions are invalid in downtime, and ghosting is allowed. Handoff section 0.3g.
@@ -102,7 +102,7 @@ Check the actual working tree and test results before continuing.
 2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
 3. (Done) Persistence model, validation, result cache and workspace storage: `src/RotationLab/models/`, `simulation/SimulationManager.ts`, `storage/WorkspaceStore.ts`. When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When the document shape changes, bump `SCHEMA_VERSION` and add a migration in `models/validation.ts`.
 4. (Done, first version) Vertical editor page; see handoff section 0.3e.
-5. User feedback backlog on the editor: handoff section 0.3f. Pull timing, downtime enforcement, oGCD delay and resource tracking are done (0.3g). The palette state at the insertion point is done too (0.3h). Still open: party buff bars, recommendations.
+5. User feedback backlog on the editor: handoff section 0.3f. Pull timing, downtime enforcement, oGCD delay and resource tracking are done (0.3g). The palette state at the insertion point and the party buff lanes are done too (0.3h). Still open: recommendations, after comparison.
 6. **Next:** two-slot comparison (cumulative damage over time, DPS at arbitrary cutoffs, overtake time), then editor polish (undo/redo, drag-and-drop, copy/paste).
 7. Dragoon support through the same simulator.
 

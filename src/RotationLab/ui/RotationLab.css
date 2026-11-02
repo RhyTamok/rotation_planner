@@ -249,6 +249,34 @@ select {
 	background: var(--rl-bg);
 }
 
+/* Party buff lanes: one 18px column per buff; icon on the first covered row, then a bar. */
+.rl-table .rl-buffs {
+	padding: 0 4px;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.rl-buff-lane {
+	display: inline-flex;
+	justify-content: center;
+	align-items: stretch;
+	width: 18px;
+	/* Row height (24px icon + 2 × 3px padding), so bars join up across rows. */
+	height: 30px;
+	vertical-align: middle;
+}
+
+.rl-buff-icon {
+	width: 18px;
+	height: 18px;
+	align-self: center;
+}
+
+.rl-buff-bar {
+	width: 6px;
+	border-radius: 3px;
+}
+
 .rl-debug-toggle {
 	margin-left: auto;
 	color: var(--rl-muted);

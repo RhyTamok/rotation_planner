@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { ShellJob } from "../../Game/Data/Jobs";
 import { EditorRow } from "../editor/rotationEdits";
+import { buffLanes, laneCoverage } from "../editor/buffLanes";
 import { GaugeValue, trackedGauges } from "../rules/resourceTracking";
-import { RotationStep } from "../simulation/types";
+import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import { formatNumber } from "./format";
 import { actionName, skillIconUrl } from "./SkillPalette";
 
@@ -221,8 +222,14 @@ export function RotationTable(props: {
 	// (rows.length = to the end).
 	onMove: (id: string, beforeIndex: number) => void;
 	onKeyDown: (e: React.KeyboardEvent) => void;
+	partyBuffs: Required<PartyBuffWindow>[];
 }) {
 	const { job, rows, selectedId, onSelect, onUpdateStep, onRemove, onMove, onKeyDown } = props;
+	const lanes = useMemo(() => buffLanes(job, props.partyBuffs), [job, props.partyBuffs]);
+	const coverage = useMemo(() => {
+		const times = rows.map((r) => r.action?.startTime ?? NaN);
+		return lanes.map((lane) => laneCoverage(lane, times));
+	}, [lanes, rows]);
 	const selectedRef = useRef<HTMLTableRowElement>(null);
 	useEffect(() => {
 		selectedRef.current?.scrollIntoView({ block: "nearest" });
@@ -264,6 +271,16 @@ export function RotationTable(props: {
 								Δ action
 							</th>
 						</>}
+						{lanes.length > 0 && <th className="rl-buffs" aria-label="Party buffs">
+							{lanes.map((lane) => <span className="rl-buff-lane" key={lane.buff}>
+								<img
+									className="rl-buff-icon"
+									src={`/assets/${lane.icon}`}
+									alt={lane.buff}
+									title={lane.buff}
+								/>
+							</span>)}
+						</th>}
 						<th>Action</th>
 						<th className="rl-num">Potency</th>
 						<th className="rl-num">Damage</th>
@@ -335,6 +352,34 @@ export function RotationTable(props: {
 									{formatNumber(deltas.get(entry.id)?.sinceAction, 3)}
 								</td>
 							</>}
+							{lanes.length > 0 && <td className="rl-buffs">
+								{lanes.map((lane, l) => {
+									const c = coverage[l][row.index];
+									return <span
+										className="rl-buff-lane"
+										key={lane.buff}
+										data-testid={c ? "buff-active" : undefined}
+										title={
+											c &&
+											`${lane.buff}: ${formatNumber(c.window.time, 2)}–${formatNumber(c.window.time + c.window.duration, 2)} s, ${formatNumber(c.remaining, 1)} s left`
+										}
+									>
+										{c &&
+											(c.first ? (
+												<img
+													className="rl-buff-icon"
+													src={`/assets/${lane.icon}`}
+													alt={lane.buff}
+												/>
+											) : (
+												<span
+													className="rl-buff-bar"
+													style={{ background: lane.color }}
+												/>
+											))}
+									</span>;
+								})}
+							</td>}
 							<td className="rl-action">
 								<StepCell
 									job={job}

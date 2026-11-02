@@ -206,7 +206,12 @@ The user's answers on the rules:
   - If the scenario is invalid mid-edit, the palette falls back to the plain hotbar.
   - `formatNumber` moved to `ui/format.ts` to avoid a `SkillPalette` ↔ `RotationTable` import cycle; `RotationTable` re-exports it.
   - Tests: `rotationLabPalette.test.ts`, 5 tests.
-- **Still open:** party buff bars (item 4), recommendations (item 6), then comparison.
+- **Party buff lanes (item 4, done).**
+  - `editor/buffLanes.ts` groups `result.encounter.partyBuffs` into one lane per buff. Each lane uses XIV in the Shell's marker colour and the buff's status icon, `Buffs/<granting job>/<buff>.png`.
+  - The table draws them in a column after Time: the icon on the first covered row of each window, then a coloured bar. The tooltip gives the window and the time left.
+  - Coverage uses the action's start time with both ends inclusive, as in `GameState.getPartyBuffs`. A test checks that the covered rows are exactly the ones whose potency the buff raises.
+  - Tests: `rotationLabBuffLanes.test.ts`, 3 tests.
+- **Still open:** recommendations (item 6), then comparison.
 - **Note:** the editor's numbers use the system locale (`toLocaleString`). Tests compare against `formatNumber`, not literal strings.
 - **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
 
