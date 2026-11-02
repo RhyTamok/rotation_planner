@@ -66,14 +66,14 @@ Until then, keep their code and tests: they are the regression net for shared en
 ## Current Verified Baseline (2026-11-02)
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
-- Full suite: 30 test files, 166 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Full suite: 31 test files, 173 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
 - Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).
 - Reference repo for formulas: local clone at `C:\Dev\gear-planner` (xivgear; the author permits reuse). Search it locally instead of fetching from GitHub.
 - Headless simulation exists: `src/RotationLab/simulation/RotationSimulator.ts`.
   Each simulation owns its GameConfig, GameState and `RecordingHost`; it does not touch the global controller.
 - Per-action parity with the real controller is tested on four Viper sequences, and the upstream
   level 100 opener totals are reproduced exactly.
-- Party buffs and downtime are not modeled yet.
+- Party buffs and downtime are per-simulation options (`partyBuffs`, `downtime`), served by `RecordingHost.timeline`. Parity with the controller under buff and untargetable markers is tested in `rotationLabEncounter.test.ts`. Results echo the conditions in `result.encounter`.
 
 Check the actual working tree and test results before continuing.
 
@@ -88,15 +88,14 @@ Check the actual working tree and test results before continuing.
 - `DEFAULT_CONFIG` is Black Mage's config. Use `makeDefaultConfig("VPR")` for Viper.
 - `DamageStatistics.ts` is a UI view-model bound to the global controller. Aggregate from
   `ActionNode`/`Potency` (as `RotationSimulator.result()` does) instead.
-- Remaining global-controller reads on the Viper path: party buffs
-  (`Potency.getAmount` with `includePartyBuffs: true`, `ActionNode.getPartyBuffs`) and `Buffs.ts` (AST cards).
+- Potencies created in `GameState` carry `partyBuffSource` (their game). Potencies created in other job files, and `new Buff(type)` without a job, still fall back to the global controller. The Viper path has no remaining global reads.
 - `git` is not on PATH; GitHub Desktop's bundled `git.exe` works. The user makes commits through GitHub Desktop.
 
 ## Next Development Priority
 
-1. Per-simulation party buffs and downtime (move them from the global timeline into simulation options).
+1. (Done) Per-simulation party buffs and downtime.
 2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
-3. Rotation persistence model (schema version, patch, ruleset) and a result cache keyed by all simulation inputs.
+3. **Next:** rotation persistence model (schema version, patch, ruleset) and a result cache keyed by all simulation inputs.
 4. Vertical editor and two-slot comparison UI on top of `RotationSimulator`.
 5. Dragoon support through the same simulator.
 

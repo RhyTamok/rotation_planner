@@ -3,6 +3,7 @@ import { GameState } from "../../Game/GameState";
 import { Potency } from "../../Game/Potency";
 import { SimulationHost } from "../../Game/SimulationHost";
 import { ActionNode } from "../../Controller/Record";
+import { DowntimeWindow, PartyBuffWindow } from "./types";
 
 // Per-simulation replacement for the global controller's event sinks.
 // Potencies are stamped with the attached game's clock, and nothing leaves this object.
@@ -11,12 +12,40 @@ export class RecordingHost implements SimulationHost {
 	readonly resolvedPotencies: Potency[] = [];
 	readonly warnings: Warning[] = [];
 
-	// No downtime and no party buff markers are modeled yet.
-	readonly timeline = {
-		duringUntargetable: (_displayTime: number) => false,
-		nextTargetableAfter: (displayTime: number) => displayTime,
-		getBuffMarkers: () => [],
-	};
+	readonly timeline: SimulationHost["timeline"];
+
+	// Windows use the same semantics as the upstream Timeline: buff markers are matched by
+	// GameState.getPartyBuffs, and untargetable windows exclude their end time.
+	constructor(
+		encounter: {
+			partyBuffs?: Required<PartyBuffWindow>[];
+			downtime?: DowntimeWindow[];
+		} = {},
+	) {
+		const buffMarkers = (encounter.partyBuffs ?? []).map((w) => ({
+			time: w.time,
+			duration: w.duration,
+			description: w.buff,
+		}));
+		const downtime = [...(encounter.downtime ?? [])].sort((a, b) => a.start - b.start);
+		this.timeline = {
+			getBuffMarkers: () => buffMarkers,
+			duringUntargetable: (displayTime: number) =>
+				downtime.some((w) => displayTime >= w.start && displayTime < w.end),
+			// Mirrors Timeline.nextTargetableAfter.
+			nextTargetableAfter: (displayTime: number) => {
+				for (const w of downtime) {
+					if (w.start > displayTime) {
+						return displayTime;
+					}
+					if (displayTime < w.end) {
+						return w.end;
+					}
+				}
+				return displayTime;
+			},
+		};
+	}
 
 	attach(game: GameState) {
 		this.#game = game;

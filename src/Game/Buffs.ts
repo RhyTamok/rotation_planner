@@ -162,11 +162,12 @@ export class Buff {
 	readonly name: BuffType;
 	info: BuffInfo;
 
-	constructor(name: BuffType) {
+	// `job` is the job receiving the buff; defaults to the global controller's active job.
+	constructor(name: BuffType, job?: ShellJob) {
 		this.name = name;
 		let info = buffInfosMap.get(name);
 		// Special case for AST cards, since their bonus depends on the active job.
-		const isActiveJobMelee = ["TANK", "MELEE"].includes(JOBS[controller.game.job].role);
+		const isActiveJobMelee = ["TANK", "MELEE"].includes(JOBS[job ?? controller.game.job].role);
 		if (name === BuffType.Card_TheBalance) {
 			info = new BuffInfo(
 				BuffType.Card_TheBalance,

@@ -696,8 +696,15 @@ export function makePositionalModifier(addend: number): PotencyAdder {
 
 export type PotencyKind = "damage" | "healing";
 
+// Supplies the party buffs active at a display time; implemented by GameState.
+export interface PartyBuffSource {
+	getPartyBuffs(displayTime: number): Map<BuffType, PotencyModifier>;
+}
+
 export type InitialPotencyProps = {
 	config: GameConfig;
+	// The game this potency belongs to. When omitted, the global controller's game is used.
+	partyBuffSource?: PartyBuffSource;
 	sourceTime: number;
 	sourceSkill: ActionKey;
 	aspect: Aspect;
@@ -725,9 +732,11 @@ export class Potency {
 	applicationTime?: number;
 	#modifiers: PotencyModifier[] = [];
 	#targetSpecificModifiers?: Map<number, PotencyModifier[]>;
+	#partyBuffSource?: PartyBuffSource;
 
 	constructor(props: InitialPotencyProps) {
 		this.config = props.config;
+		this.#partyBuffSource = props.partyBuffSource;
 		this.sourceTime = props.sourceTime;
 		this.sourceSkill = props.sourceSkill;
 		this.aspect = props.aspect;
@@ -891,7 +900,7 @@ export class Potency {
 		console.assert(!(isAutoCDH && isAutoCrit), "cannot be both auto-crit and auto-CDH");
 
 		if (props.includePartyBuffs && this.snapshotTime) {
-			controller.game.getPartyBuffs(this.snapshotTime).forEach((buff) => {
+			this.partyBuffsAt(this.snapshotTime).forEach((buff) => {
 				if (buff.kind === "multiplier") {
 					totalDamageFactor *= buff.potencyFactor;
 				} else if (buff.kind === "critDirect") {
@@ -937,6 +946,11 @@ export class Potency {
 		return amt;
 	}
 
+	// Party buffs active at `displayTime`, from the game that owns this potency.
+	partyBuffsAt(displayTime: number): Map<BuffType, PotencyModifier> {
+		return (this.#partyBuffSource ?? controller.game).getPartyBuffs(displayTime);
+	}
+
 	getPartyBuffs(displayTime: number) {
 		// Ground targeted dots don't capture buffs on snapshot.
 		if (
@@ -944,12 +958,10 @@ export class Potency {
 			this.sourceSkill === "SLIPSTREAM" ||
 			this.sourceSkill === "DOTON"
 		) {
-			return displayTime ? [...controller.game.getPartyBuffs(displayTime).keys()] : [];
+			return displayTime ? [...this.partyBuffsAt(displayTime).keys()] : [];
 		}
 
-		return this.snapshotTime
-			? [...controller.game.getPartyBuffs(this.snapshotTime).keys()]
-			: [];
+		return this.snapshotTime ? [...this.partyBuffsAt(this.snapshotTime).keys()] : [];
 	}
 
 	resolve(displayTime: number) {

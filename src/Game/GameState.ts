@@ -517,6 +517,7 @@ export class GameState {
 		);
 		const potency = new Potency({
 			config: this.config,
+			partyBuffSource: this,
 			sourceTime: this.getDisplayTime() + AUTO_DELAY,
 			sourceSkill: "ATTACK",
 			aspect: Aspect.Physical,
@@ -1203,6 +1204,7 @@ export class GameState {
 
 			potency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -1223,6 +1225,7 @@ export class GameState {
 		if (!healingPotency && healingPotencyNumber > 0) {
 			healingPotency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -1390,6 +1393,7 @@ export class GameState {
 		if (potencyNumber > 0 || skill.drawsAggro || appliesDoT) {
 			potency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -1453,6 +1457,7 @@ export class GameState {
 		if (healingPotencyNumber > 0) {
 			healingPotency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -1556,6 +1561,7 @@ export class GameState {
 		if (potencyNumber > 0) {
 			potency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -1573,6 +1579,7 @@ export class GameState {
 		if (healingPotencyNumber > 0) {
 			healingPotency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: skill.name,
 				aspect: skill.aspect,
@@ -2007,6 +2014,7 @@ export class GameState {
 		for (let i = 0; i < effectTicks; i++) {
 			const overtimePotency = new Potency({
 				config: this.config,
+				partyBuffSource: this,
 				sourceTime: this.getDisplayTime(),
 				sourceSkill: props.skillName,
 				aspect: props.aspect ?? Aspect.Other,
@@ -2283,7 +2291,7 @@ export class GameState {
 				return marker.time <= time && marker.time + marker.duration >= time;
 			})
 			.forEach((marker) => {
-				const buff = new Buff(marker.description as BuffType);
+				const buff = new Buff(marker.description as BuffType, this.job);
 				if (!buffCollection.has(buff.name)) {
 					// Assume all buffs are either crit/DH multipliers, or flat damage multipliers,
 					// but not both. This is currently true for all party buffs in the game.

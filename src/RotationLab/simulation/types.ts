@@ -1,4 +1,4 @@
-import { SkillUnavailableReason, Warning } from "../../Game/Common";
+import { BuffType, SkillUnavailableReason, Warning } from "../../Game/Common";
 import { ConfigData } from "../../Game/GameConfig";
 import { ActionKey } from "../../Game/Data";
 import { PotencyModifierType } from "../../Game/Potency";
@@ -27,7 +27,24 @@ export interface RotationInput {
 // - number: a common fight cutoff (display time). Damage landing after it is pending.
 export type SimulationEnd = "lastAction" | "settled" | number;
 
+// An external party buff (e.g. Battle Litany, Technical Finish) active from `time`.
+// `duration` defaults to the buff's standard duration.
+export interface PartyBuffWindow {
+	buff: BuffType;
+	time: number;
+	duration?: number;
+}
+
+// A window during which the boss is untargetable: autos pause and hits landing inside it deal
+// no damage, as in XIV in the Shell with its untargetable mask enabled. `end` is exclusive.
+export interface DowntimeWindow {
+	start: number;
+	end: number;
+}
+
 export interface SimulationOptions {
+	partyBuffs?: PartyBuffWindow[];
+	downtime?: DowntimeWindow[];
 	// Merged over the job's default config (not the BLM-based DEFAULT_CONFIG).
 	// Character stats for expected damage (main, wd, partyBonus, criticalHit, ...) come from here.
 	config?: Partial<ConfigData>;
@@ -66,6 +83,8 @@ export interface DamageEvent {
 	potency: number;
 	expectedDamage?: number;
 	isAutoAttack: boolean;
+	// False if the hit landed during downtime and dealt no damage.
+	hitTarget: boolean;
 }
 
 export interface DamageTotals {
@@ -101,9 +120,10 @@ export interface RotationResult {
 	};
 	// Undefined when the damage model has no verified constants for the job/level.
 	damage?: DamageTotals;
-	// Encounter features this milestone does not model yet; results assume none of them.
-	assumptions: {
-		partyBuffs: false;
-		downtime: false;
+	// The encounter conditions this result was simulated under, with buff durations resolved,
+	// so comparisons can show exactly what each rotation assumed.
+	encounter: {
+		partyBuffs: Required<PartyBuffWindow>[];
+		downtime: DowntimeWindow[];
 	};
 }

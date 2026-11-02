@@ -6,6 +6,7 @@ import { getConditionalReplacement, getSkill } from "../../Game/Skills";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { ActionKey } from "../../Game/Data";
 import { Potency, PotencyModifierType } from "../../Game/Potency";
+import { Buff } from "../../Game/Buffs";
 import { ActionNode, skillNode } from "../../Controller/Record";
 import { DamageModel, getDefaultWeaponDelay, isDamageModelSupported } from "../damage/DamageModel";
 import { RecordingHost } from "./RecordingHost";
@@ -45,13 +46,27 @@ export class RotationSimulator {
 	// Undefined when there are no verified damage constants for this job/level.
 	readonly damageModel?: DamageModel;
 	readonly #tinctureBonus: number;
+	readonly #encounter: RotationResult["encounter"];
 	#executed: ExecutedSkill[] = [];
 	#errors: StepError[] = [];
 	#stepCount = 0;
 
 	constructor(job: ShellJob, options: SimulationOptions = {}) {
 		const config = new GameConfig({ ...makeDefaultConfig(job), ...options.config, job });
-		this.host = new RecordingHost();
+		for (const w of options.downtime ?? []) {
+			if (!(w.end > w.start)) {
+				throw new Error(`Downtime window must end after it starts: ${w.start} to ${w.end}`);
+			}
+		}
+		this.#encounter = {
+			partyBuffs: (options.partyBuffs ?? []).map((w) => ({
+				buff: w.buff,
+				time: w.time,
+				duration: w.duration ?? new Buff(w.buff, job).info.duration,
+			})),
+			downtime: (options.downtime ?? []).map((w) => ({ ...w })),
+		};
+		this.host = new RecordingHost(this.#encounter);
 		this.game = getGameState(config, this.host);
 		this.host.attach(this.game);
 		// Same as Controller.#applyResourceOverrides after a restart.
@@ -178,11 +193,19 @@ export class RotationSimulator {
 		}
 	}
 
-	#nodePotency(node: ActionNode, tincturePotencyMultiplier = this.#tincturePotencyMultiplier) {
+	// Hits landing while the boss is untargetable deal no damage.
+	readonly #untargetable = (displayTime: number) =>
+		this.host.timeline.duringUntargetable(displayTime);
+
+	#nodePotency(
+		node: ActionNode,
+		tincturePotencyMultiplier = this.#tincturePotencyMultiplier,
+		includePartyBuffs = true,
+	) {
 		return node.getPotency({
 			tincturePotencyMultiplier,
-			untargetable: () => false,
-			includePartyBuffs: false,
+			untargetable: this.#untargetable,
+			includePartyBuffs,
 			includeSplash: true,
 		});
 	}
@@ -196,7 +219,7 @@ export class RotationSimulator {
 		}
 		const engineAmount = p.getAmount({
 			tincturePotencyMultiplier: 1,
-			includePartyBuffs: false,
+			includePartyBuffs: true,
 			includeSplash: true,
 		});
 		const modifiers = p.getDisplayedModifiers();
@@ -231,7 +254,7 @@ export class RotationSimulator {
 		];
 		for (const p of potencies) {
 			if (p === undefined) continue;
-			if (p.hasHitBoss(() => false)) {
+			if (p.hasHitBoss(this.#untargetable)) {
 				res.applied += this.#expectedDamage(model, p);
 			} else if (!p.hasResolved() && p.hasSnapshotted()) {
 				res.pending += this.#expectedDamage(model, p);
@@ -292,14 +315,15 @@ export class RotationSimulator {
 			appliedPotency += potency.applied;
 			pendingPotency += potency.snapshottedButPending;
 			if (node.resolved()) {
-				appliedPotencyWithoutPot += this.#nodePotency(node, 1).applied;
+				// Upstream's "without pot" total also excludes party buffs.
+				appliedPotencyWithoutPot += this.#nodePotency(node, 1, false).applied;
 			}
 			if (node.maybeGetActionKey() === "ATTACK") {
 				autoAttackPotency += potency.applied;
 			}
 		}
 		const gcdCount = this.#executed.filter(
-			(e) => e.isGCD && e.node.hitBoss(() => false),
+			(e) => e.isGCD && e.node.hitBoss(this.#untargetable),
 		).length;
 
 		const damageEvents: DamageEvent[] = this.host.resolvedPotencies.map((p) => ({
@@ -307,11 +331,12 @@ export class RotationSimulator {
 			source: p.sourceSkill,
 			potency: p.getAmount({
 				tincturePotencyMultiplier: this.#tincturePotencyMultiplier,
-				includePartyBuffs: false,
+				includePartyBuffs: true,
 				includeSplash: true,
 			}),
 			expectedDamage: model ? this.#expectedDamage(model, p) : undefined,
 			isAutoAttack: p.sourceSkill === "ATTACK",
+			hitTarget: p.hasHitBoss(this.#untargetable),
 		}));
 
 		return {
@@ -330,7 +355,10 @@ export class RotationSimulator {
 				gcdCount,
 			},
 			damage: model ? this.#damageTotals(model, allNodes) : undefined,
-			assumptions: { partyBuffs: false, downtime: false },
+			encounter: {
+				partyBuffs: this.#encounter.partyBuffs.map((w) => ({ ...w })),
+				downtime: this.#encounter.downtime.map((w) => ({ ...w })),
+			},
 		};
 	}
 }

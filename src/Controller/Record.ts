@@ -20,7 +20,6 @@ import { FileType } from "./Common";
 import { BuffType, SkillReadyStatus, SkillUnavailableReason } from "../Game/Common";
 import { GameConfig, SerializedConfig } from "../Game/GameConfig";
 import { Potency, PotencyKind } from "../Game/Potency";
-import { controller } from "./Controller";
 import { ACTIONS, ActionKey, ResourceKey } from "../Game/Data";
 import { getNormalizedSkillName, getResourceKeyFromBuffName } from "../Game/Skills";
 import { localize, localizeResourceType, localizeSkillName } from "../Components/Localization";
@@ -293,12 +292,12 @@ export class ActionNode {
 
 	hasPartyBuff(): boolean {
 		const snapshotTime = this.snapshotTime;
-		return snapshotTime !== undefined && controller.game.getPartyBuffs(snapshotTime).size > 0;
+		return snapshotTime !== undefined && this.#potency!.partyBuffsAt(snapshotTime).size > 0;
 	}
 
 	getPartyBuffs(): BuffType[] {
 		const snapshotTime = this.snapshotTime;
-		return snapshotTime ? [...controller.game.getPartyBuffs(snapshotTime).keys()] : [];
+		return snapshotTime ? [...this.#potency!.partyBuffsAt(snapshotTime).keys()] : [];
 	}
 
 	forceOneTarget() {

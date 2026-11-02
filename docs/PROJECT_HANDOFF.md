@@ -73,10 +73,29 @@ Sections 1–28 below preserve the original handoff. Where a section was wrong o
   - The workbook planner sheet is 17 MB. To read it, stream with an XmlReader over the extracted `xl/worksheets/sheet2.xml` and only the needed rows/columns; never dump it.
 - **DoT approximation:** the engine's DoT tick potencies are already speed scaled, so DoT ticks are treated as direct hits. The flooring position of fSPD is therefore approximate. VPR has no DoTs; revisit for DRG's Chaos Thrust.
 
+## 0.3c Session 2: party buffs and downtime
+
+- **Simulation options:**
+  - `partyBuffs: { buff: BuffType, time, duration? }[]`. Duration defaults to the buff's standard duration.
+  - `downtime: { start, end }[]`, with an exclusive end; invalid windows throw.
+  - All times are display time.
+- `RecordingHost` serves these windows through `timeline.getBuffMarkers / duringUntargetable / nextTargetableAfter`, with the same semantics as the upstream `Timeline`.
+- **Engine seam (behavior-preserving):**
+  - `Potency` takes an optional `partyBuffSource`. `GameState` passes itself at all 8 of its potency construction sites.
+  - `Potency.partyBuffsAt()` replaces the `controller.game.getPartyBuffs` reads in `Potency` and `ActionNode`.
+  - `Buff` accepts the receiving job, which matters for AST cards; `GameState.getPartyBuffs` passes `this.job`.
+  - `Record.ts` no longer imports the controller.
+- **Simulator:**
+  - Potency and damage include party buffs, except "without pot" potency, which excludes them as upstream does.
+  - Hits landing in downtime count as zero (`hitTarget: false` on damage events), matching upstream with its untargetable mask on.
+  - Auto-attacks pause during downtime (engine behavior via the host).
+  - `result.assumptions` was replaced by `result.encounter`, which echoes the resolved windows.
+- **Tests:** `rotationLabEncounter.test.ts`, 7 tests. Per-action parity with the real controller using `Timeline.addBuffMarkers` / `addMarker(Untargetable)`: start times, potency including masking, and auto-attack snapshot times. Also covers damage-multiplier and crit buffs, windows outside the snapshot, downtime masking, isolation, and validation.
+
 ## 0.4 Known limitations
 
 - Expected damage only for VPR at levels 80/90/100 (section 0.3b).
-- Party buffs and downtime are not modeled per simulation. `RecordingHost` reports no downtime and no buff markers. Results carry `assumptions: { partyBuffs: false, downtime: false }`.
+- Party buffs are given as fixed windows. The job's own party buffs (e.g. DRG Battle Litany cast in the rotation) are not yet generated from the rotation itself; check how upstream handles this before adding DRG.
 - Non-VPR job files still call the global controller directly. DRG has no direct controller calls.
 - `DamageStatistics.ts`, `Record.ts` (party buff helpers) and `Buffs.ts` still use the global controller. Rotation Lab does not depend on them.
 
@@ -928,7 +947,8 @@ controller.reportAutoTick(...)
 
 - The damage-landing path itself went through the controller: `controller.resolvePotency(p)` → `p.resolve(controller.game.getDisplayTime())`. This was proven by measurement (see section 0.2).
 - **Resolved for the Viper path in session 1:** every `controller.*` call in `GameState.ts`, `Jobs/VPR.ts`, `Jobs/RoleActions.ts`, `Resources.ts` and the auto-crit code in `Potency.ts` now goes through the per-game `SimulationHost` (or the game's own config).
-- **Still global:** party buffs (`Potency` / `ActionNode` → `controller.game.getPartyBuffs` → `controller.timeline`), `Buffs.ts` (AST card role check), and direct `controller.*` calls in other jobs: AST, BLU, DRK, GNB, MCH, MNK, NIN, PCT, RDM, SAM, SCH, SGE, SMN.
+- **Resolved in session 2:** party-buff lookups. Potencies created in `GameState` carry their game as `partyBuffSource`, and `Buff` takes the receiving job.
+- **Still global:** potencies created directly in other job files (AST, DRK, MCH, SCH, SGE, SMN), `new Buff(type)` without a job (UI code), and direct `controller.*` calls in other jobs: AST, BLU, DRK, GNB, MCH, MNK, NIN, PCT, RDM, SAM, SCH, SGE, SMN.
 
 ---
 
@@ -1918,7 +1938,8 @@ This should eventually be independent of a global controller.
 | 5. Validate against XIV in the Shell | Done per action for four sequences plus opener totals; extend as new mechanics are used |
 | 6. Multi-rotation simulation | Independent simulators done; caching not started |
 | 7. Expected damage | Done for VPR in session 2 (section 0.3b); workbook cross-check pending |
-| 8–10 | Not started |
+| Party buffs / downtime per simulation | Done in session 2 (section 0.3c) |
+| 8–10 | Not started; persistence model and cache come first (section 25) |
 | 11. Codebase reduction | Planned; see below |
 
 ## Phase 1: Confirm the current repository state
@@ -2198,13 +2219,13 @@ The latest verified development result is:
 
 **Isolated headless Viper simulation with expected damage (section 0.3b); full suite 163 passed + 9 expected-fail.**
 
-Next milestone: **per-simulation party buffs and downtime.**
+Party buffs and downtime are done (section 0.3c). Next milestone: **rotation persistence model and result cache.**
 
 1. Run the full suite and typecheck to confirm the baseline.
-2. Design simulation options for party buff windows and untargetable windows. `RecordingHost.timeline` already provides the hook (`getBuffMarkers`, `duringUntargetable`, `nextTargetableAfter`).
-3. Route `Potency` / `ActionNode` party-buff lookups through the owning game's host instead of `controller.game`.
-4. Add parity tests against the controller with buff markers and untargetable markers set on the global timeline.
-5. Optionally, cross-check expected damage against a few user-provided sample rows from the 7.2 workbook. Ask the user to supply rows rather than parsing the workbook, which is expensive in tokens.
+2. Define a versioned, serializable rotation document: schema version, patch/ruleset, job, mode, steps, and the shared scenario (stats, weapon delay, tincture grade, party buffs, downtime, cutoff).
+3. Add a pure function from document to `simulateRotation` input and options. Cache results keyed by the full serialized inputs.
+4. Local persistence: browser storage with export/import as JSON files.
+5. Then start the vertical editor and two-slot comparison UI on top of this.
 
 Focus first on correctness. Do not start a large new UI or implement speculative Evercold mechanics before these are validated.
 
