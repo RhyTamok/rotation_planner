@@ -5,10 +5,13 @@ import { getGameState } from "../../Game/Jobs";
 import { getConditionalReplacement, getSkill } from "../../Game/Skills";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { ActionKey } from "../../Game/Data";
+import { Potency, PotencyModifierType } from "../../Game/Potency";
 import { ActionNode, skillNode } from "../../Controller/Record";
+import { DamageModel, getDefaultWeaponDelay, isDamageModelSupported } from "../damage/DamageModel";
 import { RecordingHost } from "./RecordingHost";
 import {
 	DamageEvent,
+	DamageTotals,
 	RotationInput,
 	RotationResult,
 	RotationStep,
@@ -39,6 +42,9 @@ export class RotationSimulator {
 	readonly game: GameState;
 	readonly host: RecordingHost;
 	readonly #tincturePotencyMultiplier: number;
+	// Undefined when there are no verified damage constants for this job/level.
+	readonly damageModel?: DamageModel;
+	readonly #tinctureBonus: number;
 	#executed: ExecutedSkill[] = [];
 	#errors: StepError[] = [];
 	#stepCount = 0;
@@ -51,6 +57,26 @@ export class RotationSimulator {
 		// Same as Controller.#applyResourceOverrides after a restart.
 		config.initialResourceOverrides.forEach((override) => override.applyTo(this.game));
 		this.#tincturePotencyMultiplier = options.tincturePotencyMultiplier ?? 1;
+
+		const weaponDelay = options.weaponDelay ?? getDefaultWeaponDelay(job);
+		if (weaponDelay !== undefined) {
+			this.game.setWeaponDelay(weaponDelay);
+		}
+		if (weaponDelay !== undefined && isDamageModelSupported(job, config.level)) {
+			this.damageModel = new DamageModel(job, {
+				level: config.level,
+				main: config.main,
+				wd: config.wd,
+				weaponDelay,
+				partyBonus: config.partyBonus,
+				criticalHit: config.criticalHit,
+				directHit: config.directHit,
+				determination: config.determination,
+				skillSpeed: config.skillSpeed,
+				tenacity: config.tenacity,
+			});
+		}
+		this.#tinctureBonus = this.damageModel?.tinctureBonus(options.tinctureGrade ?? 4) ?? 0;
 	}
 
 	get displayTime(): number {
@@ -161,9 +187,81 @@ export class RotationSimulator {
 		});
 	}
 
+	// Expected damage of one hit. The engine's potency amount is the base potency scaled by buffs
+	// relative to the unbuffed crit/DH expectation; that ratio is applied on top of the floored
+	// damage chain, followed by the character's own crit/DH expectation.
+	#expectedDamage(model: DamageModel, p: Potency): number {
+		if (p.base === 0) {
+			return 0;
+		}
+		const engineAmount = p.getAmount({
+			tincturePotencyMultiplier: 1,
+			includePartyBuffs: false,
+			includeSplash: true,
+		});
+		const modifiers = p.getDisplayedModifiers();
+		const tinctureBonus = modifiers.some((m) => m.source === PotencyModifierType.POT)
+			? this.#tinctureBonus
+			: 0;
+		if (p.sourceSkill === "ATTACK") {
+			// The engine's auto-attack base is already skill-speed scaled; rebuild it from the
+			// unscaled potency so that speed is applied inside the floored chain.
+			const base = model.baseDamage(
+				this.game.jobSpecificAutoBasePotency(),
+				"auto",
+				tinctureBonus,
+			);
+			return base * model.expectedCritDhMulti() * (engineAmount / p.base);
+		}
+		// Combo and positional bonuses are additive modifiers that form the hit's actual potency.
+		// DoT tick potencies are already speed scaled by the engine, so they go through as "direct".
+		const potency =
+			p.base +
+			modifiers.reduce((sum, m) => sum + (m.kind === "adder" ? m.additiveAmount : 0), 0);
+		const base = model.baseDamage(potency, "direct", tinctureBonus);
+		return base * model.expectedCritDhMulti() * (engineAmount / potency);
+	}
+
+	// Same applied/pending split as ActionNode.getPotency, for expected damage.
+	#nodeDamage(model: DamageModel, node: ActionNode) {
+		const res = { applied: 0, pending: 0 };
+		const potencies = [
+			node.getInitialPotency(),
+			...[...node.getAllDotPotencies().values()].flat(),
+		];
+		for (const p of potencies) {
+			if (p === undefined) continue;
+			if (p.hasHitBoss(() => false)) {
+				res.applied += this.#expectedDamage(model, p);
+			} else if (!p.hasResolved() && p.hasSnapshotted()) {
+				res.pending += this.#expectedDamage(model, p);
+			}
+		}
+		return res;
+	}
+
+	#damageTotals(model: DamageModel, nodes: ActionNode[]): DamageTotals {
+		const totals: DamageTotals = { expectedDamage: 0, autoAttackDamage: 0, pendingDamage: 0 };
+		for (const node of nodes) {
+			const damage = this.#nodeDamage(model, node);
+			totals.expectedDamage += damage.applied;
+			totals.pendingDamage += damage.pending;
+			if (node.maybeGetActionKey() === "ATTACK") {
+				totals.autoAttackDamage += damage.applied;
+			}
+		}
+		const endTime = this.game.getDisplayTime();
+		if (endTime > 0) {
+			totals.expectedDps = totals.expectedDamage / endTime;
+		}
+		return totals;
+	}
+
 	result(id: string): RotationResult {
+		const model = this.damageModel;
 		const actions: SimulatedAction[] = this.#executed.map((e) => {
 			const potency = this.#nodePotency(e.node);
+			const damage = model ? this.#nodeDamage(model, e.node) : undefined;
 			return {
 				stepIndex: e.stepIndex,
 				requestedAction: e.requestedAction,
@@ -175,6 +273,8 @@ export class RotationSimulator {
 				invalidReasons: [...e.node.tmp_invalid_reasons],
 				appliedPotency: potency.applied,
 				pendingPotency: potency.snapshottedButPending,
+				expectedDamage: damage?.applied,
+				pendingDamage: damage?.pending,
 				modifiers: (e.node.getInitialPotency()?.getDisplayedModifiers() ?? []).map(
 					(m) => m.source,
 				),
@@ -210,6 +310,7 @@ export class RotationSimulator {
 				includePartyBuffs: false,
 				includeSplash: true,
 			}),
+			expectedDamage: model ? this.#expectedDamage(model, p) : undefined,
 			isAutoAttack: p.sourceSkill === "ATTACK",
 		}));
 
@@ -228,6 +329,7 @@ export class RotationSimulator {
 				autoAttackPotency,
 				gcdCount,
 			},
+			damage: model ? this.#damageTotals(model, allNodes) : undefined,
 			assumptions: { partyBuffs: false, downtime: false },
 		};
 	}

@@ -2,6 +2,7 @@ import { SkillUnavailableReason, Warning } from "../../Game/Common";
 import { ConfigData } from "../../Game/GameConfig";
 import { ActionKey } from "../../Game/Data";
 import { PotencyModifierType } from "../../Game/Potency";
+import { GemdraughtGrade } from "../damage/DamageModel";
 
 // Units: every time in this module is engine *display time* in seconds, the same clock the
 // XIV in the Shell UI shows (negative during the countdown, 0 at the pull).
@@ -28,9 +29,15 @@ export type SimulationEnd = "lastAction" | "settled" | number;
 
 export interface SimulationOptions {
 	// Merged over the job's default config (not the BLM-based DEFAULT_CONFIG).
+	// Character stats for expected damage (main, wd, partyBonus, criticalHit, ...) come from here.
 	config?: Partial<ConfigData>;
-	// 1.08 for an 8% tincture. Defaults to 1.
+	// Flat potency multiplier for tincture, as XIV in the Shell reports it (1.08 for 8%).
+	// Only affects the potency fields; expected damage models tincture via `tinctureGrade`.
 	tincturePotencyMultiplier?: number;
+	// Gemdraught grade used for expected damage. Defaults to 4.
+	tinctureGrade?: GemdraughtGrade;
+	// Weapon delay in seconds; drives auto-attack timing and damage. Defaults to the job's value.
+	weaponDelay?: number;
 	end?: SimulationEnd;
 }
 
@@ -47,6 +54,9 @@ export interface SimulatedAction {
 	appliedPotency: number;
 	// Potency that snapshotted but had not landed yet.
 	pendingPotency: number;
+	// Expected damage counterparts; undefined when the damage model does not support the job/level.
+	expectedDamage?: number;
+	pendingDamage?: number;
 	modifiers: PotencyModifierType[];
 }
 
@@ -54,7 +64,18 @@ export interface DamageEvent {
 	time: number;
 	source: ActionKey;
 	potency: number;
+	expectedDamage?: number;
 	isAutoAttack: boolean;
+}
+
+export interface DamageTotals {
+	// Landed before the simulation stopped.
+	expectedDamage: number;
+	autoAttackDamage: number;
+	// Snapshotted but not yet landed.
+	pendingDamage: number;
+	// expectedDamage / endTime, measured from the pull (display time 0). Undefined if endTime <= 0.
+	expectedDps?: number;
 }
 
 export interface StepError {
@@ -78,6 +99,8 @@ export interface RotationResult {
 		autoAttackPotency: number;
 		gcdCount: number;
 	};
+	// Undefined when the damage model has no verified constants for the job/level.
+	damage?: DamageTotals;
 	// Encounter features this milestone does not model yet; results assume none of them.
 	assumptions: {
 		partyBuffs: false;

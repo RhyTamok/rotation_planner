@@ -121,6 +121,7 @@ export class GameState {
 	autoStopTimes: number[];
 	fakeAutoActionNodes: ActionNode[] = [];
 	#host?: SimulationHost;
+	#weaponDelayOverride?: number;
 
 	// Falls back to the global controller lazily: the controller constructs a GameState while
 	// its own module is still initializing, so it cannot be referenced at construction time.
@@ -586,9 +587,15 @@ export class GameState {
 			BLU: 2.5, // ???
 			NEVER: 2.5,
 		};
+		const weaponDelay = this.#weaponDelayOverride ?? WEAPON_DELAYS[this.job];
 		// I choose not to care about rounding/flooring
 		// until we become forced to care about rounding/flooring
-		return (WEAPON_DELAYS[this.job] * (100 - this.jobSpecificAutoReduction())) / 100;
+		return (weaponDelay * (100 - this.jobSpecificAutoReduction())) / 100;
+	}
+
+	// Replaces the job's default weapon delay (in seconds) for auto-attack timing.
+	setWeaponDelay(delay: number) {
+		this.#weaponDelayOverride = delay;
 	}
 
 	jobSpecificAutoReduction(): number {
