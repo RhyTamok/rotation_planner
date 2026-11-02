@@ -66,12 +66,14 @@ Until then, keep their code and tests: they are the regression net for shared en
 ## Current Verified Baseline (2026-11-02)
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
-- Full suite: 28 test files, 150 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Full suite: 30 test files, 166 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).
+- Reference repo for formulas: local clone at `C:\Dev\gear-planner` (xivgear; the author permits reuse). Search it locally instead of fetching from GitHub.
 - Headless simulation exists: `src/RotationLab/simulation/RotationSimulator.ts`.
   Each simulation owns its GameConfig, GameState and `RecordingHost`; it does not touch the global controller.
 - Per-action parity with the real controller is tested on four Viper sequences, and the upstream
   level 100 opener totals are reproduced exactly.
-- Results are potency only. Party buffs and downtime are not modeled yet.
+- Party buffs and downtime are not modeled yet.
 
 Check the actual working tree and test results before continuing.
 
@@ -92,8 +94,8 @@ Check the actual working tree and test results before continuing.
 
 ## Next Development Priority
 
-1. Expected damage: add main stat / weapon damage / determination scaling on top of potency, validated against the 7.2 workbook.
-2. Per-simulation party buffs and downtime (move them from the global timeline into simulation options).
+1. Per-simulation party buffs and downtime (move them from the global timeline into simulation options).
+2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
 3. Rotation persistence model (schema version, patch, ruleset) and a result cache keyed by all simulation inputs.
 4. Vertical editor and two-slot comparison UI on top of `RotationSimulator`.
 5. Dragoon support through the same simulator.

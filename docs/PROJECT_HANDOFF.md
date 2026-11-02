@@ -49,9 +49,33 @@ Sections 1–28 below preserve the original handoff. Where a section was wrong o
 - `rotationLabHostIsolation.test.ts`: failed before the seam, passes after.
 - `rotationLabSimulator.test.ts`: basics, invalid actions, cutoff, repeatability, A→B→A, interleaved simulators, global controller untouched, per-action parity with the real controller on four Viper sequences, and the opener regression (18 GCDs, 18316 potency without pot, 19494.32 with 8% pot, 187 pending).
 
+## 0.3b Session 2: expected damage
+
+- **Formulas:** `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's xivmath with the same rounding order. Source: https://github.com/xiv-gear-planner/gear-planner; the author is a friend of the user and reuse is permitted. A local clone is at `C:\Dev\gear-planner`.
+- **Damage chain** (physical, non-caster): ⌊⌊⌊⌊⌊⌊potency × fAP⌋ × fDET⌋ × fTNC⌋ × fWD⌋ × fSPD⌋ × trait⌋, plus 1 if potency < 100.
+  - fSPD applies only to DoTs and auto-attacks.
+  - Auto-attacks use fAUTO = ⌊⌊440 × jobmod/1000 + WD⌋ × delay/3⌋ / 100 and auto potency 90.
+- **Main stat:** ⌊raw × (1 + party bonus %)⌋.
+- **Gemdraught:** +10% main stat, capped at 351/392/461/541 for grades 1–4. It enters fAP for hits that snapshotted under it.
+- **Combining with the engine:** expected damage per hit = floored chain on the hit's potency (base + combo/positional adders) × (engine potency amount ÷ that potency, which covers personal buffs and buff-driven crit/DH changes) × the character's expected crit/DH multiplier.
+  - Buffs are applied unfloored after the chain, as xivgear does. The difference from in-game flooring is under 1 damage per hit.
+  - Auto-attacks are rebuilt from the unscaled potency of 90, because the engine's auto base is already skill-speed scaled.
+- **Verified constants:** levels 80/90/100. VPR only: Dexterity jobmod 110 (confirmed by the user), no damage trait, weapon delay 2.64.
+- **Weapon delay** is editable per simulation (`options.weaponDelay`). It drives both auto-attack damage and frequency through a new, behavior-preserving `GameState.setWeaponDelay()`.
+- **Tincture:** the potency fields still use XIV in the Shell's flat `tincturePotencyMultiplier`, for upstream parity. Expected damage uses `options.tinctureGrade`, default 4.
+- **Results:** per-action `expectedDamage` / `pendingDamage`, per-event `expectedDamage`, and `result.damage` with `expectedDamage`, `autoAttackDamage`, `pendingDamage` and `expectedDps`. DPS = damage landed ÷ end time, measured from the pull.
+- **Tests:** `rotationLabDamage.test.ts`, 13 tests. Formula values are hand-computed from the xivgear code for the default Viper level 100 config.
+- **Cross-checked against the 7.2 workbook** (`rotationLabWorkbook.test.ts`).
+  - The per-hit damage column `AL` of "Planner (with sample)" reproduces exactly with **jobmod 110**: WD multiplier 1.94 for WD 146; main 4861 with 5% party bonus → main-stat multiplier 26.12; det 1.098; crit 24.8% / 1.598; DH 28.1%.
+  - Column `AM` hard-codes jobmod 100 but is unused (empty in action rows).
+  - The sheet truncates potency × fAP × fDET in one step, floors the expected crit multiplier to 3 decimals, and truncates after crit, DH and each buff. Our results therefore land 0.02–0.05% above the sheet. Pre-crit values match exactly where both rounding orders agree.
+  - **The sheet uses weapon delay 2.56**, which is Ninja's delay; the sheet was originally built from a Ninja template. Its auto-attack value (5754) reproduces exactly with 2.56. **Viper's correct delay is 2.64**, confirmed by the user, and that is the Rotation Lab default. Do not "fix" it to match the sheet.
+  - The workbook planner sheet is 17 MB. To read it, stream with an XmlReader over the extracted `xl/worksheets/sheet2.xml` and only the needed rows/columns; never dump it.
+- **DoT approximation:** the engine's DoT tick potencies are already speed scaled, so DoT ticks are treated as direct hits. The flooring position of fSPD is therefore approximate. VPR has no DoTs; revisit for DRG's Chaos Thrust.
+
 ## 0.4 Known limitations
 
-- Potency only; no expected damage yet.
+- Expected damage only for VPR at levels 80/90/100 (section 0.3b).
 - Party buffs and downtime are not modeled per simulation. `RecordingHost` reports no downtime and no buff markers. Results carry `assumptions: { partyBuffs: false, downtime: false }`.
 - Non-VPR job files still call the global controller directly. DRG has no direct controller calls.
 - `DamageStatistics.ts`, `Record.ts` (party buff helpers) and `Buffs.ts` still use the global controller. Rotation Lab does not depend on them.
@@ -1893,7 +1917,7 @@ This should eventually be independent of a global controller.
 | 4. Extract potency and damage events | Done for potency; damage events exposed in results |
 | 5. Validate against XIV in the Shell | Done per action for four sequences plus opener totals; extend as new mechanics are used |
 | 6. Multi-rotation simulation | Independent simulators done; caching not started |
-| 7. Expected damage | **Next** |
+| 7. Expected damage | Done for VPR in session 2 (section 0.3b); workbook cross-check pending |
 | 8–10 | Not started |
 | 11. Codebase reduction | Planned; see below |
 
@@ -2172,18 +2196,17 @@ Line numbers reflect the repository revision inspected during the conversation a
 
 The latest verified development result is:
 
-**Isolated headless Viper simulation (`RotationSimulator`) with per-action parity against the original controller; full suite 150 passed + 9 expected-fail.**
+**Isolated headless Viper simulation with expected damage (section 0.3b); full suite 163 passed + 9 expected-fail.**
 
-Next milestone: **expected damage.**
+Next milestone: **per-simulation party buffs and downtime.**
 
 1. Run the full suite and typecheck to confirm the baseline.
-2. Extract the damage formula, stat tiers and rounding from the 7.2 workbook (`reference/VPR 7.2 DT Planner v2.22.xlsx`) and/or from the user. Do not guess formulas.
-3. Inspect `XIVMath.ts` for existing stat functions to reuse.
-4. Add expected-damage aggregation on top of `RotationSimulator` results. Keep potency and damage separate in the result types.
-5. Add regression tests built from workbook sample calculations.
-6. Then: per-simulation party buffs and downtime, so they no longer come from the global timeline.
+2. Design simulation options for party buff windows and untargetable windows. `RecordingHost.timeline` already provides the hook (`getBuffMarkers`, `duringUntargetable`, `nextTargetableAfter`).
+3. Route `Potency` / `ActionNode` party-buff lookups through the owning game's host instead of `controller.game`.
+4. Add parity tests against the controller with buff markers and untargetable markers set on the global timeline.
+5. Optionally, cross-check expected damage against a few user-provided sample rows from the 7.2 workbook. Ask the user to supply rows rather than parsing the workbook, which is expensive in tokens.
 
-Focus first on correctness. Do not start a large new UI or implement speculative Evercold mechanics before expected damage is validated.
+Focus first on correctness. Do not start a large new UI or implement speculative Evercold mechanics before these are validated.
 
 ---
 
