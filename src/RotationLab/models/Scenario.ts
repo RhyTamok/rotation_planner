@@ -6,20 +6,15 @@ import {
 	SimulationEnd,
 	SimulationOptions,
 } from "../simulation/types";
+import { NO_GEAR, ResolvedGear } from "./GearSet";
 import { newId, SCHEMA_VERSION } from "./Rotation";
 
-// The config fields a scenario may set. Everything else keeps the job's defaults, so saved
-// scenarios stay small and only describe conditions that matter for comparison.
+// The config fields a scenario may set: the fight conditions shared by every rotation compared
+// under it. Character stats live in gear sets, chosen per rotation (GearSet.ts). Everything else
+// keeps the job's defaults.
 export const SCENARIO_STAT_KEYS = [
 	"level",
-	"main",
-	"wd",
 	"partyBonus",
-	"criticalHit",
-	"directHit",
-	"determination",
-	"skillSpeed",
-	"tenacity",
 	"countdown",
 	"fps",
 ] as const satisfies readonly (keyof ConfigData)[];
@@ -31,18 +26,26 @@ export type ScenarioStats = Partial<Pick<ConfigData, (typeof SCENARIO_STAT_KEYS)
 export const SCENARIO_STAT_DEFAULTS: ScenarioStats = { fps: 0 };
 
 // Shared simulation conditions. Rotations compared against each other should use the same
-// scenario, so that differences come only from the rotations themselves.
+// scenario, so that differences come only from the rotations (and their gear) themselves.
 export interface ScenarioDocument {
 	schemaVersion: number;
 	id: string;
 	name: string;
 	stats: ScenarioStats;
-	weaponDelay?: number;
 	tinctureGrade?: GemdraughtGrade;
 	partyBuffs: PartyBuffWindow[];
 	downtime: DowntimeWindow[];
 	end: SimulationEnd;
+	// Windows the comparison reports damage for (e.g. two-minute bursts). Not a simulation input.
+	// When absent, the comparison derives them from the party buffs.
+	burstWindows?: BurstWindow[];
 	updatedAt: string;
+}
+
+export interface BurstWindow {
+	start: number;
+	end: number;
+	label?: string;
 }
 
 export function createScenario(
@@ -53,7 +56,6 @@ export function createScenario(
 		id: newId(),
 		name: props.name ?? "Default scenario",
 		stats: props.stats ?? {},
-		weaponDelay: props.weaponDelay,
 		tinctureGrade: props.tinctureGrade,
 		partyBuffs: props.partyBuffs ?? [],
 		downtime: props.downtime ?? [],
@@ -62,10 +64,14 @@ export function createScenario(
 	};
 }
 
-export function scenarioToOptions(scenario: ScenarioDocument): SimulationOptions {
+// Simulation options for one rotation: the scenario's fight conditions plus that rotation's gear.
+export function scenarioToOptions(
+	scenario: ScenarioDocument,
+	gear: ResolvedGear = NO_GEAR,
+): SimulationOptions {
 	return {
-		config: { ...SCENARIO_STAT_DEFAULTS, ...scenario.stats },
-		weaponDelay: scenario.weaponDelay,
+		config: { ...SCENARIO_STAT_DEFAULTS, ...scenario.stats, ...gear.stats },
+		weaponDelay: gear.weaponDelay,
 		tinctureGrade: scenario.tinctureGrade,
 		partyBuffs: scenario.partyBuffs.map((w) => ({ ...w })),
 		downtime: scenario.downtime.map((w) => ({ ...w })),

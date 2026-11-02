@@ -226,7 +226,51 @@ The user's answers on the rules:
   - **Lead chart:** one SVG step line of A − B, with a zero line, shaded burst windows, dashed cutoffs, a crosshair tooltip and "A ahead / B ahead" labels.
   - **Tables:** totals and DPS at the end time plus any user-added cutoffs; a lead-change list; damage per burst window.
   - Colours use the page's tokens, so dark mode follows automatically. Rotations are identified by name, not colour.
-- **Not yet:** comparison settings are not persisted (cutoffs reset on reload); more than two rotations; cumulative lines per rotation; the chart has not been visually reviewed in a browser by Claude.
+- **Revised after user feedback (DPS-based):**
+  - **Charts.** The damage-lead chart was replaced by two charts sampled every second (`sampleTimes`, `dpsSamples`), starting at a "Charts from" time (default 10 s, because early DPS is noise):
+    - running DPS of A and B, in validated categorical blue and orange (`--rl-series-a/b`, separate light and dark steps);
+    - DPS lead (A − B).
+  - **Cutoffs table** shows DPS first, then totals, then each rotation's gauges at the cutoff (`gaugesAt`: the snapshot of the last action pressed at or before it).
+  - **Burst windows are customizable:** `ScenarioDocument.burstWindows?` holds `{start, end, label?}` and is validated. When absent, the merged party-buff windows are used. Burst windows are not a simulation input, so they are excluded from the cache key, and the app ignores them when deciding whether a scenario can be simulated.
+  - The window bounds use `NumberField` (local text state, commits only valid numbers), because a field bound directly to the saved number cannot be cleared and retyped.
+- **Not yet:**
+  - Cutoffs and the chart start are not persisted.
+  - Only two rotations at a time.
+  - Claude has not reviewed the charts visually in a browser.
+  - Per-rotation stats and gear sets: done, see 0.3j.
+
+## 0.3j Session 3: gear sets per rotation (schema version 2)
+
+- **Why:** comparing rotations at different GCD speeds needs per-rotation stats. The user chose "gear only" sets and a single shared migrated set.
+- **Model.** `models/GearSet.ts`:
+  - `GearSetDocument` holds main, WD, crit, DH, det, SkS, tenacity (`GEAR_STAT_KEYS`) and weapon delay.
+  - Rotations have optional `gearSetId` and `gearOverrides` (`{stats, weaponDelay?}`).
+  - `resolveGear(rotation, gearSets)` gives the set's values, then the overrides. A missing set means the job defaults.
+- **Scenario keeps the shared fight settings:** `SCENARIO_STAT_KEYS` = level, party bonus, countdown, fps, plus gemdraught grade. Its `weaponDelay` field is gone.
+- **Simulation:** `scenarioToOptions(scenario, gear)`, `simulateDocument(rotation, scenario, gear)` and `SimulationCache.get(rotation, scenario, gear)`. The cache key holds the merged options, so identical resolved stats share a result.
+- **Migration** (`storage/migrations.ts`, `SCHEMA_VERSION` 1 → 2): runs in `parseWorkspace` for storage and imports.
+  - Each scenario's gear stats and weapon delay become "<scenario> gear", and every rotation gets the first scenario's set.
+  - A test checks that migrated results equal the old ones.
+  - `loadWorkspace` keeps the pre-migration text under `rotationLab.workspace.v1`.
+- **UI:**
+  - The left column starts with "Rotation gear" (`ui/GearPanel.tsx`): set picker (or job defaults), new/duplicate/delete, set name and values, collapsible per-rotation overrides, and the resulting base GCD.
+  - "Scenario (shared)" follows.
+  - "New" rotations inherit the current rotation's set.
+  - Import remaps clashing gear-set ids, and rotations follow.
+  - The comparison simulates each rotation with its own gear and names both sets.
+
+## 0.3k Planned: xivgear gear set import (agreed, not started)
+
+- **Route:** paste an xivgear share link, either a single set or a whole sheet. Fetch `https://api.xivgear.app/fulldata/<id>`, which returns computed stats. Upstream already does this in `src/Components/PlaybackControl.tsx` (around line 1007); reuse that parsing, don't reimplement it.
+- **Rejected:** importing xivgear's JSON export file. It holds item and materia IDs only, so it would need an item database plus xivgear's meld, food and cap rules.
+- **User's decisions:**
+  - Food must be included in the imported stats.
+  - A sheet link imports each set as its own gear set.
+- **To check when building:**
+  - Whether fulldata provides weapon delay, so it can fill `weaponDelay`.
+  - How to map the job and level, warning on non-VPR sets.
+  - Error messages when offline.
+  - Name sets from xivgear's set names.
 - **Note:** the editor's numbers use the system locale (`toLocaleString`). Tests compare against `formatNumber`, not literal strings.
 - **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
 

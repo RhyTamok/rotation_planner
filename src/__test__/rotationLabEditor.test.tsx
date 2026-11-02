@@ -233,6 +233,18 @@ describe("Rotation Lab - editor page", () => {
 		);
 		await user.click(within(comparison).getByRole("button", { name: "Add cutoff" }));
 		expect(within(comparison).getAllByTestId("cutoff-row")).toHaveLength(2);
+		expect(within(comparison).getAllByTestId("cutoff-row")[1].textContent).toContain(
+			"Rattling Coil",
+		);
+
+		// No party buffs: start custom windows from scratch and add one.
+		expect(within(comparison).queryAllByTestId("window-row")).toHaveLength(0);
+		await user.click(within(comparison).getByRole("button", { name: "Customize windows" }));
+		await user.click(within(comparison).getByRole("button", { name: "Add window" }));
+		const start = within(comparison).getByRole("spinbutton", { name: "Window start" });
+		await user.clear(start);
+		await user.type(start, "0");
+		expect(within(comparison).getAllByTestId("window-row")).toHaveLength(1);
 	});
 
 	it("removes a row with its × button and shows debug timing columns", async () => {

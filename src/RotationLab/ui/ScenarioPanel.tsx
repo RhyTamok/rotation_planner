@@ -4,7 +4,6 @@ import { getBuffColor } from "../../Game/Buffs";
 import { BuffType } from "../../Game/Common";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { makeDefaultConfig } from "../../Game/GameConfig";
-import { getDefaultWeaponDelay } from "../damage/DamageModel";
 import {
 	SCENARIO_STAT_DEFAULTS,
 	SCENARIO_STAT_KEYS,
@@ -14,14 +13,7 @@ import {
 
 const STAT_LABELS: Record<(typeof SCENARIO_STAT_KEYS)[number], string> = {
 	level: "Level",
-	main: "Main stat",
-	wd: "Weapon damage",
 	partyBonus: "Party bonus %",
-	criticalHit: "Critical hit",
-	directHit: "Direct hit",
-	determination: "Determination",
-	skillSpeed: "Skill speed",
-	tenacity: "Tenacity",
 	countdown: "Countdown (s)",
 	fps: "FPS tax (0 = off)",
 };
@@ -31,12 +23,13 @@ const PARTY_BUFFS: BuffType[] = Object.values(BuffType).filter(
 	(b) => getBuffColor(b) !== undefined,
 );
 
-function parseOptional(text: string): number | undefined {
+export function parseOptional(text: string): number | undefined {
 	const x = Number(text);
 	return text.trim() === "" || !Number.isFinite(x) ? undefined : x;
 }
 
-function NumberInput(props: {
+// Empty = not set (the placeholder shows the value used instead).
+export function NumberInput(props: {
 	value: number | undefined;
 	placeholder?: string;
 	label: string;
@@ -57,6 +50,8 @@ export function ScenarioPanel(props: {
 	job: ShellJob;
 	scenario: ScenarioDocument;
 	onChange: (scenario: ScenarioDocument) => void;
+	// The current rotation's gear, shown above the shared scenario.
+	gearPanel?: React.ReactNode;
 }) {
 	const { job, scenario, onChange } = props;
 	const defaults = useMemo(() => makeDefaultConfig(job), [job]);
@@ -71,7 +66,8 @@ export function ScenarioPanel(props: {
 	const endMode = typeof scenario.end === "number" ? "cutoff" : scenario.end;
 
 	return <aside className="rl-scenario" aria-label="Scenario">
-		<h2>Scenario</h2>
+		{props.gearPanel}
+		<h2>Scenario (shared)</h2>
 		<div className="rl-field">
 			<label htmlFor="rl-scenario-name">Name</label>
 			<input
@@ -81,7 +77,6 @@ export function ScenarioPanel(props: {
 			/>
 		</div>
 
-		<h2>Character</h2>
 		{SCENARIO_STAT_KEYS.map((key) => <div className="rl-field" key={key}>
 			<span>{STAT_LABELS[key]}</span>
 			<NumberInput
@@ -91,16 +86,6 @@ export function ScenarioPanel(props: {
 				onChange={(v) => setStat(key, v)}
 			/>
 		</div>)}
-		<div className="rl-field">
-			<span>Weapon delay (s)</span>
-			<NumberInput
-				label="Weapon delay"
-				step={0.01}
-				value={scenario.weaponDelay}
-				placeholder={String(getDefaultWeaponDelay(job) ?? "")}
-				onChange={(v) => update({ weaponDelay: v !== undefined && v > 0 ? v : undefined })}
-			/>
-		</div>
 		<div className="rl-field">
 			<span>Gemdraught grade</span>
 			<select

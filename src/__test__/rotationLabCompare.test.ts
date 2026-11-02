@@ -6,7 +6,10 @@ import {
 	compareRotations,
 	cumulativeSeries,
 	dpsAt,
+	dpsSamples,
+	gaugesAt,
 	leadChanges,
+	sampleTimes,
 	totalAt,
 	totalBetween,
 } from "../RotationLab/comparison/compare";
@@ -19,6 +22,7 @@ function fakeResult(
 	partyBuffs: { time: number; duration: number }[] = [],
 ): RotationResult {
 	return {
+		actions: [],
 		damage: { expectedDamage: 0, autoAttackDamage: 0, pendingDamage: 0 },
 		damageEvents: hits.map(([time, damage, hitTarget = true]) => ({
 			time,
@@ -144,6 +148,41 @@ describe("Rotation Lab - comparison maths", () => {
 		]);
 		expect(comparison.windows).toEqual([{ start: 0, end: 10, a: 100, b: 50 }]);
 		expect(comparison.leadChanges.map((c) => c.leader)).toEqual(["a", "b"]);
+	});
+
+	it("samples running DPS at whole seconds from the pull", () => {
+		expect(sampleTimes(0, 3.5)).toEqual([1, 2, 3]);
+		expect(sampleTimes(1.5, 4)).toEqual([2, 3, 4]);
+		const series = cumulativeSeries(
+			fakeResult([
+				[0, 100],
+				[2, 300],
+			]),
+			"damage",
+		);
+		expect(dpsSamples(series, [1, 2, 4])).toEqual([100, 200, 100]);
+	});
+
+	it("uses custom burst windows when given", () => {
+		const comparison = compareRotations(
+			fakeResult([[5, 100]], [{ time: 0, duration: 2 }]),
+			fakeResult([[5, 40]]),
+			[],
+			[{ start: 4, end: 6, label: "Opener" }],
+		);
+		expect(comparison.windows).toEqual([{ start: 4, end: 6, label: "Opener", a: 100, b: 40 }]);
+	});
+
+	it("reports each rotation's gauges as of a cutoff", () => {
+		const result = simulateRotation(
+			{ id: "g", steps: ["REAVING_FANGS", "SERPENTS_IRE", "STEEL_FANGS"] },
+			{ encounterRules: true, config: { fps: 0 }, end: "settled" },
+		);
+		const [, ire, fangs] = result.actions;
+		expect(gaugesAt(result, -10)).toBeUndefined();
+		// Between Serpent's Ire and the next GCD, the gauges are those after Serpent's Ire.
+		expect(gaugesAt(result, (ire.startTime + fangs.startTime) / 2)).toBe(ire.resources.gauges);
+		expect(gaugesAt(result, 1000)).toBe(result.actions[2].resources.gauges);
 	});
 
 	it("matches the simulator's own totals for a real rotation", () => {

@@ -14,7 +14,13 @@ import {
 } from "../editor/rotationEdits";
 import { createRotation, newId, RotationDocument } from "../models/Rotation";
 import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
-import { parseRotationDocument, parseScenarioDocument } from "../models/validation";
+import {
+	parseGearSetDocument,
+	parseRotationDocument,
+	parseScenarioDocument,
+} from "../models/validation";
+import { resolveGear } from "../models/GearSet";
+import { GearPanel } from "./GearPanel";
 import { SimulationCache } from "../simulation/SimulationManager";
 import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import {
@@ -35,8 +41,8 @@ const NO_BUFFS: Required<PartyBuffWindow>[] = [];
 
 const JOB = "VPR" as const;
 
-function newRotation(name = "New rotation"): RotationDocument {
-	return createRotation({ name, job: JOB, steps: [] });
+function newRotation(name = "New rotation", gearSetId?: string): RotationDocument {
+	return createRotation({ name, job: JOB, steps: [], gearSetId });
 }
 
 // Loads the stored workspace, guaranteeing at least one rotation and one scenario.
@@ -65,6 +71,10 @@ function validationProblems(workspace: Workspace): string[] {
 		...workspace.scenarios.flatMap((s) => {
 			const parsed = parseScenarioDocument(s);
 			return parsed.ok ? [] : [`${s.name}: ${parsed.errors.join("; ")}`];
+		}),
+		...workspace.gearSets.flatMap((g) => {
+			const parsed = parseGearSetDocument(g);
+			return parsed.ok ? [] : [`${g.name}: ${parsed.errors.join("; ")}`];
 		}),
 	];
 }
@@ -100,6 +110,10 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	const rotation = workspace.rotations.find((r) => r.id === rotationId) ?? workspace.rotations[0];
 	const scenario = workspace.scenarios.find((s) => s.id === scenarioId) ?? workspace.scenarios[0];
 
+	const gear = useMemo(
+		() => resolveGear(rotation, workspace.gearSets),
+		[rotation, workspace.gearSets],
+	);
 	const problems = useMemo(() => validationProblems(workspace), [workspace]);
 	useEffect(() => {
 		if (problems.length > 0) return;
@@ -111,14 +125,15 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	}, [workspace, problems, storage]);
 
 	const simulation = useMemo(() => {
-		const scenarioCheck = parseScenarioDocument(scenario);
+		// Burst windows are not a simulation input; a half-edited one must not stop the simulation.
+		const scenarioCheck = parseScenarioDocument({ ...scenario, burstWindows: undefined });
 		if (!scenarioCheck.ok) return { error: scenarioCheck.errors.join("; ") };
 		try {
-			return { sim: cache.get(rotation, scenario) };
+			return { sim: cache.get(rotation, scenario, gear) };
 		} catch (e) {
 			return { error: (e as Error).message };
 		}
-	}, [cache, rotation, scenario]);
+	}, [cache, rotation, scenario, gear]);
 	const result = simulation.sim?.result;
 	const rows = useMemo(() => buildRows(rotation, result), [rotation, result]);
 	// The palette shows the hotbar at the insertion point: after the selected row, or at the end.
@@ -127,7 +142,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		const end = index < 0 ? rotation.entries.length : index + 1;
 		return rotation.entries.slice(0, end).map((e) => e.step);
 	}, [rotation, selectedId]);
-	const scenarioOptions = useMemo(() => scenarioToOptions(scenario), [scenario]);
+	const scenarioOptions = useMemo(() => scenarioToOptions(scenario, gear), [scenario, gear]);
 
 	const replaceRotation = (next: RotationDocument) =>
 		setWorkspace((ws) => ({
@@ -204,13 +219,26 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		// Never overwrite existing documents: clashing ids get fresh ones.
 		const rotationIds = new Set(workspace.rotations.map((r) => r.id));
 		const scenarioIds = new Set(workspace.scenarios.map((s) => s.id));
+		// Imported gear sets with clashing ids get fresh ones; their rotations follow.
+		const gearIds = new Map(
+			imported.gearSets.map((g) => [
+				g.id,
+				workspace.gearSets.some((x) => x.id === g.id) ? newId() : g.id,
+			]),
+		);
 		setWorkspace((ws) => ({
 			...ws,
 			rotations: [
 				...ws.rotations,
-				...imported.rotations.map((r) =>
-					rotationIds.has(r.id) ? { ...r, id: newId() } : r,
-				),
+				...imported.rotations.map((r) => ({
+					...r,
+					id: rotationIds.has(r.id) ? newId() : r.id,
+					gearSetId: r.gearSetId && (gearIds.get(r.gearSetId) ?? r.gearSetId),
+				})),
+			],
+			gearSets: [
+				...ws.gearSets,
+				...imported.gearSets.map((g) => ({ ...g, id: gearIds.get(g.id)! })),
 			],
 			scenarios: [
 				...ws.scenarios,
@@ -262,7 +290,9 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					})
 				}
 			/>
-			<button onClick={() => addRotation(newRotation())}>New</button>
+			<button onClick={() => addRotation(newRotation(undefined, rotation.gearSetId))}>
+				New
+			</button>
 			<button
 				onClick={() =>
 					addRotation({
@@ -359,7 +389,21 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			</div>)}
 		</section>
 
-		<ScenarioPanel job={JOB} scenario={scenario} onChange={replaceScenario} />
+		<ScenarioPanel
+			job={JOB}
+			scenario={scenario}
+			onChange={replaceScenario}
+			gearPanel={
+				<GearPanel
+					job={JOB}
+					level={level}
+					rotation={rotation}
+					gearSets={workspace.gearSets}
+					onRotationChange={replaceRotation}
+					onGearSetsChange={(gearSets) => setWorkspace((ws) => ({ ...ws, gearSets }))}
+				/>
+			}
+		/>
 
 		{mode === "compare" ? (
 			simulation.error ? (
@@ -372,6 +416,8 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					scenario={scenario}
 					cache={cache}
 					defaultA={rotation.id}
+					onScenarioChange={replaceScenario}
+					gearSets={workspace.gearSets}
 				/>
 			)
 		) : (

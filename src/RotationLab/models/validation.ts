@@ -5,6 +5,7 @@ import { ActionKey } from "../../Game/Data";
 import { ALL_JOBS, ShellJob } from "../../Game/Data/Jobs";
 import { jobHasSkill } from "../../Game/Skills";
 import { RotationStep, SimulationEnd } from "../simulation/types";
+import { GEAR_STAT_KEYS, GearSetDocument } from "./GearSet";
 import { CombatMode, RotationDocument, SCHEMA_VERSION } from "./Rotation";
 import { SCENARIO_STAT_KEYS, ScenarioDocument, ScenarioStats } from "./Scenario";
 
@@ -22,7 +23,7 @@ const isObject = (x: unknown): x is Obj => typeof x === "object" && x !== null &
 const isFiniteNumber = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
 const isNonEmptyString = (x: unknown): x is string => typeof x === "string" && x.length > 0;
 
-// Only one schema version exists so far; older versions would be migrated here.
+// Older versions are migrated before validation (storage/migrations.ts).
 function checkSchemaVersion(doc: Obj, errors: string[]) {
 	if (doc.schemaVersion !== SCHEMA_VERSION) {
 		errors.push(
@@ -117,27 +118,71 @@ export function parseRotationDocument(input: unknown): ParseResult<RotationDocum
 		});
 	}
 
+	if (input.gearSetId !== undefined && !isNonEmptyString(input.gearSetId)) {
+		errors.push("gearSetId must be a non-empty string");
+	}
+	if (input.gearOverrides !== undefined) {
+		if (!isObject(input.gearOverrides)) {
+			errors.push("gearOverrides must be an object");
+		} else {
+			validateStats(input.gearOverrides.stats, GEAR_STAT_KEYS, errors, "gearOverrides.stats");
+			validateWeaponDelay(
+				input.gearOverrides.weaponDelay,
+				errors,
+				"gearOverrides.weaponDelay",
+			);
+		}
+	}
+
 	return errors.length > 0
 		? { ok: false, errors }
 		: { ok: true, value: input as unknown as RotationDocument };
 }
 
-function validateStats(stats: unknown, errors: string[]) {
+function validateStats(
+	stats: unknown,
+	allowed: readonly string[],
+	errors: string[],
+	where = "stats",
+) {
 	if (!isObject(stats)) {
-		errors.push("stats must be an object");
+		errors.push(`${where} must be an object`);
 		return;
 	}
 	for (const [key, value] of Object.entries(stats)) {
-		if (!(SCENARIO_STAT_KEYS as readonly string[]).includes(key)) {
-			errors.push(`stats.${key} is not a supported stat`);
+		if (!allowed.includes(key)) {
+			errors.push(`${where}.${key} is not a supported stat`);
 		} else if (!isFiniteNumber(value) || value < 0) {
-			errors.push(`stats.${key} must be a non-negative number`);
+			errors.push(`${where}.${key} must be a non-negative number`);
 		}
 	}
 	const level = (stats as ScenarioStats).level;
 	if (level !== undefined && !LEVELS.includes(level)) {
-		errors.push(`stats.level must be one of ${LEVELS.join(", ")}`);
+		errors.push(`${where}.level must be one of ${LEVELS.join(", ")}`);
 	}
+}
+
+function validateWeaponDelay(value: unknown, errors: string[], where = "weaponDelay") {
+	if (value !== undefined && !(isFiniteNumber(value) && value > 0)) {
+		errors.push(`${where} must be a positive number`);
+	}
+}
+
+export function parseGearSetDocument(input: unknown): ParseResult<GearSetDocument> {
+	const errors: string[] = [];
+	if (!isObject(input)) {
+		return { ok: false, errors: ["gear set must be an object"] };
+	}
+	checkSchemaVersion(input, errors);
+	checkCommonFields(input, errors);
+	if (typeof input.job !== "string" || !(ALL_JOBS as string[]).includes(input.job)) {
+		errors.push(`unknown job ${JSON.stringify(input.job)}`);
+	}
+	validateStats(input.stats, GEAR_STAT_KEYS, errors);
+	validateWeaponDelay(input.weaponDelay, errors);
+	return errors.length > 0
+		? { ok: false, errors }
+		: { ok: true, value: input as unknown as GearSetDocument };
 }
 
 function isSimulationEnd(x: unknown): x is SimulationEnd {
@@ -151,19 +196,32 @@ export function parseScenarioDocument(input: unknown): ParseResult<ScenarioDocum
 	}
 	checkSchemaVersion(input, errors);
 	checkCommonFields(input, errors);
-	validateStats(input.stats, errors);
+	validateStats(input.stats, SCENARIO_STAT_KEYS, errors);
 
-	if (
-		input.weaponDelay !== undefined &&
-		!(isFiniteNumber(input.weaponDelay) && input.weaponDelay > 0)
-	) {
-		errors.push("weaponDelay must be a positive number");
-	}
 	if (
 		input.tinctureGrade !== undefined &&
 		![1, 2, 3, 4].includes(input.tinctureGrade as number)
 	) {
 		errors.push("tinctureGrade must be 1, 2, 3 or 4");
+	}
+	if (input.burstWindows !== undefined) {
+		if (!Array.isArray(input.burstWindows)) {
+			errors.push("burstWindows must be an array");
+		} else {
+			input.burstWindows.forEach((w, i) => {
+				if (
+					!isObject(w) ||
+					!isFiniteNumber(w.start) ||
+					!isFiniteNumber(w.end) ||
+					!(w.end > w.start) ||
+					(w.label !== undefined && typeof w.label !== "string")
+				) {
+					errors.push(
+						`burstWindows[${i}]: must have numeric start and end, with end after start`,
+					);
+				}
+			});
+		}
 	}
 	if (!isSimulationEnd(input.end)) {
 		errors.push('end must be "lastAction", "settled" or a number');

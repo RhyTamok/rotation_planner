@@ -1,10 +1,12 @@
 import { ShellJob } from "../../Game/Data/Jobs";
 import { ActionKey } from "../../Game/Data";
 import { RotationStep } from "../simulation/types";
+import type { GearOverrides } from "./GearSet";
 
-// Version of the persisted document format. Bump it and add a migration in validation.ts
-// whenever the shape of RotationDocument or ScenarioDocument changes.
-export const SCHEMA_VERSION = 1;
+// Version of the persisted document format. Bump it and add a migration in
+// storage/migrations.ts whenever the shape of a stored document changes.
+// 1 → 2: character stats moved from scenarios into gear sets chosen per rotation.
+export const SCHEMA_VERSION = 2;
 
 export type CombatMode = "reborn" | "evolved";
 
@@ -43,6 +45,10 @@ export interface RotationDocument {
 	job: ShellJob;
 	ruleset: Ruleset;
 	entries: RotationEntry[];
+	// The gear set this rotation is simulated with; missing = the job's default stats.
+	gearSetId?: string;
+	// Manual changes on top of the gear set.
+	gearOverrides?: GearOverrides;
 	// ISO 8601 timestamp of the last edit.
 	updatedAt: string;
 }
@@ -56,6 +62,7 @@ export function createRotation(props: {
 	job: ShellJob;
 	steps: (ActionKey | RotationStep)[];
 	mode?: CombatMode;
+	gearSetId?: string;
 }): RotationDocument {
 	return {
 		schemaVersion: SCHEMA_VERSION,
@@ -63,6 +70,7 @@ export function createRotation(props: {
 		name: props.name,
 		job: props.job,
 		ruleset: currentRuleset(props.mode),
+		gearSetId: props.gearSetId,
 		entries: props.steps.map((step) => ({
 			id: newId(),
 			step: typeof step === "string" ? { type: "skill", action: step } : step,

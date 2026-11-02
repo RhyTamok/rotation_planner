@@ -11,6 +11,8 @@
 	--rl-error-soft: #fdecea;
 	--rl-ogcd: #5b6fb5;
 	--rl-warning: #b54708;
+	--rl-series-a: #2a78d6;
+	--rl-series-b: #eb6834;
 	--rl-timers-height: 40px;
 	color-scheme: light;
 }
@@ -29,6 +31,8 @@
 		--rl-error-soft: #3a1f1c;
 		--rl-ogcd: #9aa9e6;
 		--rl-warning: #f5b85c;
+		--rl-series-a: #3987e5;
+		--rl-series-b: #d95926;
 		color-scheme: dark;
 	}
 }
@@ -310,9 +314,50 @@ select {
 
 .rl-chart-line {
 	fill: none;
-	stroke: var(--rl-accent);
 	stroke-width: 2;
 	stroke-linejoin: round;
+}
+
+/* Two-series palette (categorical slots 1 and 2), validated for CVD separation and contrast
+   on this page's light and dark surfaces. */
+.rl-series-a {
+	stroke: var(--rl-series-a);
+	background: var(--rl-series-a);
+}
+
+.rl-series-b {
+	stroke: var(--rl-series-b);
+	background: var(--rl-series-b);
+}
+
+.rl-series-lead {
+	stroke: var(--rl-accent);
+	background: var(--rl-accent);
+}
+
+.rl-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	font-size: 12px;
+	margin-bottom: 4px;
+}
+
+.rl-swatch {
+	display: inline-block;
+	width: 12px;
+	height: 3px;
+	border-radius: 2px;
+	margin-right: 6px;
+	vertical-align: middle;
+}
+
+.rl-window-row input {
+	width: 72px;
+}
+
+.rl-window-row input[aria-label="Window label"] {
+	width: 140px;
 }
 
 .rl-chart-zero {

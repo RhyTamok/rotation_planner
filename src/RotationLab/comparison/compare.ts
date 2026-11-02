@@ -1,3 +1,4 @@
+import { GaugeValue } from "../rules/resourceTracking";
 import { RotationResult } from "../simulation/types";
 
 // Pure comparison maths over simulation results. Times are display times in seconds (0 = pull).
@@ -108,9 +109,36 @@ export function leadChanges(a: CumulativeSeries, b: CumulativeSeries): LeadChang
 	return changes;
 }
 
+// Whole seconds from `from` to `to` (both rounded inward), never before the first second of the
+// fight: DPS is undefined at 0 s.
+export function sampleTimes(from: number, to: number, step = 1): number[] {
+	const times: number[] = [];
+	for (let t = Math.max(step, Math.ceil(from / step) * step); t <= to + 1e-9; t += step) {
+		times.push(t);
+	}
+	return times;
+}
+
+// Running DPS (total so far / time since the pull) at each of `times`.
+export function dpsSamples(series: CumulativeSeries, times: number[]): number[] {
+	return times.map((t) => dpsAt(series, t) ?? 0);
+}
+
+// Gauges as of `t`: the snapshot of the last action pressed at or before `t` (taken at the end of
+// its animation lock). Undefined before the first action.
+export function gaugesAt(result: RotationResult, t: number): GaugeValue[] | undefined {
+	let last: RotationResult["actions"][number] | undefined;
+	for (const action of result.actions) {
+		if (action.startTime > t) break;
+		last = action;
+	}
+	return last?.resources.gauges;
+}
+
 export interface TimeWindow {
 	start: number;
 	end: number;
+	label?: string;
 }
 
 // Merges overlapping or touching party buff windows into burst windows.
@@ -133,6 +161,8 @@ export interface CutoffComparison {
 	b: number;
 	dpsA?: number;
 	dpsB?: number;
+	gaugesA?: GaugeValue[];
+	gaugesB?: GaugeValue[];
 }
 
 export interface WindowComparison extends TimeWindow {
@@ -149,12 +179,13 @@ export interface RotationComparison {
 	windows: WindowComparison[];
 }
 
-// Compares two results simulated under the same scenario. Burst windows come from that scenario's
-// party buffs (taken from `a`; both results carry the same ones).
+// Compares two results simulated under the same scenario. Burst windows default to that
+// scenario's merged party buffs (taken from `a`; both results carry the same ones).
 export function compareRotations(
 	resultA: RotationResult,
 	resultB: RotationResult,
 	cutoffs: number[],
+	windows: TimeWindow[] = burstWindows(resultA),
 ): RotationComparison {
 	const metric = comparisonMetric(resultA, resultB);
 	const a = cumulativeSeries(resultA, metric);
@@ -169,9 +200,11 @@ export function compareRotations(
 			b: totalAt(b, time),
 			dpsA: dpsAt(a, time),
 			dpsB: dpsAt(b, time),
+			gaugesA: gaugesAt(resultA, time),
+			gaugesB: gaugesAt(resultB, time),
 		})),
 		leadChanges: leadChanges(a, b),
-		windows: burstWindows(resultA).map((w) => ({
+		windows: windows.map((w) => ({
 			...w,
 			a: totalBetween(a, w.start, w.end),
 			b: totalBetween(b, w.start, w.end),

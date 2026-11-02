@@ -1,4 +1,5 @@
 import { AVAILABLE_RULESETS, RotationDocument, Ruleset } from "../models/Rotation";
+import { NO_GEAR, ResolvedGear } from "../models/GearSet";
 import { ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import { simulateRotation } from "./RotationSimulator";
 import { RotationResult } from "./types";
@@ -13,6 +14,7 @@ export interface DocumentSimulation {
 export function simulateDocument(
 	rotation: RotationDocument,
 	scenario: ScenarioDocument,
+	gear: ResolvedGear = NO_GEAR,
 ): DocumentSimulation {
 	const currentVersion = AVAILABLE_RULESETS[rotation.ruleset.mode];
 	if (currentVersion === undefined) {
@@ -20,7 +22,7 @@ export function simulateDocument(
 	}
 	const result = simulateRotation(
 		{ id: rotation.id, steps: rotation.entries.map((e) => e.step) },
-		scenarioToOptions(scenario),
+		scenarioToOptions(scenario, gear),
 		rotation.job,
 	);
 	return rotation.ruleset.version === currentVersion
@@ -45,12 +47,18 @@ export function stableStringify(value: unknown): string {
 
 // Everything that can change a simulation's outcome, and nothing else: names, document ids,
 // entry ids and timestamps are excluded so renaming or re-saving does not invalidate results.
-export function simulationKey(rotation: RotationDocument, scenario: ScenarioDocument): string {
+// The gear enters through the merged options, so two rotations on different gear sets with the
+// same resolved stats share a result.
+export function simulationKey(
+	rotation: RotationDocument,
+	scenario: ScenarioDocument,
+	gear: ResolvedGear = NO_GEAR,
+): string {
 	return stableStringify({
 		job: rotation.job,
 		ruleset: rotation.ruleset,
 		steps: rotation.entries.map((e) => e.step),
-		scenario: scenarioToOptions(scenario),
+		options: scenarioToOptions(scenario, gear),
 	});
 }
 
@@ -79,13 +87,17 @@ export class SimulationCache {
 		return this.#entries.size;
 	}
 
-	get(rotation: RotationDocument, scenario: ScenarioDocument): DocumentSimulation {
-		const key = simulationKey(rotation, scenario);
+	get(
+		rotation: RotationDocument,
+		scenario: ScenarioDocument,
+		gear: ResolvedGear = NO_GEAR,
+	): DocumentSimulation {
+		const key = simulationKey(rotation, scenario, gear);
 		let entry = this.#entries.get(key);
 		if (entry) {
 			this.#entries.delete(key);
 		} else {
-			entry = deepFreeze(this.#simulate(rotation, scenario));
+			entry = deepFreeze(this.#simulate(rotation, scenario, gear));
 			if (this.#entries.size >= this.#maxEntries) {
 				this.#entries.delete(this.#entries.keys().next().value!);
 			}
