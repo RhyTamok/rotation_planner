@@ -8,6 +8,7 @@ import {
 	duplicateEntry,
 	insertSteps,
 	moveEntry,
+	moveEntryBefore,
 	neighbourAfterRemoval,
 	removeEntry,
 	updateStep,
@@ -16,6 +17,7 @@ import { createRotation, RotationDocument } from "../RotationLab/models/Rotation
 import { simulateRotation } from "../RotationLab/simulation/RotationSimulator";
 import { KeyValueStorage, WORKSPACE_KEY } from "../RotationLab/storage/WorkspaceStore";
 import { RotationLabApp } from "../RotationLab/ui/RotationLabApp";
+import { formatNumber } from "../RotationLab/ui/RotationTable";
 
 const actionsOf = (r: RotationDocument) =>
 	r.entries.map((e) => (e.step.type === "skill" ? e.step.action : e.step.type));
@@ -70,6 +72,27 @@ describe("Rotation Lab - editing operations", () => {
 
 		const updated = updateStep(base, b, { type: "wait", seconds: 2 });
 		expect(updated.entries[1]).toEqual({ id: b, step: { type: "wait", seconds: 2 } });
+	});
+
+	it("moves an entry to a drop position between rows", () => {
+		expect(actionsOf(moveEntryBefore(base, a, 3))).toEqual([
+			"REAVING_FANGS",
+			"SERPENTS_IRE",
+			"STEEL_FANGS",
+		]);
+		expect(actionsOf(moveEntryBefore(base, c, 0))).toEqual([
+			"SERPENTS_IRE",
+			"STEEL_FANGS",
+			"REAVING_FANGS",
+		]);
+		expect(actionsOf(moveEntryBefore(base, a, 2))).toEqual([
+			"REAVING_FANGS",
+			"STEEL_FANGS",
+			"SERPENTS_IRE",
+		]);
+		// Dropping onto its own position is a no-op.
+		expect(moveEntryBefore(base, b, 1)).toBe(base);
+		expect(moveEntryBefore(base, b, 2)).toBe(base);
 	});
 
 	it("keeps the selection next to a removed entry", () => {
@@ -183,5 +206,30 @@ describe("Rotation Lab - editor page", () => {
 			"Changes not saved",
 		);
 		expect(storage.data.get(WORKSPACE_KEY)).toBe(savedBefore);
+	});
+
+	it("removes a row with its × button and shows debug timing columns", async () => {
+		const user = userEvent.setup();
+		render(<RotationLabApp storage={memoryStorage()} />);
+		const palette = screen.getByRole("complementary", { name: "Skill palette" });
+		const steelFangs = within(palette).getByRole("button", { name: /Steel Fangs/ });
+		await user.click(steelFangs);
+		await user.click(within(palette).getByRole("button", { name: /Serpent's Ire/ }));
+		await user.click(steelFangs);
+		expect(screen.getAllByTestId("rotation-row")).toHaveLength(3);
+
+		await user.click(screen.getByRole("checkbox", { name: "Debug" }));
+		const gcdDeltas = screen.getAllByTestId("delta-gcd").map((c) => c.textContent);
+		const actionDeltas = screen.getAllByTestId("delta-action").map((c) => c.textContent);
+		// Default scenario: no frame-rate tax, so a 2.5 s GCD shows exactly 2.500.
+		expect(gcdDeltas).toEqual(["", "", formatNumber(2.5, 3)]);
+		expect(actionDeltas[0]).toBe("");
+		expect(actionDeltas[1]).not.toBe("");
+
+		const removeButtons = screen.getAllByRole("button", { name: "Remove step" });
+		await user.click(removeButtons[1]);
+		const rows = screen.getAllByTestId("rotation-row");
+		expect(rows).toHaveLength(2);
+		expect(rows.map((r) => r.textContent).join()).not.toContain("Serpent's Ire");
 	});
 });

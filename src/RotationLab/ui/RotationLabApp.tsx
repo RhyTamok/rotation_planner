@@ -7,6 +7,7 @@ import {
 	duplicateEntry,
 	insertSteps,
 	moveEntry,
+	moveEntryBefore,
 	neighbourAfterRemoval,
 	removeEntry,
 	updateStep,
@@ -132,11 +133,12 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		replaceRotation(edit.rotation);
 		setSelectedId(edit.insertedIds[0]);
 	};
+	const remove = (id: string) => {
+		if (id === selectedId) setSelectedId(neighbourAfterRemoval(rotation, id));
+		replaceRotation(removeEntry(rotation, id));
+	};
 	const removeSelected = () => {
-		if (!selectedId) return;
-		const next = neighbourAfterRemoval(rotation, selectedId);
-		replaceRotation(removeEntry(rotation, selectedId));
-		setSelectedId(next);
+		if (selectedId) remove(selectedId);
 	};
 	const duplicateSelected = () => {
 		if (!selectedId) return;
@@ -345,6 +347,11 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			selectedId={selectedId}
 			onSelect={setSelectedId}
 			onUpdateStep={(id, step) => replaceRotation(updateStep(rotation, id, step))}
+			onRemove={remove}
+			onMove={(id, beforeIndex) => {
+				replaceRotation(moveEntryBefore(rotation, id, beforeIndex));
+				setSelectedId(id);
+			}}
 			onKeyDown={onTableKeyDown}
 		/>
 

@@ -5,7 +5,12 @@ import { BuffType } from "../../Game/Common";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { makeDefaultConfig } from "../../Game/GameConfig";
 import { getDefaultWeaponDelay } from "../damage/DamageModel";
-import { SCENARIO_STAT_KEYS, ScenarioDocument, ScenarioStats } from "../models/Scenario";
+import {
+	SCENARIO_STAT_DEFAULTS,
+	SCENARIO_STAT_KEYS,
+	ScenarioDocument,
+	ScenarioStats,
+} from "../models/Scenario";
 
 const STAT_LABELS: Record<(typeof SCENARIO_STAT_KEYS)[number], string> = {
 	level: "Level",
@@ -18,6 +23,7 @@ const STAT_LABELS: Record<(typeof SCENARIO_STAT_KEYS)[number], string> = {
 	skillSpeed: "Skill speed",
 	tenacity: "Tenacity",
 	countdown: "Countdown (s)",
+	fps: "FPS tax (0 = off)",
 };
 
 // Party buffs are the buff types with timeline marker colors.
@@ -81,7 +87,7 @@ export function ScenarioPanel(props: {
 			<NumberInput
 				label={STAT_LABELS[key]}
 				value={scenario.stats[key]}
-				placeholder={String(defaults[key])}
+				placeholder={String(SCENARIO_STAT_DEFAULTS[key] ?? defaults[key])}
 				onChange={(v) => setStat(key, v)}
 			/>
 		</div>)}

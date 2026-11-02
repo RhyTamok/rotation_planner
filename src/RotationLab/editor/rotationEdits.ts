@@ -45,6 +45,27 @@ export function moveEntry(rotation: RotationDocument, id: string, delta: -1 | 1)
 	return withEntries(rotation, entries);
 }
 
+// Moves an entry so that it ends up before the entry currently at `beforeIndex`
+// (entries.length = to the end), as when dropping it between two rows.
+export function moveEntryBefore(
+	rotation: RotationDocument,
+	id: string,
+	beforeIndex: number,
+): RotationDocument {
+	const from = indexOfEntry(rotation, id);
+	if (from < 0 || beforeIndex < 0 || beforeIndex > rotation.entries.length) {
+		return rotation;
+	}
+	const to = beforeIndex > from ? beforeIndex - 1 : beforeIndex;
+	if (to === from) {
+		return rotation;
+	}
+	const entries = [...rotation.entries];
+	const [entry] = entries.splice(from, 1);
+	entries.splice(to, 0, entry);
+	return withEntries(rotation, entries);
+}
+
 export function duplicateEntry(
 	rotation: RotationDocument,
 	id: string,

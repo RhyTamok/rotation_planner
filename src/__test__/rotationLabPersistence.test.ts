@@ -125,7 +125,8 @@ describe("Rotation Lab - scenario documents", () => {
 
 		expect(parsed.ok, errorsOf(parsed)).toBe(true);
 		expect(scenarioToOptions(scenario)).toEqual({
-			config: { main: 6000, criticalHit: 3000, level: 100 },
+			// fps 0: scenarios use nominal GCD lengths unless an FPS is set.
+			config: { fps: 0, main: 6000, criticalHit: 3000, level: 100 },
 			weaponDelay: 2.64,
 			tinctureGrade: 3,
 			partyBuffs: [{ buff: BuffType.TechnicalFinish, time: 7 }],

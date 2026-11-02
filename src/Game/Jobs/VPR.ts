@@ -202,6 +202,15 @@ export class VPRState extends GameState {
 		}
 		const currCombo = this.resources.get("VPR_COMBO").availableAmount();
 		const currAoeCombo = this.resources.get("VPR_AOE_COMBO").availableAmount();
+		// Steel Maw and Reaving Maw used during an untargetable phase hit nothing, so they do not
+		// start the AoE combo, but like any Maw they still cancel the single-target combo.
+		if (
+			(skill === "STEEL_MAW" || skill === "REAVING_MAW") &&
+			this.host.timeline.duringUntargetable(this.getDisplayTime())
+		) {
+			if (currCombo !== 0) this.setComboState("VPR_COMBO", 0);
+			return;
+		}
 
 		// No need to check old value of combo due to built-in validation requirements.
 		const [newCombo, newAoeCombo] = new Map<VPRActionKey, [number, number]>([

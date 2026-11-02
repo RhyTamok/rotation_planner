@@ -21,9 +21,14 @@ export const SCENARIO_STAT_KEYS = [
 	"skillSpeed",
 	"tenacity",
 	"countdown",
+	"fps",
 ] as const satisfies readonly (keyof ConfigData)[];
 
 export type ScenarioStats = Partial<Pick<ConfigData, (typeof SCENARIO_STAT_KEYS)[number]>>;
+
+// Where a scenario's default differs from the job's XIV in the Shell default. The Lab uses nominal
+// GCD lengths (e.g. 2.12 s under Swiftscaled), so the frame-rate tax is off unless an FPS is set.
+export const SCENARIO_STAT_DEFAULTS: ScenarioStats = { fps: 0 };
 
 // Shared simulation conditions. Rotations compared against each other should use the same
 // scenario, so that differences come only from the rotations themselves.
@@ -59,7 +64,7 @@ export function createScenario(
 
 export function scenarioToOptions(scenario: ScenarioDocument): SimulationOptions {
 	return {
-		config: { ...scenario.stats },
+		config: { ...SCENARIO_STAT_DEFAULTS, ...scenario.stats },
 		weaponDelay: scenario.weaponDelay,
 		tinctureGrade: scenario.tinctureGrade,
 		partyBuffs: scenario.partyBuffs.map((w) => ({ ...w })),

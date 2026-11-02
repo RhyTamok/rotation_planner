@@ -177,6 +177,27 @@ The user's answers on the rules:
   - The delay input sits in the action cell. Notes show the pull hold, clipping and GCD delays.
 - **Tests:** `rotationLabEncounterRules.test.ts`, 10 tests.
 - **Still open from 0.3f:** combo icons and cooldowns in the palette (items 2 and 5), party buff bars (4), recommendations (6).
+
+## 0.3h Session 2: follow-up feedback (done)
+
+- **Downtime target rules corrected by the user.**
+  - Arm's Length is self-cast; Feint needs a target.
+  - All Viper AoEs centred on the player are usable in downtime: Maws, Bites, Last Lash, Vicepit, Dens, Threshes. So is Reawaken, which still enters Reawakened.
+  - Reawaken's follow-ups (Generations, Legacies, Ouroboros) need a target.
+- **Engine change in `VPR.ts` `processCombo`:** Steel Maw and Reaving Maw used while untargetable do not advance or reset any combo. This follows upstream's own Vicepit special case, and the upstream VPR tests still pass.
+- **Fang and Maw combos are mutually exclusive.** Starting one cancels the other; this is upstream behaviour. A Maw in downtime does not start the AoE combo but still cancels the single-target combo (`processCombo`).
+- **Ghosting is flagged.** `SimulatedAction.ghostedBy` holds the seconds between the start of downtime and when the hit landed. The table notes it.
+- **Combo breaks are flagged.** `SimulatedAction.comboBreaks` lists the combos an action cancelled without finishing them. The table shows them as a warning. The combos and their finishers are listed per job in `rules/resourceTracking.ts`. A combo that simply times out is not reported.
+- **GCD length:** what the user reported as a bug was XIV in the Shell's frame-rate tax.
+  - At 60 fps, each GCD rounds up to a whole frame: 2.12 s becomes 128/60 ≈ 2.133 s. Accumulated start times then show gaps of 2.13 and 2.14 s.
+  - Change in `XIVMath.afterFpsTax`: `fps <= 0` now means no tax. Previously that input gave a division by zero.
+  - Scenarios gained an `fps` stat that defaults to 0 (`SCENARIO_STAT_DEFAULTS`), so the editor uses nominal GCDs. Plain `simulateRotation` keeps 60 fps for upstream parity.
+- **UI:**
+  - The timers bar shows icons sorted by soonest expiry. Buff icons come from `public/assets/Buffs/<job>/`; combo timers use the starting skill's icon.
+  - Each row has a × remove button and a ⠿ drag handle (HTML5 drag-and-drop, `moveEntryBefore` in `rotationEdits.ts`).
+  - A "Debug" toggle on the timers bar adds Δ GCD and Δ action columns (gaps between start times). It is remembered in `localStorage` (`rotationLab.debugColumns`).
+- **Tests:** 216 passed + 9 expected-fail in 34 files.
+- **Note:** the editor's numbers use the system locale (`toLocaleString`). Tests compare against `formatNumber`, not literal strings.
 - **Formatter:** the project formats with `prettier-no-jsx-parens`, a dev dependency, via `npm.cmd run format`. Plain `prettier` is not installed; `npm exec prettier` downloads stock prettier, which reformats JSX differently.
 
 ## 0.4 Known limitations

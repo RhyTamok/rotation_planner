@@ -67,7 +67,8 @@ Until then, keep their code and tests: they are the regression net for shared en
 
 - Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
 - Rotation Lab editor page: http://localhost:3000/rotation-lab.html (second Vite entry, `rotation-lab.html`, `src/RotationLab/ui/`). The original app at `/` is untouched.
-- Full suite: 34 test files, 207 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Full suite: 34 test files, 216 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
+- Editor scenarios use nominal GCD lengths: `fps` defaults to 0, which disables XIV in the Shell's frame-rate tax (`XIVMath.afterFpsTax`). Upstream defaults to 60 fps, which turns 2.12 s into about 2.133 s.
 - Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>` (the project's formatter). Do not use plain `prettier`: it is not installed, and npx fetches stock prettier, which reformats JSX differently.
 - Editor scenarios simulate with `encounterRules` on: the first hit lands at exactly 0 s, targeted actions are invalid in downtime, and ghosting is allowed. Handoff section 0.3g.
 - Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).

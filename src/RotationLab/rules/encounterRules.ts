@@ -18,12 +18,29 @@ export const EncounterViolation = {
 	NoTarget: "boss is untargetable and this action needs a target",
 } as const;
 
-// Damaging actions that hit around the player and need no target, so they stay usable in
-// downtime. Vicepit still grants the Den buffs there (VPR.ts withholds its Rattling Coil).
-const TARGETLESS_DAMAGE = new Set<ActionKey>(["VICEPIT"]);
+// Damaging actions that need no target, so they stay usable in downtime (where they hit nothing).
+// - Player-centred AoEs. Vicepit still grants the Den buffs (VPR.ts withholds its Rattling Coil);
+//   Steel Maw and Reaving Maw do not advance the combo (VPR.ts processCombo).
+// - Reawaken still enters Reawakened. Its follow-ups (Generations, Legacies, Ouroboros) need a
+//   target.
+const TARGETLESS_DAMAGE = new Set<ActionKey>([
+	"STEEL_MAW",
+	"REAVING_MAW",
+	"HUNTERS_BITE",
+	"SWIFTSKINS_BITE",
+	"JAGGED_MAW",
+	"BLOODIED_MAW",
+	"LAST_LASH",
+	"VICEPIT",
+	"HUNTERS_DEN",
+	"SWIFTSKINS_DEN",
+	"TWINFANG_THRESH",
+	"TWINBLOOD_THRESH",
+	"REAWAKEN",
+]);
 
 // Non-damaging actions that still need an enemy target.
-const TARGETED_UTILITY = new Set<ActionKey>(["ARMS_LENGTH", "LEG_SWEEP", "SLITHER"]);
+const TARGETED_UTILITY = new Set<ActionKey>(["FEINT", "LEG_SWEEP", "SLITHER"]);
 
 export function isDamaging(game: GameState, action: ActionKey): boolean {
 	return (getSkill(game.job, action)?.potencyFn(game) ?? 0) > 0;

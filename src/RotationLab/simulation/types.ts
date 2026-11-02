@@ -81,6 +81,11 @@ export interface SimulatedAction {
 	// True if that delay came from the animation lock of the oGCD just before (a clip), rather
 	// than from a deliberate wait or delay.
 	clipped?: boolean;
+	// Set if the action's damage landed while the boss was untargetable ("ghosted"): its effects
+	// applied but it dealt no damage. Seconds between the start of that downtime and the landing.
+	ghostedBy?: number;
+	// Combos (by label, e.g. "single-target combo") this action cancelled without finishing.
+	comboBreaks?: string[];
 	// Gauges and timers at the end of this action's animation lock.
 	resources: ResourceSnapshot;
 	// Potency (including DoT ticks) that landed before the simulation stopped.

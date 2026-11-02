@@ -230,7 +230,9 @@ export class XIVMath {
 		);
 	}
 
+	// fps = 0 disables the frame-rate tax (used by the Rotation Lab for nominal GCD lengths).
 	static afterFpsTax(fps: number, baseDuration: number) {
+		if (fps <= 0) return baseDuration;
 		return Math.floor(baseDuration * fps + 1) / fps;
 	}
 }

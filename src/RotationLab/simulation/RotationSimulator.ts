@@ -10,7 +10,12 @@ import { Buff } from "../../Game/Buffs";
 import { ActionNode, skillNode } from "../../Controller/Record";
 import { DamageModel, getDefaultWeaponDelay, isDamageModelSupported } from "../damage/DamageModel";
 import { EncounterViolation, isDamaging, needsTarget } from "../rules/encounterRules";
-import { ResourceSnapshot, snapshotResources } from "../rules/resourceTracking";
+import {
+	brokenCombos,
+	comboSteps,
+	ResourceSnapshot,
+	snapshotResources,
+} from "../rules/resourceTracking";
 import { RecordingHost } from "./RecordingHost";
 import {
 	DamageEvent,
@@ -40,6 +45,7 @@ interface ExecutedSkill {
 	lockEndTime: number;
 	isGCD: boolean;
 	ruleViolations: string[];
+	comboBreaks: string[];
 	pullHold?: number;
 	// GCDs only: display time at which the next GCD becomes ready.
 	nextGcdReadyTime?: number;
@@ -185,8 +191,11 @@ export class RotationSimulator {
 		const actionIndex = this.#executed.length;
 
 		node.tmp_startLockTime = this.game.time;
+		let comboBreaks: string[] = [];
 		if (status.status.ready() && ruleViolations.length === 0) {
+			const combosBefore = comboSteps(this.game);
 			this.game.useSkill(executedAction, node, actionIndex);
+			comboBreaks = brokenCombos(this.game, combosBefore, executedAction);
 			node.tmp_invalid_reasons = [];
 			if (landsAtPull) {
 				this.#pullTime = this.game.getDisplayTime() + status.timeTillDamageApplication;
@@ -210,6 +219,7 @@ export class RotationSimulator {
 			lockEndTime: startTime + lockDuration,
 			isGCD,
 			ruleViolations,
+			comboBreaks,
 			pullHold,
 			nextGcdReadyTime: isGCD
 				? startTime + this.game.cooldowns.get("cd_GCD").timeTillNextStackAvailable()
@@ -287,6 +297,14 @@ export class RotationSimulator {
 	// Hits landing while the boss is untargetable deal no damage.
 	readonly #untargetable = (displayTime: number) =>
 		this.host.timeline.duringUntargetable(displayTime);
+
+	// Seconds between the start of the downtime window containing `displayTime` and that time.
+	#timeIntoDowntime(displayTime: number): number {
+		const window = this.#encounter.downtime.find(
+			(w) => displayTime >= w.start && displayTime < w.end,
+		);
+		return window ? displayTime - window.start : 0;
+	}
 
 	#nodePotency(
 		node: ActionNode,
@@ -378,6 +396,15 @@ export class RotationSimulator {
 			const potency = this.#nodePotency(e.node);
 			const damage = model ? this.#nodeDamage(model, e.node) : undefined;
 			const invalidReasons: string[] = [...e.node.tmp_invalid_reasons, ...e.ruleViolations];
+			const hit = e.node.getInitialPotency();
+			const ghostedBy =
+				invalidReasons.length === 0 &&
+				hit !== undefined &&
+				hit.base > 0 &&
+				hit.hasResolved() &&
+				!hit.hasHitBoss(this.#untargetable)
+					? this.#timeIntoDowntime(hit.applicationTime!)
+					: undefined;
 			return {
 				stepIndex: e.stepIndex,
 				requestedAction: e.requestedAction,
@@ -390,6 +417,8 @@ export class RotationSimulator {
 				pullHold: e.pullHold,
 				gcdDelay: gcdDelays.get(e)?.gcdDelay,
 				clipped: gcdDelays.get(e)?.clipped,
+				ghostedBy,
+				comboBreaks: e.comboBreaks.length > 0 ? [...e.comboBreaks] : undefined,
 				resources: e.resources,
 				appliedPotency: potency.applied,
 				pendingPotency: potency.snapshottedButPending,

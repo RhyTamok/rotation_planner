@@ -97,11 +97,104 @@ describe("downtime rules", () => {
 		// After Reaving Fangs the Steel Fangs button executes the combo's second step.
 		const [, ghosted, next] = result.actions;
 		expect(ghosted.valid).toBe(true);
+		// Pressed half a Steel Fangs delay before downtime; the executed follow-up's own delay
+		// decides how far into downtime it lands.
+		expect(ghosted.ghostedBy).toBeCloseTo(
+			delayOf(ghosted.executedAction) - delayOf("STEEL_FANGS") / 2,
+			6,
+		);
+		expect(result.actions[0].ghostedBy).toBeUndefined();
 		expect(ghosted.appliedPotency).toBe(0);
 		const hit = result.damageEvents.find((e) => e.source === ghosted.executedAction);
 		expect(hit?.hitTarget).toBe(false);
 		// The combo still advanced (its timer has not run out by 20 s), so the next press moves on.
 		expect(next.executedAction).not.toBe(ghosted.executedAction);
+	});
+});
+
+describe("downtime: targetless actions", () => {
+	const downtime = { ...RULES, downtime: [{ start: 10, end: 20 }] };
+
+	it("rejects Feint but not the self-cast Arm's Length", () => {
+		const result = run(
+			["REAVING_FANGS", { type: "jumpTo", displayTime: 11 }, "FEINT", "ARMS_LENGTH"],
+			downtime,
+		);
+		const [, feint, armsLength] = result.actions;
+		expect(feint.invalidReasons).toContain(EncounterViolation.NoTarget);
+		expect(armsLength.valid).toBe(true);
+	});
+
+	it("allows Steel Maw in downtime: no AoE combo, but the single-target combo is cancelled", () => {
+		const result = run(
+			[
+				"REAVING_FANGS",
+				{ type: "jumpTo", displayTime: 11 },
+				"STEEL_MAW",
+				"STEEL_MAW",
+				{ type: "jumpTo", displayTime: 20 },
+				"STEEL_FANGS",
+			],
+			downtime,
+		);
+		const [, first, second, fangs] = result.actions;
+		expect(first.valid).toBe(true);
+		expect(first.ghostedBy).toBeCloseTo(1 + delayOf("STEEL_MAW"), 6);
+		expect(first.comboBreaks).toEqual(["single-target combo"]);
+		// The AoE combo did not advance, so the button still executes Steel Maw, not Hunter's Bite.
+		expect(second.executedAction).toBe("STEEL_MAW");
+		expect(second.comboBreaks).toBeUndefined();
+		// Without the cancel, Steel Fangs would have executed Hunter's Sting.
+		expect(fangs.executedAction).toBe("STEEL_FANGS");
+	});
+
+	it("notes combo breaks but not combo finishers", () => {
+		const broken = run(["REAVING_FANGS", "STEEL_MAW", "STEEL_FANGS"], RULES).actions;
+		expect(broken[1].comboBreaks).toEqual(["single-target combo"]);
+		expect(broken[2].comboBreaks).toEqual(["AoE combo"]);
+
+		const finished = run(["REAVING_FANGS", "REAVING_FANGS", "REAVING_FANGS"], RULES).actions;
+		expect(finished.map((a) => a.comboBreaks)).toEqual([undefined, undefined, undefined]);
+	});
+
+	it("advances the AoE combo normally outside downtime", () => {
+		const result = run(["REAVING_FANGS", "STEEL_MAW", "STEEL_MAW"], downtime);
+		expect(result.actions[2].executedAction).toBe("HUNTERS_BITE");
+	});
+
+	it("allows Reawaken in downtime, but its follow-ups need a target", () => {
+		const result = run(
+			[
+				"REAVING_FANGS",
+				"SERPENTS_IRE",
+				{ type: "jumpTo", displayTime: 11 },
+				"REAWAKEN",
+				"STEEL_FANGS",
+			],
+			downtime,
+		);
+		const [, , reawaken, generation] = result.actions;
+		expect(reawaken.valid).toBe(true);
+		expect(reawaken.resources.timers.map((t) => t.label)).toContain("Reawakened");
+		expect(generation.executedAction).toBe("FIRST_GENERATION");
+		expect(generation.invalidReasons).toContain(EncounterViolation.NoTarget);
+	});
+});
+
+describe("GCD length", () => {
+	// Reaving Fangs, then Swiftskin's Sting grants Swiftscaled; the next GCDs are 15% faster.
+	const steps: ActionKey[] = ["REAVING_FANGS", "REAVING_FANGS", "STEEL_FANGS", "STEEL_FANGS"];
+	const gap = (options: SimulationOptions) => {
+		const actions = run(steps, options).actions;
+		return actions[3].startTime - actions[2].startTime;
+	};
+
+	it("is nominal (2.12 s under Swiftscaled) with the frame-rate tax off", () => {
+		expect(gap({ ...RULES, config: { fps: 0 } })).toBeCloseTo(2.12, 6);
+	});
+
+	it("rounds up to whole frames with XIV in the Shell's default 60 fps tax", () => {
+		expect(gap(RULES)).toBeCloseTo(128 / 60, 6);
 	});
 });
 
@@ -144,6 +237,9 @@ describe("resource snapshots", () => {
 	it("records gauges for every action and active timers", () => {
 		const result = run(["REAVING_FANGS", "SERPENTS_IRE"]);
 		const [fangs, ire] = result.actions;
+		const remaining = ire.resources.timers.map((t) => t.remaining ?? Infinity);
+		expect(remaining).toEqual([...remaining].sort((a, b) => a - b));
+		expect(ire.resources.timers.every((t) => t.icon.endsWith(".png"))).toBe(true);
 		expect(fangs.resources.gauges.map((g) => g.label)).toEqual([
 			"Rattling Coil",
 			"Serpent Offerings",
