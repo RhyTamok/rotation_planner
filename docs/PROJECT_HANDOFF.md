@@ -162,7 +162,9 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
 Ordered roughly by the user's priorities. Discuss each with the user before starting.
 
 1. **Recommendations:** suggest next actions (e.g. after Reaving Fangs, Swiftskin's Sting or
-   Hunter's Sting). This first needs a ruleset written with the user; don't invent one.
+   Hunter's Sting). The Viper ruleset is written and agreed (draft v1) in
+   `docs/rulesets/vpr-recommendations.md`; implement it from there, don't invent rules. Next:
+   same grilling for Dragoon. It needs a per-rotation target-count setting (schema bump).
 2. **Comparison extras:**
    - persist cutoffs and the chart start time;
    - compare more than two rotations;
