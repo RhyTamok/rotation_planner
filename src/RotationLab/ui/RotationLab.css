@@ -525,6 +525,11 @@ select {
 	cursor: pointer;
 }
 
+/* Shift+click extends the row selection; without this it would also select page text. */
+.rl-table-wrap tbody tr {
+	user-select: none;
+}
+
 .rl-table tr.rl-ogcd td.rl-action {
 	padding-left: 28px;
 	color: var(--rl-ogcd);

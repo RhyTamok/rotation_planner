@@ -88,6 +88,70 @@ export function updateStep(
 	);
 }
 
+// Ids of the entries from `anchorId` to `focusId` (either order), in rotation order. Unknown ids
+// fall back to the single known one; both unknown gives [].
+export function rangeIds(
+	rotation: RotationDocument,
+	anchorId?: string,
+	focusId?: string,
+): string[] {
+	const a = anchorId === undefined ? -1 : indexOfEntry(rotation, anchorId);
+	const f = focusId === undefined ? -1 : indexOfEntry(rotation, focusId);
+	if (a < 0 && f < 0) return [];
+	const from = Math.min(a < 0 ? f : a, f < 0 ? a : f);
+	const to = Math.max(a, f);
+	return rotation.entries.slice(from, to + 1).map((e) => e.id);
+}
+
+export function removeEntries(rotation: RotationDocument, ids: string[]): RotationDocument {
+	const gone = new Set(ids);
+	return withEntries(
+		rotation,
+		rotation.entries.filter((e) => !gone.has(e.id)),
+	);
+}
+
+// The steps of the given entries, in rotation order, as independent copies.
+export function copySteps(rotation: RotationDocument, ids: string[]): RotationStep[] {
+	const wanted = new Set(ids);
+	return rotation.entries.filter((e) => wanted.has(e.id)).map((e) => structuredClone(e.step));
+}
+
+// Moves a contiguous block of entries up (-1) or down (+1) past its neighbour; a no-op at
+// either end or for a non-contiguous selection.
+export function moveBlock(
+	rotation: RotationDocument,
+	ids: string[],
+	delta: -1 | 1,
+): RotationDocument {
+	const indices = ids.map((id) => indexOfEntry(rotation, id)).sort((x, y) => x - y);
+	if (indices.length === 0 || indices[0] < 0) return rotation;
+	const first = indices[0];
+	const last = indices[indices.length - 1];
+	if (last - first + 1 !== indices.length) return rotation;
+	if (delta < 0 ? first === 0 : last === rotation.entries.length - 1) return rotation;
+	const entries = [...rotation.entries];
+	const block = entries.splice(first, indices.length);
+	entries.splice(first + delta, 0, ...block);
+	return withEntries(rotation, entries);
+}
+
+// The entry to select after removing `ids`: the one after the last removed, else before the first.
+export function neighbourAfterRemovalOf(
+	rotation: RotationDocument,
+	ids: string[],
+): string | undefined {
+	const indices = ids.map((id) => indexOfEntry(rotation, id)).filter((i) => i >= 0);
+	if (indices.length === 0) return undefined;
+	const gone = new Set(ids);
+	const after = rotation.entries.slice(Math.max(...indices) + 1).find((e) => !gone.has(e.id));
+	const before = rotation.entries
+		.slice(0, Math.min(...indices))
+		.reverse()
+		.find((e) => !gone.has(e.id));
+	return (after ?? before)?.id;
+}
+
 // The id of the entry next to `id` after it is removed, so selection can stay in place.
 export function neighbourAfterRemoval(rotation: RotationDocument, id: string): string | undefined {
 	const index = indexOfEntry(rotation, id);

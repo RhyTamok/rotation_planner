@@ -215,7 +215,8 @@ export function RotationTable(props: {
 	job: ShellJob;
 	rows: EditorRow[];
 	selectedId?: string;
-	onSelect: (id: string) => void;
+	// `extend`: Shift held, grow the selection to this row.
+	onSelect: (id: string, extend?: boolean) => void;
 	onUpdateStep: (id: string, step: RotationStep) => void;
 	onRemove: (id: string) => void;
 	// Moves the entry so that it ends up before the row currently at `beforeIndex`
@@ -223,8 +224,17 @@ export function RotationTable(props: {
 	onMove: (id: string, beforeIndex: number) => void;
 	onKeyDown: (e: React.KeyboardEvent) => void;
 	partyBuffs: Required<PartyBuffWindow>[];
+	// Ids of every selected row (a range); `selectedId` is the one the arrow keys move.
+	selection?: string[];
+	onCopy?: (e: React.ClipboardEvent) => void;
+	onCut?: (e: React.ClipboardEvent) => void;
+	onPaste?: (e: React.ClipboardEvent) => void;
 }) {
 	const { job, rows, selectedId, onSelect, onUpdateStep, onRemove, onMove, onKeyDown } = props;
+	const selected = useMemo(
+		() => new Set(props.selection ?? (selectedId ? [selectedId] : [])),
+		[props.selection, selectedId],
+	);
 	const lanes = useMemo(() => buffLanes(job, props.partyBuffs), [job, props.partyBuffs]);
 	const coverage = useMemo(() => {
 		const times = rows.map((r) => r.action?.startTime ?? NaN);
@@ -245,7 +255,15 @@ export function RotationTable(props: {
 	const [debug, setDebug] = useState(loadDebug);
 	const deltas = debug ? timingDeltas(rows) : undefined;
 
-	return <div className="rl-table-wrap" tabIndex={0} onKeyDown={onKeyDown} aria-label="Rotation">
+	return <div
+		className="rl-table-wrap"
+		tabIndex={0}
+		onKeyDown={onKeyDown}
+		onCopy={props.onCopy}
+		onCut={props.onCut}
+		onPaste={props.onPaste}
+		aria-label="Rotation"
+	>
 		{rows.length > 0 && <TimerPanel
 			rows={rows}
 			selectedId={selectedId}
@@ -296,7 +314,7 @@ export function RotationTable(props: {
 						const { entry, action, error } = row;
 						const invalid = (action && !action.valid) || error !== undefined;
 						const classes = [
-							entry.id === selectedId ? "rl-selected" : "",
+							selected.has(entry.id) ? "rl-selected" : "",
 							action && !action.isGCD ? "rl-ogcd" : "",
 							invalid ? "rl-invalid" : "",
 							entry.id === dragId ? "rl-dragging" : "",
@@ -309,7 +327,8 @@ export function RotationTable(props: {
 							key={entry.id}
 							className={classes}
 							ref={entry.id === selectedId ? selectedRef : undefined}
-							onClick={() => onSelect(entry.id)}
+							onClick={(e) => onSelect(entry.id, e.shiftKey)}
+							aria-selected={selected.has(entry.id)}
 							onDragOver={(e) => {
 								if (!dragId) return;
 								e.preventDefault();

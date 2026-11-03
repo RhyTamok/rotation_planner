@@ -272,6 +272,24 @@ The user's answers on the rules:
 - **Verified live (2026-11-02):** the public VPR BiS sheet (`?page=bis|vpr|current`) returned 14 entries, including separators. `gearStats` dexterity 6491 matched computed dexterity 6815 at 5 % party bonus. Delay was 2.64.
 - **Tests:** `rotationLabXivgear.test.ts` (4 tests, fixture-based, no network).
 
+## 0.3l Session 3: editor polish (undo/redo, range selection, copy/paste)
+
+- **Undo/redo** (`editor/history.ts`):
+  - The whole workspace (rotations, scenarios, gear sets) is kept as immutable snapshots, up to 200 steps.
+  - Every `setWorkspace` in `RotationLabApp` records a step. Edits from the same focused text or number input within 1 s merge into one step; clicks and selects never merge.
+  - Ctrl+Z, and Ctrl+Y or Ctrl+Shift+Z, work page-wide except inside text fields, where the browser's own undo applies. Undo and Redo buttons are in the header.
+  - Selection, mode and comparison settings are not part of the history.
+- **Range selection:** `anchorId` + `selectedId` give a contiguous range (`rangeIds`), built with Shift+click, Shift+↑/↓ or Ctrl+A.
+  - Delete and the × button remove the whole range (`removeEntries`, `neighbourAfterRemovalOf`).
+  - Ctrl+D duplicates it and Alt+↑/↓ moves it (`moveBlock`).
+  - The palette inserts after the range's last row.
+- **Copy/cut/paste:** native clipboard events on the table (`editor/clipboard.ts`).
+  - Steps are written as JSON (`{rotationLabSteps, job, steps}`), so they paste across rotations and tabs.
+  - Pasting validates the steps through `parseRotationDocument` and refuses other jobs' steps or anything else.
+- **Tests:** `rotationLabHistory.test.ts` (history, range edits, clipboard), plus an editor page test covering Shift selection, duplicate, undo/redo, copy/paste and block delete. jsdom has no system clipboard, so the page test fires the copy and paste events with a stand-in clipboard object.
+
+## 0.3k (continued)
+
 Original plan, for reference:
 
 - **Route:** paste an xivgear share link, either a single set or a whole sheet. Fetch `https://api.xivgear.app/fulldata/<id>`, which returns computed stats. Upstream already does this in `src/Components/PlaybackControl.tsx` (around line 1007); reuse that parsing, don't reimplement it.

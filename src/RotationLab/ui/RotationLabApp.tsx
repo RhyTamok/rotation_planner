@@ -2,14 +2,17 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { LevelSync } from "../../Game/Common";
 import { makeDefaultConfig } from "../../Game/GameConfig";
+import { parseSteps, serializeSteps } from "../editor/clipboard";
+import { createHistory, record, redo, undo } from "../editor/history";
 import {
 	buildRows,
-	duplicateEntry,
+	copySteps,
 	insertSteps,
-	moveEntry,
+	moveBlock,
 	moveEntryBefore,
-	neighbourAfterRemoval,
-	removeEntry,
+	neighbourAfterRemovalOf,
+	rangeIds,
+	removeEntries,
 	updateStep,
 } from "../editor/rotationEdits";
 import { createRotation, newId, RotationDocument } from "../models/Rotation";
@@ -98,11 +101,43 @@ function Stat(props: { label: string; value: string }) {
 export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	const storage = props.storage ?? localStorage;
 	const [initial] = useState(() => initialState(storage));
-	const [workspace, setWorkspace] = useState<Workspace>(initial.workspace);
+	const [history, setHistory] = useState(() => createHistory<Workspace>(initial.workspace));
+	const workspace = history.present;
+	// Every workspace change is undoable. Edits typed into the same text or number field merge
+	// into one step; clicks and other controls each make their own.
+	const setWorkspace = (update: Workspace | ((ws: Workspace) => Workspace)) => {
+		const active = document.activeElement;
+		const group =
+			active instanceof HTMLInputElement && active.type !== "checkbox" ? active : undefined;
+		setHistory((h) =>
+			record(h, typeof update === "function" ? update(h.present) : update, group),
+		);
+	};
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (!(e.ctrlKey || e.metaKey)) return;
+			// Inside text fields the browser's own undo applies.
+			const tag = (e.target as HTMLElement | null)?.tagName;
+			if (tag === "INPUT" || tag === "TEXTAREA") return;
+			const key = e.key.toLowerCase();
+			if (key === "z" && !e.shiftKey) {
+				e.preventDefault();
+				setHistory(undo);
+			} else if (key === "y" || (key === "z" && e.shiftKey)) {
+				e.preventDefault();
+				setHistory(redo);
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, []);
 	const [messages, setMessages] = useState<string[]>(initial.errors);
 	const [rotationId, setRotationId] = useState(initial.workspace.rotations[0].id);
 	const [scenarioId, setScenarioId] = useState(initial.workspace.scenarios[0].id);
+	// The selection is the range from `anchorId` (when extended with Shift) to `selectedId`, the
+	// row that moves with the arrow keys.
 	const [selectedId, setSelectedId] = useState<string>();
+	const [anchorId, setAnchorId] = useState<string>();
 	const [mode, setMode] = useState<"edit" | "compare">("edit");
 	const cache = useMemo(() => new SimulationCache(), []);
 	const fileInput = useRef<HTMLInputElement>(null);
@@ -136,12 +171,18 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	}, [cache, rotation, scenario, gear]);
 	const result = simulation.sim?.result;
 	const rows = useMemo(() => buildRows(rotation, result), [rotation, result]);
-	// The palette shows the hotbar at the insertion point: after the selected row, or at the end.
+	const selection = useMemo(
+		() => rangeIds(rotation, anchorId ?? selectedId, selectedId),
+		[rotation, anchorId, selectedId],
+	);
+	// New steps go after the last selected row, or at the end.
+	const insertAfter = selection[selection.length - 1];
+	// The palette shows the hotbar at that insertion point.
 	const prefix = useMemo(() => {
-		const index = rotation.entries.findIndex((e) => e.id === selectedId);
+		const index = rotation.entries.findIndex((e) => e.id === insertAfter);
 		const end = index < 0 ? rotation.entries.length : index + 1;
 		return rotation.entries.slice(0, end).map((e) => e.step);
-	}, [rotation, selectedId]);
+	}, [rotation, insertAfter]);
 	const scenarioOptions = useMemo(() => scenarioToOptions(scenario, gear), [scenario, gear]);
 
 	const replaceRotation = (next: RotationDocument) =>
@@ -155,23 +196,49 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			scenarios: ws.scenarios.map((s) => (s.id === next.id ? next : s)),
 		}));
 
-	const insert = (step: RotationStep) => {
-		const edit = insertSteps(rotation, [step], selectedId);
+	// Selects one row, or with `extend` grows the selection from its anchor to `id`.
+	const select = (id: string | undefined, extend = false) => {
+		setAnchorId(extend && id && selectedId ? (anchorId ?? selectedId) : undefined);
+		setSelectedId(id);
+	};
+	const selectRange = (ids: string[]) => {
+		setAnchorId(ids[0]);
+		setSelectedId(ids[ids.length - 1]);
+	};
+
+	const insertBlock = (steps: RotationStep[]) => {
+		const edit = insertSteps(rotation, steps, insertAfter);
 		replaceRotation(edit.rotation);
-		setSelectedId(edit.insertedIds[0]);
+		selectRange(edit.insertedIds);
 	};
-	const remove = (id: string) => {
-		if (id === selectedId) setSelectedId(neighbourAfterRemoval(rotation, id));
-		replaceRotation(removeEntry(rotation, id));
+	const insert = (step: RotationStep) => insertBlock([step]);
+	const removeIds = (ids: string[]) => {
+		if (ids.length === 0) return;
+		if (ids.includes(selectedId ?? "")) select(neighbourAfterRemovalOf(rotation, ids));
+		replaceRotation(removeEntries(rotation, ids));
 	};
-	const removeSelected = () => {
-		if (selectedId) remove(selectedId);
-	};
+	// The × button removes its own row, or the whole selection when that row is part of it.
+	const remove = (id: string) => removeIds(selection.includes(id) ? selection : [id]);
 	const duplicateSelected = () => {
-		if (!selectedId) return;
-		const edit = duplicateEntry(rotation, selectedId);
+		if (selection.length === 0) return;
+		const edit = insertSteps(rotation, copySteps(rotation, selection), insertAfter);
 		replaceRotation(edit.rotation);
-		setSelectedId(edit.insertedIds[0]);
+		selectRange(edit.insertedIds);
+	};
+
+	// Copy, cut and paste use the system clipboard (see editor/clipboard.ts).
+	const onCopy = (e: React.ClipboardEvent, cut = false) => {
+		if ((e.target as HTMLElement).tagName === "INPUT" || selection.length === 0) return;
+		e.preventDefault();
+		e.clipboardData.setData("text/plain", serializeSteps(JOB, copySteps(rotation, selection)));
+		if (cut) removeIds(selection);
+	};
+	const onPaste = (e: React.ClipboardEvent) => {
+		if ((e.target as HTMLElement).tagName === "INPUT") return;
+		const steps = parseSteps(e.clipboardData.getData("text/plain"), JOB);
+		if (!steps) return;
+		e.preventDefault();
+		insertBlock(steps);
 	};
 
 	const onTableKeyDown = (e: React.KeyboardEvent) => {
@@ -180,30 +247,33 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		if (e.key === "ArrowUp" || e.key === "ArrowDown") {
 			e.preventDefault();
 			const delta = e.key === "ArrowUp" ? -1 : 1;
-			if (e.altKey && selectedId) {
-				replaceRotation(moveEntry(rotation, selectedId, delta));
+			if (e.altKey) {
+				replaceRotation(moveBlock(rotation, selection, delta));
 			} else {
 				const target =
 					rotation.entries[
 						Math.max(0, Math.min(rotation.entries.length - 1, index + delta))
 					];
-				if (target) setSelectedId(target.id);
+				if (target) select(target.id, e.shiftKey);
 			}
 		} else if (e.key === "Delete" || e.key === "Backspace") {
 			e.preventDefault();
-			removeSelected();
+			removeIds(selection);
 		} else if (e.key.toLowerCase() === "d" && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
 			duplicateSelected();
+		} else if (e.key.toLowerCase() === "a" && (e.ctrlKey || e.metaKey)) {
+			e.preventDefault();
+			if (rotation.entries.length > 0) selectRange(rotation.entries.map((x) => x.id));
 		} else if (e.key === "Escape") {
-			setSelectedId(undefined);
+			select(undefined);
 		}
 	};
 
 	const addRotation = (doc: RotationDocument) => {
 		setWorkspace((ws) => ({ ...ws, rotations: [...ws.rotations, doc] }));
 		setRotationId(doc.id);
-		setSelectedId(undefined);
+		select(undefined);
 	};
 	const deleteRotation = () => {
 		if (!window.confirm(`Delete "${rotation.name}"?`)) return;
@@ -211,7 +281,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		const rotations = remaining.length > 0 ? remaining : [newRotation()];
 		setWorkspace((ws) => ({ ...ws, rotations }));
 		setRotationId(rotations[0].id);
-		setSelectedId(undefined);
+		select(undefined);
 	};
 
 	const importFile = async (file: File) => {
@@ -267,12 +337,26 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					Compare
 				</button>
 			</div>
+			<button
+				disabled={history.past.length === 0}
+				onClick={() => setHistory(undo)}
+				title="Undo (Ctrl+Z)"
+			>
+				Undo
+			</button>
+			<button
+				disabled={history.future.length === 0}
+				onClick={() => setHistory(redo)}
+				title="Redo (Ctrl+Y)"
+			>
+				Redo
+			</button>
 			<select
 				aria-label="Rotation"
 				value={rotation.id}
 				onChange={(e) => {
 					setRotationId(e.target.value);
-					setSelectedId(undefined);
+					select(undefined);
 				}}
 			>
 				{workspace.rotations.map((r) => <option key={r.id} value={r.id}>
@@ -426,15 +510,19 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					job={JOB}
 					rows={rows}
 					selectedId={selectedId}
-					onSelect={setSelectedId}
+					selection={selection}
+					onSelect={select}
 					onUpdateStep={(id, step) => replaceRotation(updateStep(rotation, id, step))}
 					onRemove={remove}
 					partyBuffs={result?.encounter.partyBuffs ?? NO_BUFFS}
 					onMove={(id, beforeIndex) => {
 						replaceRotation(moveEntryBefore(rotation, id, beforeIndex));
-						setSelectedId(id);
+						select(id);
 					}}
 					onKeyDown={onTableKeyDown}
+					onCopy={(e) => onCopy(e)}
+					onCut={(e) => onCopy(e, true)}
+					onPaste={onPaste}
 				/>
 
 				<SkillPalette
@@ -449,7 +537,8 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		)}
 
 		<footer className="rl-footer">
-			Keys: ↑/↓ select · Alt+↑/↓ move · Del remove · Ctrl+D duplicate · Esc deselect. Built on{" "}
+			Keys: ↑/↓ select (Shift extends, Ctrl+A all) · Alt+↑/↓ move · Del remove · Ctrl+D
+			duplicate · Ctrl+C/X/V copy, cut, paste · Ctrl+Z/Y undo, redo · Esc deselect. Built on{" "}
 			<a href="https://github.com/xivintheshell/xivintheshell">XIV in the Shell</a> (MIT
 			License). <a href="/">Open the original app</a>
 		</footer>

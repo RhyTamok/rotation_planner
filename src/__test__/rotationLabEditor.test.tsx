@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -206,6 +206,65 @@ describe("Rotation Lab - editor page", () => {
 			"Changes not saved",
 		);
 		expect(storage.data.get(WORKSPACE_KEY)).toBe(savedBefore);
+	});
+
+	it("selects ranges, copies, pastes, and undoes", async () => {
+		const user = userEvent.setup();
+		render(<RotationLabApp storage={memoryStorage()} />);
+		const palette = screen.getByRole("complementary", { name: "Skill palette" });
+		await user.click(within(palette).getByRole("button", { name: /Steel Fangs/ }));
+		await user.click(within(palette).getByRole("button", { name: /Serpent's Ire/ }));
+		await user.click(within(palette).getByRole("button", { name: /Writhing Snap/ }));
+		const rowCount = () => screen.getAllByTestId("rotation-row").length;
+		expect(rowCount()).toBe(3);
+
+		// Select rows 1–2 and duplicate them as a block.
+		let rows = screen.getAllByTestId("rotation-row");
+		await user.click(rows[0]);
+		await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
+		rows = screen.getAllByTestId("rotation-row");
+		expect(rows.filter((r) => r.getAttribute("aria-selected") === "true")).toHaveLength(2);
+		await user.keyboard("{Control>}d{/Control}");
+		expect(rowCount()).toBe(5);
+
+		// Undo and redo the duplicate (Ctrl+Z / Ctrl+Y, and the buttons).
+		await user.keyboard("{Control>}z{/Control}");
+		expect(rowCount()).toBe(3);
+		await user.click(screen.getByRole("button", { name: "Redo" }));
+		expect(rowCount()).toBe(5);
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(rowCount()).toBe(3);
+
+		// Copy rows 1–2 (Shift+click) and paste them after the last row. The clipboard events are
+		// fired directly with a stand-in clipboard, since jsdom has no system clipboard.
+		const shiftClick = async (row: HTMLElement) => {
+			await user.keyboard("{Shift>}");
+			await user.click(row);
+			await user.keyboard("{/Shift}");
+		};
+		rows = screen.getAllByTestId("rotation-row");
+		await user.click(rows[0]);
+		await shiftClick(rows[1]);
+		const table = screen.getByLabelText("Rotation", { selector: "div" });
+		let copied = "";
+		fireEvent.copy(table, {
+			clipboardData: { setData: (_: string, text: string) => (copied = text) },
+		});
+		expect(copied).toContain("STEEL_FANGS");
+		await user.click(screen.getAllByTestId("rotation-row")[2]);
+		fireEvent.paste(table, { clipboardData: { getData: () => copied } });
+		rows = screen.getAllByTestId("rotation-row");
+		expect(rows).toHaveLength(5);
+		expect(rows[3].textContent).toContain("Steel Fangs");
+		expect(rows[4].textContent).toContain("Serpent's Ire");
+
+		// Deleting a selected block removes all of it, and undo brings it back.
+		await user.click(rows[3]);
+		await shiftClick(rows[4]);
+		await user.keyboard("{Delete}");
+		expect(rowCount()).toBe(3);
+		await user.keyboard("{Control>}z{/Control}");
+		expect(rowCount()).toBe(5);
 	});
 
 	it("compares two rotations at cutoffs", async () => {
