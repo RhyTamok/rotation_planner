@@ -81,7 +81,8 @@ described there.
 
 - **New browser entry points must import `Components/Main` first** (see `src/RotationLab/ui/main.tsx`).
   The engine's circular imports otherwise leave the page blank. Only the dev server reproduces
-  this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8).
+  this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8). Run it from
+  PowerShell with an absolute root path.
 - Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>`, never plain `prettier`.
 - `DEFAULT_CONFIG` is Black Mage's; use `makeDefaultConfig(job)`.
 - Never reference `controller` in a GameState field initializer.

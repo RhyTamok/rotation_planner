@@ -1,7 +1,8 @@
 # Viper action recommendation ruleset (draft v1)
 
-Status: design agreed with the user (grilling session, 2026-11-03). Not implemented. The next step
-is to turn each table row into a Vitest case. Dragoon gets its own file with the same structure.
+Status: design agreed with the user (grilling session, 2026-11-03). Implemented in
+`src/RotationLab/recommend/` (session 4, phase 1 UI). Dragoon gets its own file with the same
+structure.
 
 ## 1. Purpose and output
 
@@ -100,9 +101,36 @@ Raid buffs and potions, fixed openers (done with presets; an empty rotation or p
 gets "start the combo"), multi-target damage, positional play, advice that depends on holding
 resources for a particular raid-buff window.
 
-## 7. Open points
+## 7. Decisions confirmed by the user (2026-11-03, before implementation)
 
-- Death Rattle / Last Lash handling (section 5) was inferred from the engine, not agreed with the user.
-- Check which Vicewinder charge counts as "close to capping" when a Coil follow-up is pending.
-- Rule 0 "next planned step" timing needs a precise definition when the code is written.
-- Target-count setting must be added to the rotation model (schema bump + migration).
+- **Weave slots:** Viper's real slot count varies (1-3 depending on the GCD), but it has few
+  oGCDs. Assume **2 slots** per GCD, like Dragoon; the user handles edge cases. An oGCD that does
+  not fit stays in the list below the GCD, reason "no weave slot".
+- **Follow-ups stick together:** a follow-up group (e.g. Twinfang + Twinblood after a Coil) is
+  woven as a whole, right after its parent. Its slots are reserved before Serpent's Ire, so Ire
+  waits a GCD rather than splitting or dropping the pair. A started group finishes first.
+- **Rule 1 refresher** = the next GCD that refreshes that buff (Hunter's/Swiftskin's Sting or
+  Coil, Bite or Den for AoE), not the combo finisher.
+- **Rule 0 / Rule 1 timing:** estimated without look-ahead simulation, from the GCD lengths of the
+  actions that rows 5-8 would insert first.
+- **Death Rattle / Last Lash** are direct follow-ups (row 2), as in section 5.
+- **Tests:** regular per-row tests now; the golden replay test comes after another feature.
+
+## 8. Implementation notes (choices made while coding; revisit if the user disagrees)
+
+- Every weaponskill except Uncoiled Fury and Writhing Snap cancels pending Coils/Dens and all
+  follow-up statuses (engine). Hence pending Coils/Dens rank at 5a ("follow-up of Vicewinder") and
+  Rules 0/1 never boost a combo step above them, which would cancel them.
+- Rule 1 picks the soonest way to refresh the buff: a pending Coil, the combo path, or Vicewinder
+  then its Coil. Ties go to the combo path. A buff that is not up counts as at risk.
+- Equal buff timers (e.g. both missing at the pull): Swiftscaled first.
+- Combo step choice: the engine's highlight (Honed buffs, venoms); without one, Steel Fangs / Steel
+  Maw. The sting (step 2) refreshes the buff with less time left.
+- Burst window from the history: the last Serpent's Ire, then the first Reawaken after it
+  (within Ready to Reawaken's 30 s); the window ends when that Reawakened ends.
+- Encounter filter: during downtime, actions that need a target move to a separate "filtered"
+  list with the reason "needs a target" (checked at the GCD's ready time for GCDs).
+
+## 9. Open points
+
+- Target-count setting: added as `RotationDocument.targetCount` (schema 3).

@@ -688,3 +688,131 @@ select {
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	}
 }
+
+/* Recommendations: a floating panel, dragged by its title bar. */
+.rl-recommend {
+	position: fixed;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	max-height: min(70vh, 560px);
+	max-width: calc(100vw - 32px);
+	background: var(--rl-panel);
+	color: var(--rl-text);
+	border: 1px solid var(--rl-border);
+	border-radius: 6px;
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+}
+
+.rl-recommend-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 8px 6px 12px;
+	border-bottom: 1px solid var(--rl-border);
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.rl-recommend-header:active {
+	cursor: grabbing;
+}
+
+.rl-recommend h2,
+.rl-recommend h3 {
+	margin: 0;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.rl-recommend h3 {
+	margin: 10px 0 4px;
+	color: var(--rl-muted);
+}
+
+.rl-recommend-modes {
+	display: flex;
+	gap: 2px;
+}
+
+.rl-recommend-modes button {
+	padding: 2px 8px;
+}
+
+.rl-recommend-modes button[aria-pressed="true"] {
+	background: var(--rl-accent-soft);
+	border-color: var(--rl-accent);
+}
+
+.rl-recommend-body {
+	overflow-y: auto;
+	padding: 8px 12px 10px;
+}
+
+.rl-recommend-targets {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	color: var(--rl-muted);
+}
+
+.rl-recommend-targets input {
+	width: 56px;
+}
+
+.rl-recommend-list {
+	display: grid;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.rl-recommend-list button {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	text-align: left;
+}
+
+.rl-recommend-list li:first-child button {
+	outline: 2px solid var(--rl-accent);
+	outline-offset: -2px;
+}
+
+.rl-recommend-list button.rl-unusable {
+	opacity: 0.45;
+	outline: none;
+}
+
+.rl-recommend-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.rl-recommend-reason {
+	color: var(--rl-muted);
+	font-size: 12px;
+}
+
+.rl-recommend-rule {
+	display: inline-block;
+	min-width: 1.8em;
+	margin-right: 6px;
+	padding: 0 3px;
+	border: 1px solid var(--rl-border);
+	border-radius: 3px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.rl-recommend-empty {
+	margin: 0;
+	color: var(--rl-muted);
+}

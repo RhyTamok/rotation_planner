@@ -37,6 +37,8 @@ import {
 import { formatNumber, RotationTable } from "./RotationTable";
 import { ScenarioPanel } from "./ScenarioPanel";
 import { SkillPalette } from "./SkillPalette";
+import { RecommendationPanel } from "./RecommendationPanel";
+import { isRecommendationSupported } from "../recommend/recommender";
 import { ComparisonView } from "./ComparisonView";
 
 // Stable empty list, so the table's memoized buff lanes are not rebuilt on every render.
@@ -531,6 +533,22 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					countdownExtension={result?.countdownExtension}
 					onInsert={insert}
 				/>
+
+				{isRecommendationSupported(JOB) && <RecommendationPanel
+					job={JOB}
+					prefix={prefix}
+					options={scenarioOptions}
+					countdownExtension={result?.countdownExtension}
+					targetCount={rotation.targetCount}
+					onTargetCountChange={(targetCount) =>
+						replaceRotation({
+							...rotation,
+							targetCount,
+							updatedAt: new Date().toISOString(),
+						})
+					}
+					onInsert={insert}
+				/>}
 			</>
 		)}
 

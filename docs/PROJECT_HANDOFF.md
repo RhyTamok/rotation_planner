@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-03 (end of session 3).
+Last updated 2026-11-03 (session 4: Viper recommendations).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -48,7 +48,7 @@ set changes.
 
 ## 3. Current state (verified 2026-11-03)
 
-- Branch `feature/rotation-lab`. Full suite: 39 files, 251 passed + 9 expected-fail (upstream
+- Branch `feature/rotation-lab`. Full suite: 40 files, 277 passed + 9 expected-fail (upstream
   `it.fails`). `tsc --noEmit` and ESLint clean.
 - The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
 - Rotation Lab: http://localhost:3000/rotation-lab.html (`npm.cmd run start`).
@@ -66,6 +66,13 @@ set changes.
     charges, unusable buttons dimmed.
   - Editing: Shift+click or Shift+↑/↓ range selection, Ctrl+A, Delete, ×, Ctrl+D, Alt+↑/↓,
     drag-and-drop, Ctrl+C/X/V through the system clipboard, and workspace-wide Ctrl+Z/Y.
+- **Recommendations** (`ui/RecommendationPanel.tsx`, `recommend/`), Viper only:
+  - A floating panel, dragged by its title bar, ranks the next actions at the insertion point
+    (GCDs and oGCDs in one list) with the ruleset row and reason. "All" shows the whole list
+    (phase 1), "Best" only the top entry (phase 2). Position and mode are kept in localStorage.
+  - Clicking an entry inserts it. Actions that need a target in downtime are listed under
+    "Filtered".
+  - The panel holds the rotation's **target count** (AoE family at 3 or more).
 - **Gear** (`ui/GearPanel.tsx`): each rotation picks a gear set and can override single values;
   the base GCD is shown. Gear sets can be imported from xivgear set, sheet or BiS links.
 - **Scenario** (`ui/ScenarioPanel.tsx`), shared by every rotation compared under it: level, party
@@ -90,8 +97,9 @@ All Rotation Lab code is in `src/RotationLab/`; its tests are `src/__test__/rota
 | Encounter rules | `rules/encounterRules.ts` | Pull rule, downtime target rule (on when `encounterRules: true`; always on for editor scenarios) |
 | Resource tracking | `rules/resourceTracking.ts` | Per-job gauges, timers (with icons) and combos with finishers, for row snapshots and combo-break notes |
 | Damage | `damage/DamageModel.ts` | xivgear formulas; verified for VPR at levels 80/90/100 only |
-| Documents | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `validation.ts` | `SCHEMA_VERSION` 2; `AVAILABLE_RULESETS` (reborn `reborn-dt-1`) |
-| Storage | `storage/WorkspaceStore.ts`, `storage/migrations.ts` | Migration 1→2 keeps a backup under `rotationLab.workspace.v1` |
+| Documents | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `validation.ts` | `SCHEMA_VERSION` 3 (rotations have `targetCount`); `AVAILABLE_RULESETS` (reborn `reborn-dt-1`) |
+| Storage | `storage/WorkspaceStore.ts`, `storage/migrations.ts` | Each migration keeps a backup under `rotationLab.workspace.v<old>` |
+| Recommendations | `recommend/context.ts`, `recommender.ts`, `vpr.ts` | Shared context (legality, timers, weave slots) and `arrange` (slot fitting); one ruleset per job registered in `recommender.ts`. Rules: `docs/rulesets/` |
 | Cache | `simulation/SimulationManager.ts` | LRU keyed by job, ruleset, steps and the merged options (scenario + resolved gear) |
 | Editor logic | `editor/rotationEdits.ts`, `history.ts`, `clipboard.ts`, `paletteState.ts`, `buffLanes.ts` | Pure and unit-tested |
 | Comparison | `comparison/compare.ts` | Pure: cumulative series, DPS samples, lead changes, burst windows, gauges at cutoffs |
@@ -154,6 +162,10 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
   pushed it past its ready time.
 - **Damage:** Viper is Dexterity, jobmod 110, weapon delay 2.64 (editable per gear set), no trait.
   Gemdraught is +10 % main stat, capped by grade.
+- **Recommendations:** the agreed rules live in `docs/rulesets/vpr-recommendations.md` (section 7
+  has the user's answers of session 4: 2 weave slots, follow-up groups stay together, Rule 1 means
+  the next GCD that refreshes the buff). Recommendation rules are advice, versioned in those docs,
+  not in `AVAILABLE_RULESETS`.
 - **Gear import:** xivgear substats include food; the main stat is taken before party bonus and
   potion (the Lab applies those). A sheet link imports every set as its own gear set.
 
@@ -161,12 +173,14 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
 
 Ordered roughly by the user's priorities. Discuss each with the user before starting.
 
-1. **Recommendations:** suggest next actions (e.g. after Reaving Fangs, Swiftskin's Sting or
-   Hunter's Sting). The Viper ruleset is written and agreed (draft v1) in
-   `docs/rulesets/vpr-recommendations.md`; implement it from there, don't invent rules. The
-   Dragoon ruleset is agreed too (draft v1, `docs/rulesets/drg-recommendations.md`). Both need a
-   per-rotation target-count setting (one schema bump) and a shared recommender interface. For
-   the Dragoon golden test, ask the user for an opener and a 2-minute cycle.
+1. **Recommendations:**
+   - Viper is implemented (session 4). The user still has to review it in the browser, and the
+     interpretation choices in section 8 of the Viper ruleset doc need their confirmation.
+   - Golden replay tests: postponed by the user until after another feature. Ask for an opener
+     and a 2-minute cycle for each job then.
+   - Dragoon: implement `docs/rulesets/drg-recommendations.md` as `recommend/drg.ts` on the same
+     context. `arrange` already handles weave slots (Stardiver: `slots: 2`). It needs DRG resource
+     tracking (open work 3) only for the UI, not for the rules.
 2. **Comparison extras:**
    - persist cutoffs and the chart start time;
    - compare more than two rotations;
@@ -200,7 +214,9 @@ Known limitations:
   `npm.cmd exec -- eslint src/RotationLab`.
 - **Dev-server page check** (after adding engine imports to the page, or a new entry point):
   start a second server with `npm.cmd exec -- vite --port 3100 --strictPort` in the background,
-  then run `node tools/dev-load/dev-load.mjs . http://localhost:3100 /src/RotationLab/ui/main.tsx`.
+  then run `node tools/dev-load/dev-load.mjs C:\Dev\rotation_planner http://localhost:3100 /src/RotationLab/ui/main.tsx`
+  **from PowerShell**. The root must be an absolute path (Node 26 rejects `.`), and Git Bash
+  rewrites the `/src/...` argument into a Windows path.
   It loads the page's native ES modules in Node with jsdom and prints `errors: none` plus the
   start of the rendered text. Stop the server afterwards. The user's own server on port 3000 is
   never touched.

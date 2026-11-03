@@ -119,8 +119,8 @@ particular raid-buff window, Power Surge or Draconian Fire upkeep, Life Surge ca
 
 ## 8. Open points
 
-- **Target-count setting** does not exist yet (shared with Viper: per rotation, default 1). Needs
-  one `SCHEMA_VERSION` bump and a migration step.
+- **Target-count setting:** done in session 4 (`RotationDocument.targetCount`, schema 3), shared
+  with Viper. The shared interface is in `src/RotationLab/recommend/context.ts`.
 - Recommendation rules are advice, not simulation: version them per job and ruleset in their own
   docs. No `AVAILABLE_RULESETS` bump for them.
 - **Build order:** one shared recommender interface (state, history, target count -> ranked list),

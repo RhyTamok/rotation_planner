@@ -79,6 +79,7 @@ describe("Rotation Lab - rotation documents", () => {
 		const valid = createRotation({ name: "ok", job: "VPR", steps: FILLER });
 		const cases: [string, (doc: RotationDocument) => unknown][] = [
 			["schemaVersion", (d) => ({ ...d, schemaVersion: 99 })],
+			["targetCount", (d) => ({ ...d, targetCount: 0 })],
 			["unknown job", (d) => ({ ...d, job: "XYZ" })],
 			[
 				"not a VPR action",
@@ -385,6 +386,29 @@ describe("Rotation Lab - workspace storage", () => {
 			},
 		);
 		expect(migrated).toEqual(before);
+	});
+
+	it("migrates version 2 workspaces: every rotation is planned for one target", () => {
+		const current = sampleWorkspace();
+		const asV2 = <T extends object>(doc: T) => ({ ...doc, schemaVersion: 2 });
+		const rotation: Partial<RotationDocument> = asV2(current.rotations[0]);
+		delete rotation.targetCount;
+		const v2 = {
+			...current,
+			schemaVersion: 2,
+			rotations: [rotation],
+			scenarios: current.scenarios.map(asV2),
+			gearSets: current.gearSets.map(asV2),
+		};
+
+		const storage = memoryStorage();
+		storage.setItem(WORKSPACE_KEY, JSON.stringify(v2));
+		const { workspace, errors, migratedFrom } = loadWorkspace(storage);
+
+		expect(errors).toEqual([]);
+		expect(migratedFrom).toBe(2);
+		expect(storage.data.get(`${WORKSPACE_KEY}.v2`)).toBe(JSON.stringify(v2));
+		expect(workspace).toEqual(current);
 	});
 });
 

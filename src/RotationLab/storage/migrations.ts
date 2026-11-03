@@ -52,7 +52,22 @@ function v1ToV2(workspace: Obj): Obj {
 	};
 }
 
-const STEPS: Record<number, (workspace: Obj) => Obj> = { 1: v1ToV2 };
+// 2 → 3: rotations get a target count; every existing rotation was planned for one target.
+function v2ToV3(workspace: Obj): Obj {
+	const bump = (docs: unknown, extra: Obj = {}) =>
+		Array.isArray(docs)
+			? docs.map((doc) => (isObject(doc) ? { ...extra, ...doc, schemaVersion: 3 } : doc))
+			: docs;
+	return {
+		...workspace,
+		schemaVersion: 3,
+		rotations: bump(workspace.rotations, { targetCount: 1 }),
+		scenarios: bump(workspace.scenarios),
+		gearSets: bump(workspace.gearSets),
+	};
+}
+
+const STEPS: Record<number, (workspace: Obj) => Obj> = { 1: v1ToV2, 2: v2ToV3 };
 
 // Returns the workspace at SCHEMA_VERSION, or an error for versions it cannot upgrade.
 export function migrateWorkspace(workspace: Obj): { workspace: Obj } | { error: string } {

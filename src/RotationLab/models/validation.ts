@@ -118,6 +118,9 @@ export function parseRotationDocument(input: unknown): ParseResult<RotationDocum
 		});
 	}
 
+	if (!(Number.isInteger(input.targetCount) && (input.targetCount as number) >= 1)) {
+		errors.push("targetCount must be a whole number of at least 1");
+	}
 	if (input.gearSetId !== undefined && !isNonEmptyString(input.gearSetId)) {
 		errors.push("gearSetId must be a non-empty string");
 	}

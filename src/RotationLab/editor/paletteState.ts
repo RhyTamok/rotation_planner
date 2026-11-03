@@ -38,6 +38,21 @@ const WAITING_ONLY = new Set<string>([
 // Simulates `steps` (the rotation up to the insertion point) and reads every button's state.
 // `countdownExtension` comes from the full rotation's result, so that the prefix runs on the same
 // clock: the pull rule may have lengthened the countdown because of actions after the prefix.
+export function simulatePrefix(
+	job: ShellJob,
+	steps: RotationStep[],
+	options: SimulationOptions,
+	countdownExtension = 0,
+): RotationSimulator {
+	const countdown = options.config?.countdown ?? makeDefaultConfig(job).countdown;
+	const simulator = new RotationSimulator(job, {
+		...options,
+		config: { ...options.config, countdown: countdown + countdownExtension },
+	});
+	steps.forEach((step) => simulator.step(step));
+	return simulator;
+}
+
 export function hotbarStateAfter(
 	job: ShellJob,
 	steps: RotationStep[],
@@ -45,12 +60,7 @@ export function hotbarStateAfter(
 	options: SimulationOptions,
 	countdownExtension = 0,
 ): HotbarState {
-	const countdown = options.config?.countdown ?? makeDefaultConfig(job).countdown;
-	const simulator = new RotationSimulator(job, {
-		...options,
-		config: { ...options.config, countdown: countdown + countdownExtension },
-	});
-	steps.forEach((step) => simulator.step(step));
+	const simulator = simulatePrefix(job, steps, options, countdownExtension);
 	const game = simulator.game;
 
 	const buttons = new Map<ActionKey, ButtonState>();
