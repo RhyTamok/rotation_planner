@@ -1,13 +1,17 @@
-
 # FFXIV Rotation Lab
 
 ## Project Overview
 
-This project is an independently maintained fork of XIV in the Shell, focused initially on FFXIV Viper (VPR).
+This project is an independently maintained fork of XIV in the Shell, focused on FFXIV Viper (VPR)
+and later Dragoon (DRG).
 
-Read `docs/PROJECT_HANDOFF.md` for the complete project history, architectural findings, verified tests, technical decisions, and implementation roadmap.
+**Read `docs/PROJECT_HANDOFF.md` first.** It describes the current state, architecture map,
+engine pitfalls, the game rules the user has confirmed, open work and how to verify changes.
+The detailed history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: search
+it when needed, don't read it whole.
 
-Treat the handoff as historical project context. Inspect the actual repository before relying on any implementation or test status described there.
+Treat both as context. Inspect the repository and run the tests before relying on any status
+described there.
 
 ## Primary Goals
 
@@ -15,20 +19,16 @@ Treat the handoff as historical project context. Inspect the actual repository b
 2. Reuse existing XIV in the Shell combat mechanics wherever practical.
 3. Support multiple independently editable and comparable rotations.
 4. Calculate deterministic expected damage, not full Monte Carlo simulations.
-5. Compare cumulative damage, DPS, burst windows, and different fight durations.
+5. Compare DPS, cumulative damage, burst windows, and different fight durations.
 6. Support both Viper Reborn and future Evolved combat modes, with independently versioned rulesets.
 7. Keep the application local-first, with no backend requirement.
 
 ## Environment
 
-- Windows
-- VS Code with Claude Code
-- GitHub Desktop for Git management
-- React, TypeScript, Vite, Vitest
-- npm
-- Local development server: http://localhost:3000/
-
-Use Windows-compatible commands. When invoking npm from PowerShell, prefer `npm.cmd`.
+- Windows, VS Code with Claude Code, GitHub Desktop for Git (the user commits; `git` is not on PATH).
+- React, TypeScript, Vite, Vitest, npm. Use `npm.cmd` from PowerShell.
+- Dev server: `npm.cmd run start` → http://localhost:3000/ (original app) and
+  http://localhost:3000/rotation-lab.html (Rotation Lab).
 
 ## Architecture Rules
 
@@ -42,6 +42,9 @@ Use Windows-compatible commands. When invoking npm from PowerShell, prefer `npm.
 - Avoid speculative game mechanics and unverified potency values.
 - Do not perform broad refactors or dependency upgrades without a clear reason.
 - Keep the existing XIV in the Shell functionality working unless an explicitly approved change requires otherwise.
+- All Rotation Lab workspace changes go through `setWorkspace` in `RotationLabApp`, so they are undoable.
+- When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When a
+  stored document's shape changes, bump `SCHEMA_VERSION` and add a step in `storage/migrations.ts`.
 
 ## Working Practices
 
@@ -53,69 +56,28 @@ Use Windows-compatible commands. When invoking npm from PowerShell, prefer `npm.
 - Verify whether files already exist before creating replacements.
 - Distinguish actual test results from assumptions.
 - Explain major changes and outstanding risks in plain English.
-- Make incremental, reviewable changes.
+- Make incremental, reviewable changes. End each task with a suggested commit message and file list.
 - Do not force-push or destructively alter Git history.
-- Ask for clarification when FFXIV mechanics are genuinely ambiguous.
+- Ask for clarification when FFXIV mechanics are genuinely ambiguous, and record the answer in the handoff (section 6).
+- Keep token use low: targeted reads, batched checks, full test suite once per task.
+- Update `docs/PROJECT_HANDOFF.md` and this file at the end of each task.
+
+## Pitfalls That Break Things Silently
+
+- **New browser entry points must import `Components/Main` first** (see `src/RotationLab/ui/main.tsx`).
+  The engine's circular imports otherwise leave the page blank. Only the dev server reproduces
+  this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8).
+- Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>`, never plain `prettier`.
+- `DEFAULT_CONFIG` is Black Mage's; use `makeDefaultConfig(job)`.
+- Never reference `controller` in a GameState field initializer.
 
 ## Job Scope
 
-Only Viper (VPR) and, later, Dragoon (DRG) are needed. The other upstream jobs may be
-removed when it is safe to do so (see "Codebase reduction" in `docs/PROJECT_HANDOFF.md`).
-Until then, keep their code and tests: they are the regression net for shared engine code.
-
-## Current Verified Baseline (2026-11-02)
-
-- Original XIV in the Shell application runs locally; confirmed by the user after the engine changes.
-- Rotation Lab editor page: http://localhost:3000/rotation-lab.html (second Vite entry, `rotation-lab.html`, `src/RotationLab/ui/`). The original app at `/` is untouched.
-- Character stats live in per-rotation gear sets (`models/GearSet.ts`, `resolveGear`); scenarios hold only shared fight settings. Stored format is `SCHEMA_VERSION` 2; migrations live in `storage/migrations.ts` (handoff 0.3j).
-- Gear sets can be imported from xivgear links (`import/xivgear.ts`, handoff 0.3k); stats come from xivgear's API, never recomputed here.
-- Editor has workspace-wide undo/redo (`editor/history.ts`), range selection, and copy/paste of step blocks through the system clipboard (`editor/clipboard.ts`); handoff 0.3l. All workspace changes must go through `setWorkspace` in `RotationLabApp` so they are undoable.
-- Full suite: 39 test files, 251 passed + 9 expected-fail (upstream `it.fails` cases). `tsc --noEmit` and ESLint clean.
-- Editor scenarios use nominal GCD lengths: `fps` defaults to 0, which disables XIV in the Shell's frame-rate tax (`XIVMath.afterFpsTax`). Upstream defaults to 60 fps, which turns 2.12 s into about 2.133 s.
-- Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>` (the project's formatter). Do not use plain `prettier`: it is not installed, and npx fetches stock prettier, which reformats JSX differently.
-- Editor scenarios simulate with `encounterRules` on: the first hit lands at exactly 0 s, targeted actions are invalid in downtime, and ghosting is allowed. Handoff section 0.3g.
-- Expected damage: `src/RotationLab/damage/DamageModel.ts` reimplements xivgear's formulas (floored chain, main stat with party bonus, WD, auto-attacks with weapon delay, Gemdraught as capped +10% main stat). Verified constants: levels 80/90/100; jobs: VPR only (Dex jobmod 110, weapon delay 2.64, no trait). Other jobs/levels report potency only (`result.damage` undefined).
-- Reference repo for formulas: local clone at `C:\Dev\gear-planner` (xivgear; the author permits reuse). Search it locally instead of fetching from GitHub.
-- Headless simulation exists: `src/RotationLab/simulation/RotationSimulator.ts`.
-  Each simulation owns its GameConfig, GameState and `RecordingHost`; it does not touch the global controller.
-- Per-action parity with the real controller is tested on four Viper sequences, and the upstream
-  level 100 opener totals are reproduced exactly.
-- Party buffs and downtime are per-simulation options (`partyBuffs`, `downtime`), served by `RecordingHost.timeline`. Parity with the controller under buff and untargetable markers is tested in `rotationLabEncounter.test.ts`. Results echo the conditions in `result.encounter`.
-
-Check the actual working tree and test results before continuing.
-
-## Engine Facts That Are Easy to Get Wrong
-
-- `GameState.host` (interface in `src/Game/SimulationHost.ts`) receives damage resolution, warnings
-  and timeline events. It defaults lazily to the global `controller`; pass a host via
-  `getGameState(config, host)` for headless runs. Never reference `controller` in a GameState
-  field initializer: the controller builds a GameState while its own module is still loading.
-- Damage only "lands" when the host calls `Potency.resolve()`. Without a per-game host, a headless
-  GameState reports into the global controller.
-- The engine has circular imports (e.g. `Resources.ts` ↔ `Jobs/BLM.ts`) that only initialize in the original app's load order. Any new browser entry point must import `Components/Main` first (see `src/RotationLab/ui/main.tsx`). Otherwise the page is blank with "can't access lexical declaration 'resourceInfos' before initialization". **Vitest and the production build do not reproduce this; only the dev server (native ES modules) does.** To verify a page headlessly, run its entry from a dev server in Node with HTTP loader hooks and jsdom.
-- `DEFAULT_CONFIG` is Black Mage's config. Use `makeDefaultConfig("VPR")` for Viper.
-- `DamageStatistics.ts` is a UI view-model bound to the global controller. Aggregate from
-  `ActionNode`/`Potency` (as `RotationSimulator.result()` does) instead.
-- Potencies created in `GameState` carry `partyBuffSource` (their game). Potencies created in other job files, and `new Buff(type)` without a job, still fall back to the global controller. The Viper path has no remaining global reads.
-- `git` is not on PATH; GitHub Desktop's bundled `git.exe` works. The user makes commits through GitHub Desktop.
-
-## Next Development Priority
-
-1. (Done) Per-simulation party buffs and downtime.
-2. (Done) Expected damage cross-checked against the 7.2 workbook; see `rotationLabWorkbook.test.ts`.
-3. (Done) Persistence model, validation, result cache and workspace storage: `src/RotationLab/models/`, `simulation/SimulationManager.ts`, `storage/WorkspaceStore.ts`. When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When the document shape changes, bump `SCHEMA_VERSION` and add a migration step in `storage/migrations.ts`.
-4. (Done, first version) Vertical editor page; see handoff section 0.3e.
-5. User feedback backlog on the editor: handoff section 0.3f. Pull timing, downtime enforcement, oGCD delay and resource tracking are done (0.3g). The palette state at the insertion point and the party buff lanes are done too (0.3h). Still open: recommendations, after comparison.
-6. (Done, first version) Two-rotation comparison: `comparison/compare.ts` and `ui/ComparisonView.tsx`, handoff section 0.3i. xivgear gear set import done (0.3k). Editor polish done (0.3l). **Next:** the user's review, then recommendations (needs an agreed ruleset), comparison extras, Dragoon.
-7. Dragoon support through the same simulator.
-
-Prioritize simulation correctness before large UI changes.
+Only Viper and, later, Dragoon are needed. Keep the other upstream jobs and their tests for now:
+they are the regression net for shared engine code (handoff section 7, codebase reduction).
 
 ## Reference Material
 
-The workbook `reference/VPR 7.2 DT Planner v2.22.xlsx`
-contains historical Viper rotation logic, formulas,
-skill data, and sample calculations for patch 7.2.
-
-Use it for analysis and regression-test development.
-Do not assume its skill values are valid for newer patches.
+- `reference/VPR 7.2 DT Planner v2.22.xlsx`: historical 7.2 Viper workbook, used for regression
+  tests. Its values may be outdated; its sheets are large, so estimate the token cost before reading.
+- `C:\Dev\gear-planner`: local clone of xivgear (formulas, API). The author permits reuse.
