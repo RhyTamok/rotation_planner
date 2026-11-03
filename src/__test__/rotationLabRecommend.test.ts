@@ -60,6 +60,14 @@ describe("Rotation Lab - Viper recommendations", () => {
 		expect(entry(r, "STEEL_FANGS")).toMatchObject({ rule: "9", reason: "combo step" });
 	});
 
+	it("reports the buff timers at the insertion point", () => {
+		const labels = recommend(["REAVING_FANGS", "REAVING_FANGS"], []).resources.timers.map(
+			(t) => t.label,
+		);
+		expect(labels).toContain("Swiftscaled");
+		expect(labels).not.toContain("Hunter's Instinct");
+	});
+
 	it("does not recommend Serpent's Ire before combat (legality comes from the engine)", () => {
 		expect(entry(recommend([]), "SERPENTS_IRE")).toBeUndefined();
 	});
@@ -110,6 +118,29 @@ describe("Rotation Lab - Viper recommendations", () => {
 			const r = recommend([PULL, "REAWAKEN", "STEEL_FANGS"], offerings);
 			expect(shows(r)).toEqual(["SERPENTS_IRE", "FIRST_LEGACY", "SECOND_GENERATION"]);
 			expect(r.ranked[1].reason).toBe("follow-up of First Generation");
+		});
+
+		it("keeps Uncoiled Fury listed below the Reawaken sequence", () => {
+			const coils = [...BUFFS_UP, set("SERPENT_OFFERINGS", 50), set("RATTLING_COIL", 1)];
+			const r = recommend([PULL, "REAWAKEN", "STEEL_FANGS"], coils);
+			expect(shows(r)).toEqual([
+				"SERPENTS_IRE",
+				"FIRST_LEGACY",
+				"SECOND_GENERATION",
+				"UNCOILED_FURY",
+			]);
+			expect(r.ranked[3]).toMatchObject({ rule: "10", reason: "spend coil" });
+			const capped = recommend(
+				[PULL, "REAWAKEN"],
+				[...BUFFS_UP, set("SERPENT_OFFERINGS", 50), set("RATTLING_COIL", 3)],
+			);
+			expect(entry(capped, "UNCOILED_FURY")).toMatchObject({
+				rule: "5b",
+				reason: "coil cap",
+			});
+			expect(indexOf(capped, "UNCOILED_FURY")).toBeGreaterThan(
+				indexOf(capped, "FIRST_GENERATION"),
+			);
 		});
 	});
 

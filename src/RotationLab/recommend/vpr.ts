@@ -171,6 +171,14 @@ export function recommendViper(ctx: RecommenderContext): Candidate[] {
 		});
 		const next = steps.filter((b) => ctx.highlighted(ctx.shows(b)));
 		(next.length > 0 ? next : steps).forEach((b) => add(b, "2", followUpReason));
+		// Uncoiled Fury does not touch the Reawaken combo, so it stays available below the
+		// sequence (user, session 4). Like any weaponskill it drops a pending Legacy, which is
+		// woven first.
+		if (ctx.amount("RATTLING_COIL") >= 1) {
+			const capped =
+				ctx.amount("RATTLING_COIL") >= ctx.game.resources.get("RATTLING_COIL").maxValue;
+			add("UNCOILED_FURY", capped ? "5b" : "10", capped ? "coil cap" : "spend coil");
+		}
 		return out;
 	}
 

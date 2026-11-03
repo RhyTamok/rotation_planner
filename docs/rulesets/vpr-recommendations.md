@@ -92,7 +92,9 @@ definition. Tests may later change this.
 | AoE finisher | Last Lash (oGCD) | `LAST_LASH_READY` (assumption, not discussed) |
 
 While Reawakened, the Reawaken sequence entries fill the list (they are the pending follow-ups);
-only Serpent's Ire (row 1) ranks above them.
+only Serpent's Ire (row 1) ranks above them. Uncoiled Fury stays listed below the sequence (5b at
+3 coils, otherwise 10): it does not interrupt Reawaken (user, session 4). Like every weaponskill it
+drops a pending Legacy, which is woven first.
 The engine's replace chain (`replaceIf`) is authoritative for which twin/Den variant is next.
 
 ## 6. Non-goals (v1)
@@ -133,4 +135,7 @@ resources for a particular raid-buff window.
 
 ## 9. Open points
 
-- Target-count setting: added as `RotationDocument.targetCount` (schema 3).
+- Target count: read from `RotationDocument.targetCount` (schema 3, always 1 for now, not
+  editable). The user wants targets as their own feature: per rotation, with timeframes like party
+  buffs, also used for damage (handoff section 7). The recommender should then read the count at
+  the press time.

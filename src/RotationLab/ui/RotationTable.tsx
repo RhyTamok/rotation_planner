@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { EditorRow } from "../editor/rotationEdits";
 import { buffLanes, laneCoverage } from "../editor/buffLanes";
-import { GaugeValue, trackedGauges } from "../rules/resourceTracking";
+import { GaugeValue, TimerValue, trackedGauges } from "../rules/resourceTracking";
 import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import { formatNumber } from "./format";
 import { actionName, skillIconUrl } from "./SkillPalette";
@@ -168,6 +168,25 @@ function saveDebug(on: boolean) {
 	}
 }
 
+// Buff and combo timers as icons with the seconds left, soonest first.
+export function TimerChips(props: { timers: TimerValue[] }) {
+	if (props.timers.length === 0) return <span className="rl-note">no active timers</span>;
+	return <>
+		{props.timers.map((t) => <span
+			className="rl-timer"
+			key={t.label}
+			title={t.label}
+			data-testid="timer"
+		>
+			<img className="rl-timer-icon" src={`/assets/${t.icon}`} alt={t.label} />
+			{t.stacks > 1 && <span className="rl-timer-stacks">{t.stacks}</span>}
+			<span className="rl-timer-time">
+				{t.remaining === undefined ? "∞" : formatNumber(t.remaining, 1)}
+			</span>
+		</span>)}
+	</>;
+}
+
 // Active timers at the selected row, or at the last action before it (e.g. for a wait row).
 function TimerPanel(props: {
 	rows: EditorRow[];
@@ -184,22 +203,7 @@ function TimerPanel(props: {
 	const timers = row?.action?.resources.timers ?? [];
 	return <div className="rl-timers" aria-label="Timers">
 		<span className="rl-timers-title">{row ? `After #${row.index + 1}` : "Timers"}</span>
-		{timers.length === 0 ? (
-			<span className="rl-note">no active timers</span>
-		) : (
-			timers.map((t) => <span
-				className="rl-timer"
-				key={t.label}
-				title={t.label}
-				data-testid="timer"
-			>
-				<img className="rl-timer-icon" src={`/assets/${t.icon}`} alt={t.label} />
-				{t.stacks > 1 && <span className="rl-timer-stacks">{t.stacks}</span>}
-				<span className="rl-timer-time">
-					{t.remaining === undefined ? "∞" : formatNumber(t.remaining, 1)}
-				</span>
-			</span>)
-		)}
+		<TimerChips timers={timers} />
 		<label className="rl-debug-toggle">
 			<input
 				type="checkbox"

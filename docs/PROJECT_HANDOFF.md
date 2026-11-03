@@ -48,7 +48,7 @@ set changes.
 
 ## 3. Current state (verified 2026-11-03)
 
-- Branch `feature/rotation-lab`. Full suite: 40 files, 277 passed + 9 expected-fail (upstream
+- Branch `feature/rotation-lab`. Full suite: 40 files, 279 passed + 9 expected-fail (upstream
   `it.fails`). `tsc --noEmit` and ESLint clean.
 - The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
 - Rotation Lab: http://localhost:3000/rotation-lab.html (`npm.cmd run start`).
@@ -72,7 +72,10 @@ set changes.
     (phase 1), "Best" only the top entry (phase 2). Position and mode are kept in localStorage.
   - Clicking an entry inserts it. Actions that need a target in downtime are listed under
     "Filtered".
-  - The panel holds the rotation's **target count** (AoE family at 3 or more).
+  - The panel shows the buff and combo timers at the insertion point (`TimerChips`, shared with
+    the table's timer bar). The user's main focus is this panel.
+  - Target count: `RotationDocument.targetCount` (schema 3) exists but has no UI and is always 1;
+    see open work "Targets".
 - **Gear** (`ui/GearPanel.tsx`): each rotation picks a gear set and can override single values;
   the base GCD is shown. Gear sets can be imported from xivgear set, sheet or BiS links.
 - **Scenario** (`ui/ScenarioPanel.tsx`), shared by every rotation compared under it: level, party
@@ -180,22 +183,29 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
      and a 2-minute cycle for each job then.
    - Dragoon: implement `docs/rulesets/drg-recommendations.md` as `recommend/drg.ts` on the same
      context. `arrange` already handles weave slots (Stardiver: `slots: 2`). It needs DRG resource
-     tracking (open work 3) only for the UI, not for the rules.
-2. **Comparison extras:**
+     tracking (open work 4) only for the UI, not for the rules.
+2. **Targets** (requested by the user, session 4; a feature of its own, discuss before starting):
+   - Per rotation, edited like party buffs: extra targets for specific timeframes.
+   - Used by the damage calculation (multi-target damage, falloff from the engine's potency
+     data) and by the recommendations (AoE family at 3+ targets, count at the press time).
+   - Replaces the plain `targetCount` field: schema 3 → 4 migration.
+   - Check how upstream models targets first (`RotationStep.targets`, `targetCount` in
+     `GameState.ts`, `Potency.ts`, `Record.ts`).
+3. **Comparison extras:**
    - persist cutoffs and the chart start time;
    - compare more than two rotations;
    - optionally an "expired combo" note;
    - a different UI for buff lanes, which the user may revisit.
-3. **Dragoon:**
+4. **Dragoon:**
    - add damage-model constants (jobmod, delay, trait) from xivgear;
    - parity tests like Viper's;
    - resource tracking;
    - DRG's own raid buffs (Battle Litany) must come from the rotation, not fixed scenario
      windows; check how upstream does it first.
-4. **Evolved ruleset** once Evercold mechanics are published (`AVAILABLE_RULESETS.evolved`).
-5. **Proper fix for the circular imports**, e.g. a type-only `BLMState` import in `Resources.ts`.
+5. **Evolved ruleset** once Evercold mechanics are published (`AVAILABLE_RULESETS.evolved`).
+6. **Proper fix for the circular imports**, e.g. a type-only `BLMState` import in `Resources.ts`.
    This is an engine change.
-6. **Codebase reduction** (only VPR/DRG are needed). Not urgent:
+7. **Codebase reduction** (only VPR/DRG are needed). Not urgent:
    - Other jobs' tests protect shared engine code. Keep them until VPR/DRG tests cover casts,
      DoTs, autos, charges and party buffs.
    - Party-buff definitions in `Game/Buffs.ts` reference other jobs' IDs and must stay valid.

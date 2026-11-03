@@ -1,6 +1,7 @@
 import { ShellJob } from "../../Game/Data/Jobs";
 import { simulatePrefix } from "../editor/paletteState";
 import { needsTarget } from "../rules/encounterRules";
+import { ResourceSnapshot, snapshotResources } from "../rules/resourceTracking";
 import { RotationStep, SimulationOptions } from "../simulation/types";
 import { arrange, Candidate, Recommendation, RecommenderContext } from "./context";
 import { recommendViper } from "./vpr";
@@ -23,6 +24,8 @@ export interface Recommendations {
 	ranked: Recommendation[];
 	// Excluded by the encounter rules (e.g. "needs a target" in downtime), kept for debugging.
 	filtered: Recommendation[];
+	// Gauges and active timers at the insertion point.
+	resources: ResourceSnapshot;
 }
 
 // Recommends the next actions after `steps` (the rotation up to the insertion point). As for the
@@ -58,5 +61,5 @@ export function recommendAfter(
 			ranked.push(rec);
 		}
 	}
-	return { time, ranked, filtered };
+	return { time, ranked, filtered, resources: snapshotResources(simulator.game) };
 }

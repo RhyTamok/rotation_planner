@@ -4,6 +4,7 @@ import { ShellJob } from "../../Game/Data/Jobs";
 import { recommendAfter, Recommendation } from "../recommend/recommender";
 import { RotationStep, SimulationOptions } from "../simulation/types";
 import { formatNumber } from "./format";
+import { TimerChips } from "./RotationTable";
 import { actionName, skillIconUrl } from "./SkillPalette";
 
 // Floating panel with the next-action recommendations at the insertion point
@@ -64,8 +65,8 @@ export function RecommendationPanel(props: {
 	prefix: RotationStep[];
 	options: SimulationOptions;
 	countdownExtension?: number;
+	// From the rotation document; not editable yet (per-window targets are planned separately).
 	targetCount: number;
-	onTargetCountChange: (targetCount: number) => void;
 	onInsert: (step: RotationStep) => void;
 }) {
 	const { job, prefix, options, countdownExtension, targetCount, onInsert } = props;
@@ -155,20 +156,9 @@ export function RecommendationPanel(props: {
 			</div>
 		</header>
 		<div className="rl-recommend-body">
-			<label className="rl-recommend-targets">
-				Targets
-				<input
-					type="number"
-					min={1}
-					max={30}
-					step={1}
-					value={targetCount}
-					onChange={(e) => {
-						const n = Number(e.target.value);
-						if (Number.isInteger(n) && n >= 1) props.onTargetCountChange(n);
-					}}
-				/>
-			</label>
+			{recommendations && <div className="rl-recommend-timers" aria-label="Timers">
+				<TimerChips timers={recommendations.resources.timers} />
+			</div>}
 			{!recommendations ? (
 				<p className="rl-recommend-empty">No recommendations: the scenario is invalid.</p>
 			) : shown.length === 0 ? (

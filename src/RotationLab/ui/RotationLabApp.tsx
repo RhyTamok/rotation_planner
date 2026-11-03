@@ -540,13 +540,6 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					options={scenarioOptions}
 					countdownExtension={result?.countdownExtension}
 					targetCount={rotation.targetCount}
-					onTargetCountChange={(targetCount) =>
-						replaceRotation({
-							...rotation,
-							targetCount,
-							updatedAt: new Date().toISOString(),
-						})
-					}
 					onInsert={insert}
 				/>}
 			</>
