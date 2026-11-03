@@ -283,7 +283,11 @@ The user's answers on the rules:
   - Delete and the × button remove the whole range (`removeEntries`, `neighbourAfterRemovalOf`).
   - Ctrl+D duplicates it and Alt+↑/↓ moves it (`moveBlock`).
   - The palette inserts after the range's last row.
-- **Copy/cut/paste:** native clipboard events on the table (`editor/clipboard.ts`).
+- **Copy/cut/paste** (`editor/clipboard.ts`, handled in `RotationTable`).
+  - **Bug found by the user:** handlers on the table div never fired. With no text selected (rows are `user-select: none`), browsers send copy/cut/paste to `document.body`, not to the focused element.
+  - **Fix:** the table listens on `document` and acts only while focus is inside it and not in an input.
+  - **Fallback:** if a Ctrl+C/X/V press produces no clipboard event (Firefox may not fire paste outside editable elements), the table uses `navigator.clipboard.writeText` / `readText`. Firefox shows its own "Paste" confirmation for `readText`.
+  - Tests fire the events at `document.body` and cover the fallback through user-event's clipboard stub.
   - Steps are written as JSON (`{rotationLabSteps, job, steps}`), so they paste across rotations and tabs.
   - Pasting validates the steps through `parseRotationDocument` and refuses other jobs' steps or anything else.
 - **Tests:** `rotationLabHistory.test.ts` (history, range edits, clipboard), plus an editor page test covering Shift selection, duplicate, undo/redo, copy/paste and block delete. jsdom has no system clipboard, so the page test fires the copy and paste events with a stand-in clipboard object.

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -236,7 +236,8 @@ describe("Rotation Lab - editor page", () => {
 		expect(rowCount()).toBe(3);
 
 		// Copy rows 1–2 (Shift+click) and paste them after the last row. The clipboard events are
-		// fired directly with a stand-in clipboard, since jsdom has no system clipboard.
+		// fired with a stand-in clipboard (jsdom has none) at the page body, where real browsers
+		// send them when no text is selected, not at the focused table.
 		const shiftClick = async (row: HTMLElement) => {
 			await user.keyboard("{Shift>}");
 			await user.click(row);
@@ -246,13 +247,14 @@ describe("Rotation Lab - editor page", () => {
 		await user.click(rows[0]);
 		await shiftClick(rows[1]);
 		const table = screen.getByLabelText("Rotation", { selector: "div" });
+		expect(table.contains(document.activeElement)).toBe(true);
 		let copied = "";
-		fireEvent.copy(table, {
+		fireEvent.copy(document.body, {
 			clipboardData: { setData: (_: string, text: string) => (copied = text) },
 		});
 		expect(copied).toContain("STEEL_FANGS");
 		await user.click(screen.getAllByTestId("rotation-row")[2]);
-		fireEvent.paste(table, { clipboardData: { getData: () => copied } });
+		fireEvent.paste(document.body, { clipboardData: { getData: () => copied } });
 		rows = screen.getAllByTestId("rotation-row");
 		expect(rows).toHaveLength(5);
 		expect(rows[3].textContent).toContain("Steel Fangs");
@@ -265,6 +267,16 @@ describe("Rotation Lab - editor page", () => {
 		expect(rowCount()).toBe(3);
 		await user.keyboard("{Control>}z{/Control}");
 		expect(rowCount()).toBe(5);
+
+		// Without browser clipboard events (as in Firefox for paste outside editable elements),
+		// Ctrl+C/V fall back to the async Clipboard API. user-event's stub stands in for it.
+		await user.click(screen.getAllByTestId("rotation-row")[0]);
+		await user.keyboard("{Control>}c{/Control}");
+		await waitFor(async () =>
+			expect(await navigator.clipboard.readText()).toContain("STEEL_FANGS"),
+		);
+		await user.keyboard("{Control>}v{/Control}");
+		await waitFor(() => expect(rowCount()).toBe(6));
 	});
 
 	it("compares two rotations at cutoffs", async () => {

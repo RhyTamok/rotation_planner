@@ -226,9 +226,11 @@ export function RotationTable(props: {
 	partyBuffs: Required<PartyBuffWindow>[];
 	// Ids of every selected row (a range); `selectedId` is the one the arrow keys move.
 	selection?: string[];
-	onCopy?: (e: React.ClipboardEvent) => void;
-	onCut?: (e: React.ClipboardEvent) => void;
-	onPaste?: (e: React.ClipboardEvent) => void;
+	// Clipboard, while focus is in the table (but not in one of its inputs). `copyText` returns the
+	// selection as clipboard text (removing it when cutting), or undefined when nothing is
+	// selected; `pasteText` inserts pasted text and returns false if it was not Rotation Lab steps.
+	copyText?: (cut: boolean) => string | undefined;
+	pasteText?: (text: string) => boolean;
 }) {
 	const { job, rows, selectedId, onSelect, onUpdateStep, onRemove, onMove, onKeyDown } = props;
 	const selected = useMemo(
@@ -245,6 +247,65 @@ export function RotationTable(props: {
 		selectedRef.current?.scrollIntoView({ block: "nearest" });
 	}, [selectedId]);
 
+	// Clipboard. With no text selected, browsers send copy/cut/paste to the page body rather than
+	// to the focused table, so the events are caught on the document while focus is in the table.
+	// Some browsers (e.g. Firefox) fire no paste event outside editable elements; if the key press
+	// produced no event, the async Clipboard API is used instead.
+	const wrapRef = useRef<HTMLDivElement>(null);
+	const handlers = useRef(props);
+	handlers.current = props;
+	const pending = useRef<"copy" | "cut" | "paste">(undefined);
+	const focusInTable = () => {
+		const active = document.activeElement;
+		const inField = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+		return !inField && (wrapRef.current?.contains(active) ?? false);
+	};
+	useEffect(() => {
+		const onClipboard = (e: ClipboardEvent) => {
+			if (!focusInTable() || !e.clipboardData) return;
+			pending.current = undefined;
+			if (e.type === "paste") {
+				if (handlers.current.pasteText?.(e.clipboardData.getData("text/plain"))) {
+					e.preventDefault();
+				}
+			} else {
+				const text = handlers.current.copyText?.(e.type === "cut");
+				if (text !== undefined) {
+					e.clipboardData.setData("text/plain", text);
+					e.preventDefault();
+				}
+			}
+		};
+		const types = ["copy", "cut", "paste"] as const;
+		for (const type of types) document.addEventListener(type, onClipboard);
+		return () => {
+			for (const type of types) document.removeEventListener(type, onClipboard);
+		};
+	}, []);
+	const onWrapKeyDown = (e: React.KeyboardEvent) => {
+		const key = e.key.toLowerCase();
+		const kind = key === "c" ? "copy" : key === "x" ? "cut" : key === "v" ? "paste" : undefined;
+		if (kind && (e.ctrlKey || e.metaKey) && !e.altKey && focusInTable()) {
+			pending.current = kind;
+			// The browser fires its clipboard event right after this key press, if at all.
+			setTimeout(() => {
+				if (pending.current !== kind) return;
+				pending.current = undefined;
+				if (kind === "paste") {
+					void navigator.clipboard
+						?.readText()
+						.then((text) => handlers.current.pasteText?.(text))
+						.catch(() => {});
+				} else {
+					const text = handlers.current.copyText?.(kind === "cut");
+					if (text !== undefined)
+						void navigator.clipboard?.writeText(text).catch(() => {});
+				}
+			}, 0);
+		}
+		onKeyDown(e);
+	};
+
 	const gauges = trackedGauges(job);
 	const [dragId, setDragId] = useState<string>();
 	const [dropIndex, setDropIndex] = useState<number>();
@@ -256,12 +317,10 @@ export function RotationTable(props: {
 	const deltas = debug ? timingDeltas(rows) : undefined;
 
 	return <div
+		ref={wrapRef}
 		className="rl-table-wrap"
 		tabIndex={0}
-		onKeyDown={onKeyDown}
-		onCopy={props.onCopy}
-		onCut={props.onCut}
-		onPaste={props.onPaste}
+		onKeyDown={onWrapKeyDown}
 		aria-label="Rotation"
 	>
 		{rows.length > 0 && <TimerPanel

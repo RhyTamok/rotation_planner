@@ -227,18 +227,17 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	};
 
 	// Copy, cut and paste use the system clipboard (see editor/clipboard.ts).
-	const onCopy = (e: React.ClipboardEvent, cut = false) => {
-		if ((e.target as HTMLElement).tagName === "INPUT" || selection.length === 0) return;
-		e.preventDefault();
-		e.clipboardData.setData("text/plain", serializeSteps(JOB, copySteps(rotation, selection)));
+	// Clipboard text for the selected steps; the table writes it to the clipboard.
+	const copyText = (cut: boolean) => {
+		if (selection.length === 0) return undefined;
+		const text = serializeSteps(JOB, copySteps(rotation, selection));
 		if (cut) removeIds(selection);
+		return text;
 	};
-	const onPaste = (e: React.ClipboardEvent) => {
-		if ((e.target as HTMLElement).tagName === "INPUT") return;
-		const steps = parseSteps(e.clipboardData.getData("text/plain"), JOB);
-		if (!steps) return;
-		e.preventDefault();
-		insertBlock(steps);
+	const pasteText = (text: string) => {
+		const steps = parseSteps(text, JOB);
+		if (steps) insertBlock(steps);
+		return steps !== undefined;
 	};
 
 	const onTableKeyDown = (e: React.KeyboardEvent) => {
@@ -520,9 +519,8 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 						select(id);
 					}}
 					onKeyDown={onTableKeyDown}
-					onCopy={(e) => onCopy(e)}
-					onCut={(e) => onCopy(e, true)}
-					onPaste={onPaste}
+					copyText={copyText}
+					pasteText={pasteText}
 				/>
 
 				<SkillPalette
