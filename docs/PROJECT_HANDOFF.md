@@ -204,7 +204,8 @@ Known limitations:
   It loads the page's native ES modules in Node with jsdom and prints `errors: none` plus the
   start of the rendered text. Stop the server afterwards. The user's own server on port 3000 is
   never touched.
-- **Visual review:** Claude has no browser here. Ask the user to check new UI, especially charts.
+- **Visual review:** ask the user to check new UI, especially charts. Claude has a restricted
+  Playwright MCP (localhost:3000 only) for occasional quick checks; see CLAUDE.md "Tools and Skills".
 - **Parity:** `rotationLabSimulator.test.ts` and `rotationLabEncounter.test.ts` compare against the
   real controller; the upstream VPR opener totals must stay exact. `rotationLabWorkbook.test.ts`
   cross-checks damage against the 7.2 workbook in `reference/`. That workbook is historical: don't

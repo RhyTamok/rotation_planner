@@ -62,6 +62,21 @@ described there.
 - Keep token use low: targeted reads, batched checks, full test suite once per task.
 - Update `docs/PROJECT_HANDOFF.md` and this file at the end of each task.
 
+## Tools and Skills
+
+- **`/verify-task` skill** (user-invoked, `.claude/skills/verify-task/`): the end-of-task routine
+  (format, typecheck, lint, full tests once, page check, bump checks, commit message). Suggest it
+  when a task is finished; don't duplicate its steps by hand.
+- **context7 MCP**: use it when a framework or library API is unclear, especially for
+  version-specific behavior (React 19, Vite 8, Vitest 5, TypeScript). Do not use it for XIV in the
+  Shell internals: inspect the local code instead. External docs are never more authoritative than
+  this repository's code, tests or the confirmed rules in the handoff.
+- **Playwright MCP** (local scope, restricted to `http://localhost:3000`, isolated profile, service
+  workers blocked): use sparingly, only where it clearly beats asking the user, e.g. a quick
+  console-error or render check of `rotation-lab.html`. The dev server must already be running.
+  Most browser-based testing and all visual/UX review stay with the user. Prefer
+  `tools/dev-load/` (handoff section 8) for blank-page checks.
+
 ## Pitfalls That Break Things Silently
 
 - **New browser entry points must import `Components/Main` first** (see `src/RotationLab/ui/main.tsx`).
