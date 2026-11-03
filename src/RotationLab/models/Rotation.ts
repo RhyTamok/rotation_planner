@@ -1,13 +1,14 @@
 import { ShellJob } from "../../Game/Data/Jobs";
 import { ActionKey } from "../../Game/Data";
-import { RotationStep } from "../simulation/types";
+import { RotationStep, TargetRange } from "../simulation/types";
 import type { GearOverrides } from "./GearSet";
 
 // Version of the persisted document format. Bump it and add a migration in
 // storage/migrations.ts whenever the shape of a stored document changes.
 // 1 → 2: character stats moved from scenarios into gear sets chosen per rotation.
 // 2 → 3: rotations have a target count (used by the action recommendations).
-export const SCHEMA_VERSION = 3;
+// 3 → 4: the target count is replaced by target ranges (used by damage and recommendations).
+export const SCHEMA_VERSION = 4;
 
 export type CombatMode = "reborn" | "evolved";
 
@@ -21,7 +22,8 @@ export interface Ruleset {
 
 // The rulesets this build can simulate. Evolved has no implementation yet.
 export const AVAILABLE_RULESETS: Readonly<Record<CombatMode, string | undefined>> = {
-	reborn: "reborn-dt-1",
+	// dt-2: multi-target damage (target ranges, AoE falloff, boss debuffs on the main target only).
+	reborn: "reborn-dt-2",
 	evolved: undefined,
 };
 
@@ -50,9 +52,9 @@ export interface RotationDocument {
 	gearSetId?: string;
 	// Manual changes on top of the gear set.
 	gearOverrides?: GearOverrides;
-	// Enemies the rotation is planned against. Only the action recommendations use it (AoE at 3
-	// or more); damage is always single-target.
-	targetCount: number;
+	// Times with more than one enemy (rules/targets.ts); empty = the main target only. Used by the
+	// damage calculation and the action recommendations.
+	targets: TargetRange[];
 	// ISO 8601 timestamp of the last edit.
 	updatedAt: string;
 }
@@ -67,7 +69,7 @@ export function createRotation(props: {
 	steps: (ActionKey | RotationStep)[];
 	mode?: CombatMode;
 	gearSetId?: string;
-	targetCount?: number;
+	targets?: TargetRange[];
 }): RotationDocument {
 	return {
 		schemaVersion: SCHEMA_VERSION,
@@ -76,7 +78,7 @@ export function createRotation(props: {
 		job: props.job,
 		ruleset: currentRuleset(props.mode),
 		gearSetId: props.gearSetId,
-		targetCount: props.targetCount ?? 1,
+		targets: props.targets?.map((r) => ({ ...r })) ?? [],
 		entries: props.steps.map((step) => ({
 			id: newId(),
 			step: typeof step === "string" ? { type: "skill", action: step } : step,

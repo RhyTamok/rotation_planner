@@ -79,7 +79,8 @@ describe("Rotation Lab - rotation documents", () => {
 		const valid = createRotation({ name: "ok", job: "VPR", steps: FILLER });
 		const cases: [string, (doc: RotationDocument) => unknown][] = [
 			["schemaVersion", (d) => ({ ...d, schemaVersion: 99 })],
-			["targetCount", (d) => ({ ...d, targetCount: 0 })],
+			["targets must be an array", (d) => ({ ...d, targets: undefined })],
+			["enemies from 2", (d) => ({ ...d, targets: [{ start: 0, end: 10, enemies: 1 }] })],
 			["unknown job", (d) => ({ ...d, job: "XYZ" })],
 			[
 				"not a VPR action",
@@ -391,8 +392,9 @@ describe("Rotation Lab - workspace storage", () => {
 	it("migrates version 2 workspaces: every rotation is planned for one target", () => {
 		const current = sampleWorkspace();
 		const asV2 = <T extends object>(doc: T) => ({ ...doc, schemaVersion: 2 });
+		// Version 2 had neither the target count (3) nor target ranges (4).
 		const rotation: Partial<RotationDocument> = asV2(current.rotations[0]);
-		delete rotation.targetCount;
+		delete rotation.targets;
 		const v2 = {
 			...current,
 			schemaVersion: 2,
@@ -409,6 +411,30 @@ describe("Rotation Lab - workspace storage", () => {
 		expect(migratedFrom).toBe(2);
 		expect(storage.data.get(`${WORKSPACE_KEY}.v2`)).toBe(JSON.stringify(v2));
 		expect(workspace).toEqual(current);
+	});
+
+	it("migrates version 3 workspaces: the target count is dropped for empty target ranges", () => {
+		const current = sampleWorkspace();
+		const asV3 = <T extends object>(doc: T) => ({ ...doc, schemaVersion: 3 });
+		const rotation: Record<string, unknown> = { ...asV3(current.rotations[0]), targetCount: 1 };
+		delete rotation.targets;
+		const v3 = {
+			...current,
+			schemaVersion: 3,
+			rotations: [rotation],
+			scenarios: current.scenarios.map(asV3),
+			gearSets: current.gearSets.map(asV3),
+		};
+
+		const storage = memoryStorage();
+		storage.setItem(WORKSPACE_KEY, JSON.stringify(v3));
+		const { workspace, errors, migratedFrom } = loadWorkspace(storage);
+
+		expect(errors).toEqual([]);
+		expect(migratedFrom).toBe(3);
+		expect(workspace).toEqual(current);
+		expect("targetCount" in workspace.rotations[0]).toBe(false);
+		expect(workspace.rotations[0].targets).toEqual([]);
 	});
 });
 

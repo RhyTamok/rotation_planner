@@ -65,11 +65,10 @@ export function RecommendationPanel(props: {
 	prefix: RotationStep[];
 	options: SimulationOptions;
 	countdownExtension?: number;
-	// From the rotation document; not editable yet (per-window targets are planned separately).
-	targetCount: number;
 	onInsert: (step: RotationStep) => void;
 }) {
-	const { job, prefix, options, countdownExtension, targetCount, onInsert } = props;
+	// `options` carries the rotation's target ranges.
+	const { job, prefix, options, countdownExtension, onInsert } = props;
 	const [mode, setModeState] = useState<Mode>(() => readStored(MODE_KEY, "all", isMode));
 	const [position, setPosition] = useState<Position>(() =>
 		clamp(readStored(POSITION_KEY, defaultPosition(), isPosition)),
@@ -78,12 +77,12 @@ export function RecommendationPanel(props: {
 
 	const recommendations = useMemo(() => {
 		try {
-			return recommendAfter(job, prefix, options, targetCount, countdownExtension);
+			return recommendAfter(job, prefix, options, countdownExtension);
 		} catch {
 			// The scenario is invalid mid-edit; the summary reports why.
 			return undefined;
 		}
-	}, [job, prefix, options, targetCount, countdownExtension]);
+	}, [job, prefix, options, countdownExtension]);
 
 	const setMode = (next: Mode) => {
 		setModeState(next);

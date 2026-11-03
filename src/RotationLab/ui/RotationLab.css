@@ -190,6 +190,12 @@ select {
 	min-width: 0;
 }
 
+.rl-hint {
+	margin: 0 0 6px;
+	font-size: 12px;
+	color: var(--rl-muted);
+}
+
 .rl-table-wrap {
 	grid-area: table;
 	overflow-y: auto;

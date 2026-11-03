@@ -3,7 +3,8 @@ import { ACTIONS, ActionKey, ResourceKey } from "../../Game/Data";
 import { ShellJob } from "../../Game/Data/Jobs";
 import { GameState } from "../../Game/GameState";
 import { getConditionalReplacement, getSkill } from "../../Game/Skills";
-import { SimulatedAction } from "../simulation/types";
+import { effectiveRanges, enemiesThroughout } from "../rules/targets";
+import { SimulatedAction, TargetRange } from "../simulation/types";
 
 // Shared building blocks of the per-job recommenders (docs/rulesets/*-recommendations.md).
 // A recommender reads the state after the last pressed action and returns candidates in priority
@@ -43,22 +44,22 @@ export class RecommenderContext {
 	readonly game: GameState;
 	// Every action pressed so far, including invalid ones.
 	readonly history: readonly SimulatedAction[];
-	readonly targetCount: number;
 	// Seconds until the next GCD can be pressed (0 if it is ready).
 	readonly gcdIn: number;
 	// Weave slots left before the next GCD.
 	readonly freeSlots: number;
+	readonly #targets: TargetRange[];
 
 	constructor(
 		job: ShellJob,
 		game: GameState,
 		history: readonly SimulatedAction[],
-		targetCount: number,
+		targets: readonly TargetRange[] = [],
 	) {
 		this.job = job;
 		this.game = game;
 		this.history = history;
-		this.targetCount = targetCount;
+		this.#targets = effectiveRanges(targets);
 		this.gcdIn = Math.max(0, game.cooldowns.timeTillAnyStackAvailable("cd_GCD"));
 		let woven = 0;
 		for (let i = history.length - 1; i >= 0 && !history[i].isGCD; i--) {
@@ -90,6 +91,14 @@ export class RecommenderContext {
 				cd === undefined ||
 				this.game.cooldowns.timeTillAnyStackAvailable(cd) <= at + EPSILON,
 		);
+	}
+
+	// Enemies the action could hit if pressed at its next opportunity (as in `legal`): those present
+	// from the press until its damage lands, the same rule as the damage calculation.
+	enemiesFor(action: ActionKey): number {
+		const press = this.game.getDisplayTime() + (this.isGcd(action) ? this.gcdIn : 0);
+		const skill = getSkill(this.job, action);
+		return enemiesThroughout(this.#targets, press, press + (skill?.applicationDelay ?? 0));
 	}
 
 	// The engine's proc highlight (Honed buffs, venoms, next Generation, ...).

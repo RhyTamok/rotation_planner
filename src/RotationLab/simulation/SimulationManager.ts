@@ -2,7 +2,19 @@ import { AVAILABLE_RULESETS, RotationDocument, Ruleset } from "../models/Rotatio
 import { NO_GEAR, ResolvedGear } from "../models/GearSet";
 import { ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import { simulateRotation } from "./RotationSimulator";
-import { RotationResult } from "./types";
+import { RotationResult, SimulationOptions } from "./types";
+
+// The simulation options of one rotation: the shared scenario, its gear and its own targets.
+export function rotationOptions(
+	rotation: RotationDocument,
+	scenario: ScenarioDocument,
+	gear: ResolvedGear = NO_GEAR,
+): SimulationOptions {
+	return {
+		...scenarioToOptions(scenario, gear),
+		targets: rotation.targets.map((r) => ({ ...r })),
+	};
+}
 
 export interface DocumentSimulation {
 	result: RotationResult;
@@ -22,7 +34,7 @@ export function simulateDocument(
 	}
 	const result = simulateRotation(
 		{ id: rotation.id, steps: rotation.entries.map((e) => e.step) },
-		scenarioToOptions(scenario, gear),
+		rotationOptions(rotation, scenario, gear),
 		rotation.job,
 	);
 	return rotation.ruleset.version === currentVersion
@@ -58,7 +70,7 @@ export function simulationKey(
 		job: rotation.job,
 		ruleset: rotation.ruleset,
 		steps: rotation.entries.map((e) => e.step),
-		options: scenarioToOptions(scenario, gear),
+		options: rotationOptions(rotation, scenario, gear),
 	});
 }
 

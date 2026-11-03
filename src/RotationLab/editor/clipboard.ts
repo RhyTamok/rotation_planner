@@ -38,7 +38,7 @@ export function parseSteps(text: string, job: ShellJob): RotationStep[] | undefi
 		name: "",
 		job,
 		ruleset: currentRuleset(),
-		targetCount: 1,
+		targets: [],
 		entries: steps.map((step, i) => ({ id: String(i), step })),
 		updatedAt: new Date().toISOString(),
 	});

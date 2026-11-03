@@ -45,9 +45,20 @@ export interface DowntimeWindow {
 	end: number;
 }
 
+// `enemies` (the main target included) are present from `start` (inclusive) to `end` (exclusive).
+// Outside every range only the main target is present. See rules/targets.ts.
+export interface TargetRange {
+	start: number;
+	end: number;
+	enemies: number;
+}
+
 export interface SimulationOptions {
 	partyBuffs?: PartyBuffWindow[];
 	downtime?: DowntimeWindow[];
+	// Extra enemies over time. A skill step without explicit `targets` hits as many as are present
+	// from its press to its damage application (fewer if some leave in between).
+	targets?: TargetRange[];
 	// Merged over the job's default config (not the BLM-based DEFAULT_CONFIG).
 	// Character stats for expected damage (main, wd, partyBonus, criticalHit, ...) come from here.
 	config?: Partial<ConfigData>;
@@ -95,6 +106,9 @@ export interface SimulatedAction {
 	// Expected damage counterparts; undefined when the damage model does not support the job/level.
 	expectedDamage?: number;
 	pendingDamage?: number;
+	// Enemies the action's own hit struck (0 for actions without a damaging hit). Single-target
+	// actions always hit 1.
+	targetsHit: number;
 	modifiers: PotencyModifierType[];
 }
 

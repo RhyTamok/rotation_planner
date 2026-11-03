@@ -118,8 +118,25 @@ export function parseRotationDocument(input: unknown): ParseResult<RotationDocum
 		});
 	}
 
-	if (!(Number.isInteger(input.targetCount) && (input.targetCount as number) >= 1)) {
-		errors.push("targetCount must be a whole number of at least 1");
+	// Overlapping or empty ranges are not errors here: the targets table reports them, and the
+	// simulation resolves them (rules/targets.ts).
+	if (!Array.isArray(input.targets)) {
+		errors.push("targets must be an array");
+	} else {
+		input.targets.forEach((r, i) => {
+			if (
+				!isObject(r) ||
+				!isFiniteNumber(r.start) ||
+				!isFiniteNumber(r.end) ||
+				!Number.isInteger(r.enemies) ||
+				(r.enemies as number) < 2 ||
+				(r.enemies as number) > MAX_ABILITY_TARGETS
+			) {
+				errors.push(
+					`targets[${i}]: must have numeric start and end, and enemies from 2 to ${MAX_ABILITY_TARGETS}`,
+				);
+			}
+		});
 	}
 	if (input.gearSetId !== undefined && !isNonEmptyString(input.gearSetId)) {
 		errors.push("gearSetId must be a non-empty string");

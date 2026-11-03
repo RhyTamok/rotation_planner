@@ -363,6 +363,9 @@ export function RotationTable(props: {
 							</span>)}
 						</th>}
 						<th>Action</th>
+						<th className="rl-num" title="Enemies hit, when more than one">
+							Targets
+						</th>
 						<th className="rl-num">Potency</th>
 						<th className="rl-num">Damage</th>
 						{gauges.map((g) => <th className="rl-gauge" key={g.key}>
@@ -468,6 +471,9 @@ export function RotationTable(props: {
 									row={row}
 									onUpdate={(step) => onUpdateStep(entry.id, step)}
 								/>
+							</td>
+							<td className="rl-num" data-testid="targets-hit">
+								{action && action.targetsHit > 1 && `×${action.targetsHit}`}
 							</td>
 							<td className="rl-num">
 								{action &&

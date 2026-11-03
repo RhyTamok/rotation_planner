@@ -52,6 +52,8 @@ export function ScenarioPanel(props: {
 	onChange: (scenario: ScenarioDocument) => void;
 	// The current rotation's gear, shown above the shared scenario.
 	gearPanel?: React.ReactNode;
+	// The current rotation's targets, shown at the bottom.
+	targetsPanel?: React.ReactNode;
 }) {
 	const { job, scenario, onChange } = props;
 	const defaults = useMemo(() => makeDefaultConfig(job), [job]);
@@ -217,5 +219,6 @@ export function ScenarioPanel(props: {
 		>
 			Add downtime
 		</button>
+		{props.targetsPanel}
 	</aside>;
 }

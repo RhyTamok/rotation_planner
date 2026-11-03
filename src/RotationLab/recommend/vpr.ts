@@ -182,7 +182,8 @@ export function recommendViper(ctx: RecommenderContext): Candidate[] {
 		return out;
 	}
 
-	const family = ctx.targetCount >= 3 ? AOE : SINGLE_TARGET;
+	// The AoE family at 3+ enemies, counted for its first step's press and damage application.
+	const family = ctx.enemiesFor(AOE.starters[0]) >= 3 ? AOE : SINGLE_TARGET;
 	const [steel, reaving] = family.starters;
 	const remaining = (buff: Upkeep) => ctx.timer(buff);
 	const byTimer = [...UPKEEP].sort((a, b) => remaining(a) - remaining(b));

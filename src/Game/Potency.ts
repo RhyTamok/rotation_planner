@@ -718,6 +718,10 @@ export type InitialPotencyProps = {
 	falloff?: number;
 };
 
+// Party "buffs" that are really debuffs on one enemy; same as BOSS_DEBUFF_STATUS_IDS in Buffs.ts
+// (not imported from there, to keep Potency.ts out of that module's import cycle).
+const BOSS_DEBUFFS: ReadonlySet<BuffType> = new Set([BuffType.ChainStratagem, BuffType.Dokumori]);
+
 export class Potency {
 	config: GameConfig;
 	sourceTime: number; // display time
@@ -826,27 +830,56 @@ export class Potency {
 		tincturePotencyMultiplier: number;
 		includePartyBuffs: boolean;
 		includeSplash: boolean;
+		// Rotation Lab: party debuffs on the boss (Chain Stratagem, Dokumori) only apply to the
+		// primary target of a multi-target hit. Off by default, which keeps upstream's behavior of
+		// applying every party buff to every target.
+		bossDebuffsOnPrimaryOnly?: boolean;
 	}): number {
+		// Secondary targets lack the boss debuffs; only meaningful with more than one target.
+		const split =
+			props.bossDebuffsOnPrimaryOnly === true &&
+			props.includeSplash &&
+			this.targetList.length > 1;
 		// To account for different targets having different debuffs, we group targets by
 		// the target-specific modifiers they have applied.
 		// Since it's kind of hard to do a proper group by in JS, we just do separate computation
 		// for each target that has debuff modifiers.
 		const noDebuffTargetCount = this.targetCount - (this.#targetSpecificModifiers?.size ?? 0);
-		let totalAmount = this.#getAmountWithModifiers(
-			props,
-			this.targetList.length === 0 || !this.#targetSpecificModifiers?.has(this.targetList[0]),
-			noDebuffTargetCount,
-			this.#modifiers,
-		);
+		const primaryInNoDebuffGroup =
+			this.targetList.length === 0 || !this.#targetSpecificModifiers?.has(this.targetList[0]);
+		let totalAmount: number;
+		if (split && primaryInNoDebuffGroup) {
+			totalAmount =
+				this.#getAmountWithModifiers(props, true, 1, this.#modifiers, false) +
+				this.#getAmountWithModifiers(
+					props,
+					false,
+					noDebuffTargetCount - 1,
+					this.#modifiers,
+					true,
+				);
+		} else {
+			totalAmount = this.#getAmountWithModifiers(
+				props,
+				primaryInNoDebuffGroup,
+				noDebuffTargetCount,
+				this.#modifiers,
+				// With `split`, this group holds secondary targets only.
+				split,
+			);
+		}
 		if (this.targetList.length === 0) {
 			return totalAmount;
 		}
 		const primary = this.targetList[0];
 		this.#targetSpecificModifiers?.forEach((modifiers, targetNumber) => {
-			totalAmount += this.#getAmountWithModifiers(props, targetNumber === primary, 1, [
-				...this.#modifiers,
-				...modifiers,
-			]);
+			totalAmount += this.#getAmountWithModifiers(
+				props,
+				targetNumber === primary,
+				1,
+				[...this.#modifiers, ...modifiers],
+				split && targetNumber !== primary,
+			);
 		});
 		return totalAmount;
 	}
@@ -860,6 +893,7 @@ export class Potency {
 		includesPrimary: boolean,
 		targetCount: number,
 		modifiers: PotencyModifier[],
+		excludeBossDebuffs = false,
 	): number {
 		if (targetCount === 0) {
 			// An ability that hits 0 targets should never do damage.
@@ -900,7 +934,10 @@ export class Potency {
 		console.assert(!(isAutoCDH && isAutoCrit), "cannot be both auto-crit and auto-CDH");
 
 		if (props.includePartyBuffs && this.snapshotTime) {
-			this.partyBuffsAt(this.snapshotTime).forEach((buff) => {
+			this.partyBuffsAt(this.snapshotTime).forEach((buff, buffType) => {
+				if (excludeBossDebuffs && BOSS_DEBUFFS.has(buffType)) {
+					return;
+				}
 				if (buff.kind === "multiplier") {
 					totalDamageFactor *= buff.potencyFactor;
 				} else if (buff.kind === "critDirect") {

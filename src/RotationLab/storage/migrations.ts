@@ -67,7 +67,27 @@ function v2ToV3(workspace: Obj): Obj {
 	};
 }
 
-const STEPS: Record<number, (workspace: Obj) => Obj> = { 1: v1ToV2, 2: v2ToV3 };
+// 3 → 4: the target count is replaced by target ranges. The count was never editable (always 1),
+// so it is dropped and every rotation starts with no extra targets.
+function v3ToV4(workspace: Obj): Obj {
+	const bump = (docs: unknown, change: (doc: Obj) => Obj = (doc) => doc) =>
+		Array.isArray(docs)
+			? docs.map((doc) => (isObject(doc) ? { ...change(doc), schemaVersion: 4 } : doc))
+			: docs;
+	return {
+		...workspace,
+		schemaVersion: 4,
+		rotations: bump(workspace.rotations, (doc) => {
+			const rest: Obj = { targets: [], ...doc };
+			delete rest.targetCount;
+			return rest;
+		}),
+		scenarios: bump(workspace.scenarios),
+		gearSets: bump(workspace.gearSets),
+	};
+}
+
+const STEPS: Record<number, (workspace: Obj) => Obj> = { 1: v1ToV2, 2: v2ToV3, 3: v3ToV4 };
 
 // Returns the workspace at SCHEMA_VERSION, or an error for versions it cannot upgrade.
 export function migrateWorkspace(workspace: Obj): { workspace: Obj } | { error: string } {

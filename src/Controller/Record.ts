@@ -339,6 +339,8 @@ export class ActionNode {
 		includeSplash: boolean;
 		excludeDoT?: boolean;
 		targetNumber?: number;
+		// See Potency.getAmount.
+		bossDebuffsOnPrimaryOnly?: boolean;
 	}): { applied: number; snapshottedButPending: number } {
 		const res = {
 			applied: 0,
@@ -393,6 +395,7 @@ export class ActionNode {
 			includeSplash: boolean;
 			excludeDoT?: boolean;
 			targetNumber?: number;
+			bossDebuffsOnPrimaryOnly?: boolean;
 		},
 		potency: Potency,
 		record: { applied: number; snapshottedButPending: number },

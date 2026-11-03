@@ -33,8 +33,8 @@ export interface Recommendations {
 export function recommendAfter(
 	job: ShellJob,
 	steps: RotationStep[],
+	// Includes the rotation's target ranges (`targets`), which the recommendations read.
 	options: SimulationOptions,
-	targetCount: number,
 	countdownExtension = 0,
 ): Recommendations | undefined {
 	const recommender = RECOMMENDERS[job];
@@ -44,7 +44,7 @@ export function recommendAfter(
 		job,
 		simulator.game,
 		simulator.result("prefix").actions,
-		targetCount,
+		options.targets,
 	);
 	const time = simulator.displayTime;
 	const ranked: Recommendation[] = [];

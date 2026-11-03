@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ActionKey } from "../Game/Data";
 import { arrange, Candidate } from "../RotationLab/recommend/context";
 import { recommendAfter, Recommendations } from "../RotationLab/recommend/recommender";
-import { DowntimeWindow, RotationStep } from "../RotationLab/simulation/types";
+import { DowntimeWindow, RotationStep, TargetRange } from "../RotationLab/simulation/types";
 
 // Viper ruleset: docs/rulesets/vpr-recommendations.md. Test names cite its priority rows.
 
@@ -24,14 +24,22 @@ const PULL: Step = "WRITHING_SNAP";
 function recommend(
 	steps: Step[],
 	overrides: Override[] = BUFFS_UP,
-	extra: { targets?: number; downtime?: DowntimeWindow[] } = {},
+	// A number means that many enemies for the whole fight.
+	extra: { targets?: number | TargetRange[]; downtime?: DowntimeWindow[] } = {},
 ): Recommendations {
+	const targets =
+		typeof extra.targets === "number"
+			? extra.targets > 1
+				? [{ start: -1000, end: 1000, enemies: extra.targets }]
+				: []
+			: extra.targets;
 	return recommendAfter(
 		"VPR",
 		steps.map((s) => (typeof s === "string" ? { type: "skill", action: s } : s)),
 		{
 			encounterRules: true,
 			downtime: extra.downtime,
+			targets,
 			config: {
 				fps: 0,
 				initialResourceOverrides: overrides.map((o) => ({
@@ -40,7 +48,6 @@ function recommend(
 				})) as never,
 			},
 		},
-		extra.targets ?? 1,
 	)!;
 }
 
@@ -285,6 +292,23 @@ describe("Rotation Lab - Viper recommendations", () => {
 		expect(entry(r, "STEEL_FANGS")).toBeUndefined();
 		const two = recommend([PULL], BUFFS_UP, { targets: 2 });
 		expect(entry(two, "VICEWINDER")).toBeDefined();
+	});
+
+	it("reads the rotation's target ranges at the next press", () => {
+		// The press/resolve boundary rules are tested with rules/targets.ts.
+		const during = recommend([PULL], BUFFS_UP, {
+			targets: [{ start: -10, end: 60, enemies: 3 }],
+		});
+		expect(entry(during, "STEEL_MAW")).toBeDefined();
+		const before = recommend([PULL], BUFFS_UP, {
+			targets: [{ start: 30, end: 60, enemies: 3 }],
+		});
+		expect(entry(before, "STEEL_FANGS")).toBeDefined();
+		expect(entry(before, "STEEL_MAW")).toBeUndefined();
+		const after = recommend([PULL], BUFFS_UP, {
+			targets: [{ start: -10, end: 0, enemies: 3 }],
+		});
+		expect(entry(after, "STEEL_MAW")).toBeUndefined();
 	});
 
 	it("moves actions that need a target to the filtered list during downtime", () => {

@@ -24,6 +24,7 @@ import {
 } from "../models/validation";
 import { resolveGear } from "../models/GearSet";
 import { GearPanel } from "./GearPanel";
+import { TargetsPanel } from "./TargetsPanel";
 import { SimulationCache } from "../simulation/SimulationManager";
 import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import {
@@ -185,7 +186,12 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		const end = index < 0 ? rotation.entries.length : index + 1;
 		return rotation.entries.slice(0, end).map((e) => e.step);
 	}, [rotation, insertAfter]);
-	const scenarioOptions = useMemo(() => scenarioToOptions(scenario, gear), [scenario, gear]);
+	// Scenario, gear and this rotation's targets, for the palette and the recommendations.
+	const rotationTargets = rotation.targets;
+	const scenarioOptions = useMemo(
+		() => ({ ...scenarioToOptions(scenario, gear), targets: rotationTargets }),
+		[scenario, gear, rotationTargets],
+	);
 
 	const replaceRotation = (next: RotationDocument) =>
 		setWorkspace((ws) => ({
@@ -488,6 +494,13 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					onGearSetsChange={(gearSets) => setWorkspace((ws) => ({ ...ws, gearSets }))}
 				/>
 			}
+			targetsPanel={
+				<TargetsPanel
+					rotation={rotation}
+					rotations={workspace.rotations}
+					onRotationChange={replaceRotation}
+				/>
+			}
 		/>
 
 		{mode === "compare" ? (
@@ -539,7 +552,6 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					prefix={prefix}
 					options={scenarioOptions}
 					countdownExtension={result?.countdownExtension}
-					targetCount={rotation.targetCount}
 					onInsert={insert}
 				/>}
 			</>

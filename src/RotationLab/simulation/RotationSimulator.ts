@@ -16,10 +16,12 @@ import {
 	ResourceSnapshot,
 	snapshotResources,
 } from "../rules/resourceTracking";
+import { effectiveRanges, targetListFor } from "../rules/targets";
 import { RecordingHost } from "./RecordingHost";
 import {
 	DamageEvent,
 	DamageTotals,
+	TargetRange,
 	RotationInput,
 	RotationResult,
 	RotationStep,
@@ -64,6 +66,7 @@ export class RotationSimulator {
 	readonly #tinctureBonus: number;
 	readonly #encounter: RotationResult["encounter"];
 	readonly #encounterRules: boolean;
+	readonly #targets: TargetRange[];
 	#executed: ExecutedSkill[] = [];
 	#errors: StepError[] = [];
 	#stepCount = 0;
@@ -92,6 +95,7 @@ export class RotationSimulator {
 		config.initialResourceOverrides.forEach((override) => override.applyTo(this.game));
 		this.#tincturePotencyMultiplier = options.tincturePotencyMultiplier ?? 1;
 		this.#encounterRules = options.encounterRules ?? false;
+		this.#targets = effectiveRanges(options.targets ?? []);
 
 		const weaponDelay = options.weaponDelay ?? getDefaultWeaponDelay(job);
 		if (weaponDelay !== undefined) {
@@ -128,12 +132,7 @@ export class RotationSimulator {
 		const normalized: RotationStep =
 			typeof step === "string" ? { type: "skill", action: step } : step;
 		if (normalized.type === "skill") {
-			this.#useSkill(
-				stepIndex,
-				normalized.action,
-				normalized.targets ?? [1],
-				normalized.delay ?? 0,
-			);
+			this.#useSkill(stepIndex, normalized.action, normalized.targets, normalized.delay ?? 0);
 		} else if (normalized.type === "wait") {
 			this.#tick(normalized.seconds);
 		} else {
@@ -152,7 +151,14 @@ export class RotationSimulator {
 	// Mirrors Controller.#useSkill in manual tick mode, including its handling of invalid skills.
 	// `delay` counts from when the action first becomes usable (normally the end of the previous
 	// animation lock), so it always moves the action later.
-	#useSkill(stepIndex: number, requestedAction: ActionKey, targetList: number[], delay: number) {
+	// Without explicit `targets`, the step hits the enemies present from the press to the damage
+	// application (rules/targets.ts); the engine then cuts single-target skills down to one.
+	#useSkill(
+		stepIndex: number,
+		requestedAction: ActionKey,
+		explicitTargets: number[] | undefined,
+		delay: number,
+	) {
 		let status = this.game.getSkillAvailabilityStatus(requestedAction);
 		this.#tick(status.timeTillAvailable + delay);
 
@@ -187,6 +193,14 @@ export class RotationSimulator {
 			landsAtPull = false;
 		}
 
+		const press = this.game.getDisplayTime();
+		const targetList =
+			explicitTargets ??
+			targetListFor(
+				this.#targets,
+				press,
+				press + (status.status.ready() ? status.timeTillDamageApplication : 0),
+			);
 		const node = skillNode(executedAction, this.#filterTargetList(targetList, executedAction));
 		const actionIndex = this.#executed.length;
 
@@ -316,6 +330,7 @@ export class RotationSimulator {
 			untargetable: this.#untargetable,
 			includePartyBuffs,
 			includeSplash: true,
+			bossDebuffsOnPrimaryOnly: true,
 		});
 	}
 
@@ -326,10 +341,12 @@ export class RotationSimulator {
 		if (p.base === 0) {
 			return 0;
 		}
+		// Includes the AoE falloff for every enemy hit (Potency.#getAmountWithModifiers).
 		const engineAmount = p.getAmount({
 			tincturePotencyMultiplier: 1,
 			includePartyBuffs: true,
 			includeSplash: true,
+			bossDebuffsOnPrimaryOnly: true,
 		});
 		const modifiers = p.getDisplayedModifiers();
 		const tinctureBonus = modifiers.some((m) => m.source === PotencyModifierType.POT)
@@ -424,6 +441,11 @@ export class RotationSimulator {
 				pendingPotency: potency.snapshottedButPending,
 				expectedDamage: damage?.applied,
 				pendingDamage: damage?.pending,
+				// A hit ghosted in downtime struck nobody.
+				targetsHit:
+					hit !== undefined && hit.base > 0 && ghostedBy === undefined
+						? hit.targetCount
+						: 0,
 				modifiers: (e.node.getInitialPotency()?.getDisplayedModifiers() ?? []).map(
 					(m) => m.source,
 				),
@@ -459,6 +481,7 @@ export class RotationSimulator {
 				tincturePotencyMultiplier: this.#tincturePotencyMultiplier,
 				includePartyBuffs: true,
 				includeSplash: true,
+				bossDebuffsOnPrimaryOnly: true,
 			}),
 			expectedDamage: model ? this.#expectedDamage(model, p) : undefined,
 			isAutoAttack: p.sourceSkill === "ATTACK",
