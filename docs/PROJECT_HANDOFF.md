@@ -163,8 +163,10 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
 
 1. **Recommendations:** suggest next actions (e.g. after Reaving Fangs, Swiftskin's Sting or
    Hunter's Sting). The Viper ruleset is written and agreed (draft v1) in
-   `docs/rulesets/vpr-recommendations.md`; implement it from there, don't invent rules. Next:
-   same grilling for Dragoon. It needs a per-rotation target-count setting (schema bump).
+   `docs/rulesets/vpr-recommendations.md`; implement it from there, don't invent rules. The
+   Dragoon ruleset is agreed too (draft v1, `docs/rulesets/drg-recommendations.md`). Both need a
+   per-rotation target-count setting (one schema bump) and a shared recommender interface. For
+   the Dragoon golden test, ask the user for an opener and a 2-minute cycle.
 2. **Comparison extras:**
    - persist cutoffs and the chart start time;
    - compare more than two rotations;
