@@ -221,7 +221,12 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     - DoT ticks stopping when their enemy leaves (with Dragoon);
     - a step's explicit `targets` (from upstream imports) still overrides the ranges. That is
       harmless for Viper, but decide whether the Lab should ignore it.
-3. **Comparison extras:**
+3. **Comparison system (session 6 audit, planned, not implemented):** the locked design is in
+   `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
+   modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
+   `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). Waiting for
+   the user's approval and answers to spec questions Q1–Q8. Today's comparison is the two-rotation
+   view described in section 3. Comparison extras that stay open:
     - persist cutoffs and the chart start time;
     - compare more than two rotations;
     - optionally an "expired combo" note;

@@ -13,6 +13,10 @@ it when needed, don't read it whole.
 Treat both as context. Inspect the repository and run the tests before relying on any status
 described there.
 
+**Comparison system:** the agreed design, audit and plan are in `docs/comparison/`
+(`COMPARISON_SPEC.md`, `COMPARISON_AUDIT.md`, `COMPARISON_ROADMAP.md`). They describe planned work;
+only the audit states what exists. Do not implement from them until the user approves a milestone.
+
 ## Primary Goals
 
 1. Build a fast, vertically oriented rotation editor inspired by https://www.rubixbob.com/.
