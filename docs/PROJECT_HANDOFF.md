@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-03 (session 4: Viper recommendations).
+Last updated 2026-11-04 (comparison milestone M0: cutoff and window semantics).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -46,10 +46,11 @@ set changes.
 -   Keep this file and `CLAUDE.md` up to date at the end of every task: add new facts, remove stale
     ones.
 
-## 3. Current state (verified 2026-11-03)
+## 3. Current state (verified 2026-11-04)
 
--   Branch `feature/rotation-lab`. Full suite: 41 files, 290 passed + 9 expected-fail (upstream
-    `it.fails`). `tsc --noEmit`, ESLint and the dev-load page check clean (session 5).
+-   Branch `feature/rotation-lab`. Full suite: 41 files, 307 passed + 9 expected-fail (upstream
+    `it.fails`) + 1 todo (DoT after a cutoff). `tsc --noEmit` clean;
+    ESLint clean on the files M0 changed; dev-load page check last run in session 5.
 -   The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
 -   Rotation Lab: http://localhost:3000/rotation-lab.html (`npm.cmd run start`).
 
@@ -89,7 +90,7 @@ set changes.
     -   Running-DPS chart (A blue, B orange; palette validated for colour blindness), DPS-lead chart,
         a "Charts from" start (default 10 s).
     -   Cutoff table: DPS, totals and gauges per rotation; any number of cutoffs.
-    -   Lead changes and damage per burst window.
+    -   Lead changes and damage per burst window; windows are `(start, end]`, like cutoffs.
 -   **Persistence:** JSON workspace in `localStorage`, export/import as a file, schema migrations.
 
 ## 4. Architecture map
@@ -221,12 +222,22 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     - DoT ticks stopping when their enemy leaves (with Dragoon);
     - a step's explicit `targets` (from upstream imports) still overrides the ranges. That is
       harmless for Viper, but decide whether the Lab should ignore it.
-3. **Comparison system (session 6 audit, planned, not implemented):** the locked design is in
+3. **Comparison system (M0 done, M1–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
-   `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). Waiting for
-   the user's approval; all spec questions are decided (section 6); implementation awaits milestone approval. Today's comparison is the two-rotation
-   view described in section 3. Comparison extras that stay open:
+   `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
+   questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
+   comparison is the two-rotation view described in section 3.
+    - M0 changed `totalBetween` from `[start, end]` to `(start, end]` (spec Q1). The old assertion
+      in `rotationLabCompare.test.ts` changed from 1110 to 1100, with a note on the test. The burst
+      table now gives a hit exactly on a shared boundary to the window ending there.
+    - Decided by the user after M0 (spec Q1): `compare.ts` treats times within 1e-6 s as the same
+      instant, because landing times carry float noise (7.500000000000002 for a hit due at 7.5; the
+      pull hit was off 0 by up to 3.6e-15 s in 24 of 216 measured runs). A window starting at 0 s
+      includes the pull hit, and one ending at 0 s does not, so adjacent windows never double count.
+    - Still raw floats: the engine's downtime check, kept for upstream parity (audit section 2).
+
+   Comparison extras that stay open:
     - persist cutoffs and the chart start time;
     - compare more than two rotations;
     - optionally an "expired combo" note;

@@ -29,18 +29,26 @@ A two-rotation comparison, `ui/ComparisonView.tsx`, over pure maths in `comparis
 | Topic | Actual behavior | Source |
 | --- | --- | --- |
 | Time axis | Display time in seconds, 0 = pull, negative = countdown. Floats, no integer ticks. | `simulation/types.ts` header |
-| Pull | With `encounterRules`, the first damaging hit lands at exactly 0 s; the countdown is lengthened instead. | `rules/encounterRules.ts`, `RotationSimulator.ts` (~l. 528) |
+| Pull | With `encounterRules`, the first damaging hit lands at 0 s, up to float noise (measured: within 3.6e-15 s, either sign, in 24 of 216 runs); the countdown is lengthened instead. | `rules/encounterRules.ts`, `RotationSimulator.ts` (~l. 528) |
 | Damage timestamp | `DamageEvent.time = Potency.applicationTime`, i.e. when the hit lands (DoT ticks have their own event). | `RotationSimulator.ts` `result()` ~l. 477 |
-| Downtime hit | `hitTarget = p.hasHitBoss(untargetable)`; a hit landing in downtime has `hitTarget: false` and zero damage. `DowntimeWindow.end` is exclusive. Effects still apply ("ghosting"). | `Potency.ts` l. 1020, `types.ts` |
+| Downtime hit | `hitTarget = p.hasHitBoss(untargetable)`; a hit landing in downtime has `hitTarget: false` and counts 0 in totals, but its event still carries a non-zero `expectedDamage`, so readers must filter on `hitTarget` (`cumulativeSeries` does). `DowntimeWindow` is `[start, end)`. Effects still apply ("ghosting"). A press inside the window that needs a target is invalid and produces no hit. | `Potency.ts` l. 1020, `types.ts` |
 | Simulation stop | `end: "lastAction" \| "settled" \| number`. A number ticks the clock to that time; hits not landed by then are *pending* and have no `DamageEvent`. `"settled"` waits for all landing (capped by `MAX_SETTLE_SECONDS`). | `RotationSimulator.ts` `finish()` l. 299 |
 | Result total | `damage.expectedDamage` = landed hits; `expectedDps = expectedDamage / endTime`, `endTime` = display time at stop, measured from 0 (downtime counts). | `#damageTotals` l. 392 |
-| Cutoff total | `totalAt(series, t)` sums events with `time <= t` (**inclusive**). A hit landing exactly at `t` counts. Events after `t` (including later DoT ticks) contribute 0. | `compare.ts` `totalAt`, `lastIndex` |
+| Cutoff total | `totalAt(series, t)` sums events with `time <= t` (**inclusive**, with a 1e-6 s tolerance for float noise). A hit landing exactly at `t` counts. Events after `t` (including later DoT ticks) contribute 0. | `compare.ts` `totalAt`, `lastIndex` |
 | Cutoff DPS | `dpsAt = totalAt(t) / t`, undefined for `t <= 0`. Elapsed time includes downtime. | `compare.ts` `dpsAt` |
-| Window total | `totalBetween(start, end)`: both ends **inclusive** (test `rotationLabCompare.test.ts` l. 69). | `compare.ts` |
+| Window total | `totalBetween(start, end)` = `(start, end]`, matching cutoffs, except that the pull hit belongs to a window starting at 0 s and not to one ending there (spec Q1, changed in M0). | `compare.ts` |
 | Party buff window | Active for `time <= t <= time + duration` (inclusive both ends), snapshot at press. | `GameState.getPartyBuffs`, handoff §5 |
+
+M0 pins the stop, cutoff, downtime and window rows with tests: `rotationLabCompare.test.ts` ("cutoff
+and window boundaries") and `rotationLabEncounter.test.ts` ("cutoffs against downtime and end modes").
 
 Findings on these semantics:
 
+-   **Float noise at boundaries (fixed in `compare.ts`, found in M0).** Landing times are computed
+    floats, e.g. a hit due at 7.5 s is recorded at 7.500000000000002 s. Cutoffs, windows and gauges
+    now treat times within 1e-6 s as equal. **Not covered:** the engine's own downtime check compares
+    raw floats (`RecordingHost.duringUntargetable`), so a hit due exactly on a downtime boundary can
+    still fall on either side of it. It is left as is to keep upstream parity.
 -   **Cutoff aggregation matches the engine's landing semantics.** Because `damageEvents` only holds
     landed hits and `totalAt` filters by landing time, "damage counts when it lands" and "periodic
     damage after a cutoff contributes zero" hold for a `"settled"` run. *Status: Implemented for the
@@ -50,13 +58,13 @@ Findings on these semantics:
     numeric `end` instead truncates the engine and would make a later cutoff wrong, because pending
     damage has no event. *Recommendation:* fix comparisons to `"settled"` and treat a cutoff beyond
     the last landed hit as a flat total (it already is, mathematically).
--   **Window boundary double count (discrepancy, unresolved).** `totalBetween` includes both ends, so
-    two touching windows `[a,b]` and `[b,c]` count a hit landing at exactly `b` twice. Cutoffs use
-    `<= t`, which is consistent with a window `(start, end]`, not `[start, end]`. A decision is needed
-    (spec §6, question Q1). Not changed.
--   **Cutoff beyond one result's own end *(unverified)*.** The view sets `endTime = max(endA, endB)`.
+-   **Window boundary double count (fixed in M0).** `totalBetween` used to include both ends, so two
+    touching windows counted a hit landing at exactly their shared boundary twice. It is now
+    `(start, end]` (spec Q1), with the pull hit going to the window starting at 0 s.
+-   **Cutoff beyond one result's own end.** The view sets `endTime = max(endA, endB)`.
     For `"lastAction"` scenarios the shorter result may still have pending hits that never become
-    events, so its DPS at later cutoffs is understated. The scenario's default end is `"settled"`
+    events, so its DPS at later cutoffs is understated (pending hits verified by test in M0; the view
+    itself is not tested). The scenario's default end is `"settled"`
     (`createScenario`), so this only bites when the user picks `"lastAction"` or a number.
 -   **Gauges at a cutoff are approximate.** `gaugesAt` returns the snapshot of the last action
     *pressed* at or before `t`, taken at the end of that action's animation lock (which can be after
@@ -88,9 +96,9 @@ Findings on these semantics:
 
 ### 2.3 Cutoff semantics
 
--   **Status: Implemented** in the engine and `compare.ts` (section 2), with the gaps listed there:
-    window-boundary inclusivity, DoT test gap, per-result end handling, no documented-and-tested
-    single source of truth shared with exports (there are no exports yet).
+-   **Status: Implemented** in the engine and `compare.ts` (section 2), and pinned by tests since M0,
+    with the gaps listed there: float noise at downtime boundaries, DoT test gap (`it.todo`), per-result end
+    handling, no single source of truth shared with exports (there are no exports yet).
 
 ### 2.4 DPS difference over time
 
@@ -121,8 +129,7 @@ Findings on these semantics:
     (expected damage if available, otherwise potency), i.e. **raid-buffed damage** per window.
     `expectedDamage` is the xivgear-style chain (`DamageModel`) with party buffs as a ratio on top
     (`#expectedDamage`, l. 340).
--   **Gap:** only the window boundary convention (decided: `(start, end]`, see spec Q1) and N-way
-    support. Windows currently live on the scenario; the roadmap moves them into the comparison.
+-   **Gap:** only N-way support (the `(start, end]` boundary is applied since M0, spec Q1). Windows currently live on the scenario; the roadmap moves them into the comparison.
 
 ### 2.7 Leftover resources
 
@@ -193,8 +200,7 @@ Snapshots therefore must store results, not just inputs.
 `rotationLabSimulator/Encounter/EncounterRules/Targets/Damage/Workbook` (engine parity, pull and
 downtime rules, workbook cross-check), `rotationLabPersistence.test.ts` (parse, migrate, backups),
 `rotationLabIsolation/HostIsolation`. All can be extended in place; no new framework is needed.
-Gaps: no UI-independent test for baseline math, per-cutoff boundary hits in a real simulation,
-DoT-after-cutoff, 3–4 configurations, gear with different GCD speeds in one comparison, or any
+Gaps: no UI-independent test for baseline math, DoT-after-cutoff, 3–4 configurations, gear with different GCD speeds in one comparison, or any
 export.
 
 ## 4. Verified vs recommended

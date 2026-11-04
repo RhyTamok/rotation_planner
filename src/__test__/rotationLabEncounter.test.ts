@@ -8,8 +8,14 @@ import { MarkerColor } from "../Components/ColorTheme";
 import { BuffType } from "../Game/Common";
 import { DEFAULT_CONFIG } from "../Game/GameConfig";
 import { ActionKey } from "../Game/Data";
+import { cumulativeSeries, dpsAt, totalAt } from "../RotationLab/comparison/compare";
 import { RotationSimulator, simulateRotation } from "../RotationLab/simulation/RotationSimulator";
-import { DowntimeWindow, PartyBuffWindow } from "../RotationLab/simulation/types";
+import {
+	DowntimeWindow,
+	PartyBuffWindow,
+	RotationResult,
+	SimulationEnd,
+} from "../RotationLab/simulation/types";
 
 beforeEach(rotationTestSetup);
 afterEach(() => {
@@ -194,5 +200,98 @@ describe("Rotation Lab - party buffs and downtime", () => {
 
 	it("rejects downtime windows that do not end after they start", () => {
 		expect(() => new RotationSimulator("VPR", { downtime: [{ start: 5, end: 5 }] })).toThrow();
+	});
+});
+
+// Comparison milestone M0: how a cutoff reads a real simulation's downtime and end mode (spec 2.2).
+describe("Rotation Lab - cutoffs against downtime and end modes", () => {
+	const run = (
+		options: { end?: SimulationEnd; downtime?: DowntimeWindow[] } = {},
+		steps: ActionKey[] = FILLER,
+	) =>
+		simulateRotation(
+			{ id: "cutoffs", steps },
+			{ encounterRules: true, config: { fps: 0 }, end: "settled", ...options },
+		);
+	const actionHits = (result: RotationResult) =>
+		result.damageEvents.filter((e) => !e.isAutoAttack);
+	const damageSeries = (result: RotationResult) => cumulativeSeries(result, "damage");
+	// When the 4th hit lands without downtime. It is pressed over 1 s earlier, so the windows
+	// below start after that press: it stays valid and lands at the same time.
+	const fourthHitTime = () => actionHits(run())[3].time;
+
+	it("counts a hit landing in downtime as 0, though its event still carries an amount", () => {
+		const t = fourthHitTime();
+		const result = run({ downtime: [{ start: t, end: t + 1 }] });
+		const ghosted = actionHits(result)[3];
+		const series = damageSeries(result);
+
+		// Landing exactly at the window's start is inside it.
+		expect(ghosted.time).toBe(t);
+		expect(ghosted.hitTarget).toBe(false);
+		// Readers must go through hitTarget (as cumulativeSeries does), not sum the raw amounts.
+		expect(ghosted.expectedDamage).toBeGreaterThan(0);
+		expect(totalAt(series, t)).toBeCloseTo(totalAt(series, t - 0.001), 6);
+		expect(totalAt(series, result.endTime)).toBeCloseTo(result.damage!.expectedDamage, 6);
+	});
+
+	it("counts a hit landing exactly when downtime ends", () => {
+		const t = fourthHitTime();
+		const result = run({ downtime: [{ start: t - 1, end: t }] });
+		const hit = actionHits(result)[3];
+		const series = damageSeries(result);
+
+		expect(hit.time).toBe(t);
+		expect(hit.hitTarget).toBe(true);
+		expect(totalAt(series, t) - totalAt(series, t - 0.001)).toBeCloseTo(hit.expectedDamage!, 6);
+	});
+
+	it("divides a cutoff inside downtime by the full time since the pull", () => {
+		const result = run({ downtime: [{ start: 6, end: 16 }] });
+		const series = damageSeries(result);
+
+		// Presses inside the window are rejected as invalid, so they produce no hit at all.
+		expect(result.actions.some((a) => !a.valid)).toBe(true);
+		expect(actionHits(result).some((e) => e.time >= 6 && e.time < 16)).toBe(false);
+		// Nothing lands on the boss during the window, so the total is flat and DPS keeps falling.
+		const total = totalAt(series, 6);
+		expect(total).toBeGreaterThan(0);
+		expect(totalAt(series, 15.999)).toBe(total);
+		expect(dpsAt(series, 8)).toBeCloseTo(total / 8, 6);
+		expect(dpsAt(series, 12)).toBeCloseTo(total / 12, 6);
+	});
+
+	it("leaves a hit still in flight out of a lastAction result but not a settled one", () => {
+		const lastAction = run({ end: "lastAction" });
+		const settled = run({ end: "settled" });
+		const flight = actionHits(settled).at(-1)!;
+
+		expect(lastAction.endTime).toBeLessThan(flight.time);
+		expect(lastAction.damage!.pendingDamage).toBeCloseTo(flight.expectedDamage!, 6);
+		expect(actionHits(lastAction)).toHaveLength(actionHits(settled).length - 1);
+		expect(settled.damage!.pendingDamage).toBe(0);
+
+		// Same totals up to where lastAction stopped; after it, only settled has the hit.
+		const a = damageSeries(lastAction);
+		const b = damageSeries(settled);
+		expect(totalAt(a, lastAction.endTime)).toBeCloseTo(totalAt(b, lastAction.endTime), 6);
+		expect(totalAt(b, flight.time) - totalAt(a, flight.time)).toBeCloseTo(
+			flight.expectedDamage!,
+			6,
+		);
+	});
+
+	it("reads the same total from a settled run as a run stopped at that cutoff", () => {
+		const settled = run();
+		const flight = actionHits(settled)[3];
+		const cutoff = flight.time - 0.001;
+		const stopped = run({ end: cutoff }, FILLER.slice(0, 4));
+
+		expect(stopped.endTime).toBeCloseTo(cutoff, 6);
+		expect(stopped.damage!.pendingDamage).toBeCloseTo(flight.expectedDamage!, 6);
+		expect(stopped.damage!.expectedDamage).toBeCloseTo(
+			totalAt(damageSeries(settled), cutoff),
+			6,
+		);
 	});
 });

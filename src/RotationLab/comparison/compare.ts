@@ -45,15 +45,18 @@ export function cumulativeSeries(
 	return { metric, times, totals };
 }
 
-// Index of the last step at or before `t` (inclusive) or strictly before it; -1 if none.
-function lastIndex(series: CumulativeSeries, t: number, inclusive: boolean): number {
+// Simulated times are computed floats (a hit due at 7.5 s can be recorded at 7.500000000000002 s),
+// so times this close, in seconds, count as the same instant. Far below any real gap between hits.
+const TIME_TOLERANCE = 1e-6;
+
+// Index of the last step at or before `limit`; -1 if none.
+function lastIndex(series: CumulativeSeries, limit: number): number {
 	let lo = 0;
 	let hi = series.times.length - 1;
 	let found = -1;
 	while (lo <= hi) {
 		const mid = (lo + hi) >> 1;
-		const before = inclusive ? series.times[mid] <= t : series.times[mid] < t;
-		if (before) {
+		if (series.times[mid] <= limit) {
 			found = mid;
 			lo = mid + 1;
 		} else {
@@ -65,7 +68,7 @@ function lastIndex(series: CumulativeSeries, t: number, inclusive: boolean): num
 
 // Total of every hit that landed at or before `t`.
 export function totalAt(series: CumulativeSeries, t: number): number {
-	const i = lastIndex(series, t, true);
+	const i = lastIndex(series, t + TIME_TOLERANCE);
 	return i < 0 ? 0 : series.totals[i];
 }
 
@@ -74,10 +77,19 @@ export function dpsAt(series: CumulativeSeries, t: number): number | undefined {
 	return t > 0 ? totalAt(series, t) / t : undefined;
 }
 
-// Total of the hits landing in [start, end], both inclusive.
+// The running total a window boundary at `t` splits on. It equals `totalAt`, except that a boundary
+// at the pull comes before the pull hit, which has no earlier window to belong to.
+function totalAtWindowBoundary(series: CumulativeSeries, t: number): number {
+	if (Math.abs(t) > TIME_TOLERANCE) return totalAt(series, t);
+	const i = lastIndex(series, -TIME_TOLERANCE);
+	return i < 0 ? 0 : series.totals[i];
+}
+
+// Total of the hits landing in (start, end], matching the inclusive cutoffs of `totalAt`: a hit at
+// `start` belongs to the previous window, so touching windows never double count. The exception is
+// the pull hit, which belongs to a window starting at 0 s and not to one ending there.
 export function totalBetween(series: CumulativeSeries, start: number, end: number): number {
-	const before = lastIndex(series, start, false);
-	return totalAt(series, end) - (before < 0 ? 0 : series.totals[before]);
+	return totalAtWindowBoundary(series, end) - totalAtWindowBoundary(series, start);
 }
 
 // A − B at every time either total changes, for plotting the difference over time.
@@ -129,7 +141,7 @@ export function dpsSamples(series: CumulativeSeries, times: number[]): number[] 
 export function gaugesAt(result: RotationResult, t: number): GaugeValue[] | undefined {
 	let last: RotationResult["actions"][number] | undefined;
 	for (const action of result.actions) {
-		if (action.startTime > t) break;
+		if (action.startTime > t + TIME_TOLERANCE) break;
 		last = action;
 	}
 	return last?.resources.gauges;

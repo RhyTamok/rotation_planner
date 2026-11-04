@@ -43,7 +43,10 @@ version control; an archival platform; new engine formulas.
     boundaries cannot diverge. No alternative cutoff calculation.
 -   Window totals use `(start, end]`, matching cutoffs (decided, Q1): a hit exactly at `start` belongs to
     the previous window and a hit exactly at `end` to this one, so adjacent windows never double count.
-    Today's `totalBetween` uses `[start, end]` and must change (roadmap M0).
+    `totalBetween` implements this (roadmap M0). Exception: the pull hit has no previous window, so it
+    belongs to a window starting at 0 s and not to one ending there (decided, Q1).
+-   Times within 1e-6 s count as the same instant, because simulated times carry float noise (decided,
+    Q1). This applies to cutoffs, windows and gauges in `compare.ts`.
 
 ### 2.3 Views
 
@@ -173,7 +176,9 @@ Principle: a saved comparison is a self-contained research artifact.
 
 Decided by the user on 2026-11-04:
 
--   **Q1 Window boundaries:** match cutoffs, i.e. `(start, end]`.
+-   **Q1 Window boundaries:** match cutoffs, i.e. `(start, end]`. Added after M0, once real landing
+    times showed float noise: comparisons use a small time tolerance, and a window starting at 0 s
+    includes the pull hit.
 -   **Q3 Engine version:** delegated to us. Decision (coding grounds): a hand-bumped `ENGINE_VERSION`
     string constant beside `AVAILABLE_RULESETS`, bumped whenever simulation code, damage formulas or game
     data change. Rationale: deterministic, visible in review, works in tests and any build; a build-time id

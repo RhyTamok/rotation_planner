@@ -66,7 +66,9 @@ describe("Rotation Lab - comparison maths", () => {
 		expect(dpsAt(series, 0)).toBeUndefined();
 	});
 
-	it("sums hits inside a window, both ends inclusive", () => {
+	// Changed on purpose by comparison milestone M0 (spec Q1). This test used to pin both ends as
+	// inclusive and expected 1110; the hit exactly at `start` now belongs to the previous window.
+	it("sums hits inside a window as (start, end]", () => {
 		const series = cumulativeSeries(
 			fakeResult([
 				[0, 1],
@@ -77,7 +79,7 @@ describe("Rotation Lab - comparison maths", () => {
 			]),
 			"damage",
 		);
-		expect(totalBetween(series, 5, 10)).toBe(1110);
+		expect(totalBetween(series, 5, 10)).toBe(1100);
 		expect(totalBetween(series, 5.5, 9)).toBe(100);
 	});
 
@@ -197,4 +199,133 @@ describe("Rotation Lab - comparison maths", () => {
 		expect(totalAt(series, result.endTime)).toBeCloseTo(result.damage!.expectedDamage, 6);
 		expect(dpsAt(series, result.endTime)).toBeCloseTo(result.damage!.expectedDps!, 6);
 	});
+});
+
+// Comparison milestone M0: the cutoff and window rules of spec 2.2, made executable.
+describe("Rotation Lab - cutoff and window boundaries", () => {
+	const simulate = () =>
+		simulateRotation(
+			{ id: "boundaries", steps: ["STEEL_FANGS", "REAVING_FANGS", "STEEL_FANGS"] },
+			{ encounterRules: true, config: { fps: 0 }, end: "settled" },
+		);
+
+	it("counts a hit landing exactly at a cutoff, but not one landing 1 ms later", () => {
+		const series = cumulativeSeries(
+			fakeResult([
+				[10, 100],
+				[10.001, 50],
+			]),
+			"damage",
+		);
+		expect(totalAt(series, 10)).toBe(100);
+		expect(dpsAt(series, 10)).toBe(10);
+		expect(totalAt(series, 10.001)).toBe(150);
+	});
+
+	it("applies the same cutoff boundary to a simulated hit", () => {
+		const result = simulate();
+		const hit = result.damageEvents.filter((e) => !e.isAutoAttack).at(-1)!;
+		const series = cumulativeSeries(result, "damage");
+
+		expect(hit.expectedDamage).toBeGreaterThan(0);
+		expect(totalAt(series, hit.time) - totalAt(series, hit.time - 0.001)).toBeCloseTo(
+			hit.expectedDamage!,
+			6,
+		);
+	});
+
+	it("gives a hit on a shared boundary to the window ending there, never to both", () => {
+		const series = cumulativeSeries(
+			fakeResult([
+				[5, 1],
+				[10, 10],
+				[15, 100],
+			]),
+			"damage",
+		);
+		expect(totalBetween(series, 0, 5)).toBe(1);
+		expect(totalBetween(series, 5, 10)).toBe(10);
+		expect(totalBetween(series, 10, 15)).toBe(100);
+		expect(totalBetween(series, 0, 15)).toBe(totalAt(series, 15));
+		expect(totalBetween(series, 10, 10)).toBe(0);
+	});
+
+	it("uses the same window boundary in the comparison's burst table", () => {
+		const hits: [number, number][] = [
+			[5, 1],
+			[10, 10],
+			[15, 100],
+		];
+		const comparison = compareRotations(
+			fakeResult(hits),
+			fakeResult(hits),
+			[],
+			[
+				{ start: 5, end: 10 },
+				{ start: 10, end: 15 },
+			],
+		);
+		expect(comparison.windows.map((w) => w.a)).toEqual([10, 100]);
+	});
+
+	// Decided by the user after M0: the pull hit has no earlier window, so it belongs to the window
+	// starting at 0 s. Measured pull hits are exactly 0 or within 3.6e-15 s of it, either way.
+	it.each([0, 8.881784197001252e-16, -3.552713678800501e-15])(
+		"gives a pull hit at %d s to the window starting at 0 s, not the one ending there",
+		(pull) => {
+			const series = cumulativeSeries(
+				fakeResult([
+					[-2, 5],
+					[pull, 50],
+					[1, 10],
+				]),
+				"damage",
+			);
+			expect(totalBetween(series, 0, 1)).toBe(60);
+			expect(totalBetween(series, -5, 0)).toBe(5);
+			expect(totalBetween(series, -5, 1)).toBe(65);
+			// A cutoff at the pull still counts it.
+			expect(totalAt(series, 0)).toBe(55);
+		},
+	);
+
+	it("includes a simulated pull hit in a window starting at 0 s", () => {
+		const result = simulate();
+		const pullHit = result.damageEvents.find((e) => !e.isAutoAttack)!;
+		const series = cumulativeSeries(result, "damage");
+
+		expect(Math.abs(pullHit.time)).toBeLessThan(1e-9);
+		// A narrow window: the first auto-attack lands within the first second.
+		expect(totalBetween(series, 0, 0.001)).toBeCloseTo(pullHit.expectedDamage!, 6);
+	});
+
+	// A hit due at 7.5 s is recorded at 7.500000000000002 s by the real engine.
+	it("counts a hit within float noise of a typed cutoff, on either side", () => {
+		const late = cumulativeSeries(fakeResult([[7.500000000000002, 100]]), "damage");
+		const early = cumulativeSeries(fakeResult([[7.499999999999998, 100]]), "damage");
+		expect(totalAt(late, 7.5)).toBe(100);
+		expect(totalAt(early, 7.5)).toBe(100);
+		expect(dpsAt(late, 7.5)).toBeCloseTo(100 / 7.5, 6);
+	});
+
+	it("gives a hit within float noise of a shared boundary to one window only", () => {
+		const series = cumulativeSeries(fakeResult([[10.000000000000002, 100]]), "damage");
+		expect(totalBetween(series, 5, 10)).toBe(100);
+		expect(totalBetween(series, 10, 15)).toBe(0);
+	});
+
+	it("reports no lead when float noise is all that separates two hits", () => {
+		const a = cumulativeSeries(fakeResult([[7.5, 100]]), "damage");
+		const b = cumulativeSeries(fakeResult([[7.500000000000002, 100]]), "damage");
+		expect(leadChanges(a, b)).toEqual([]);
+	});
+
+	it("reads gauges within float noise of a press as after that press", () => {
+		const result = simulate();
+		const [first, second] = result.actions;
+		expect(gaugesAt(result, second.startTime - 1e-12)).toBe(second.resources.gauges);
+		expect(gaugesAt(result, second.startTime - 0.001)).toBe(first.resources.gauges);
+	});
+
+	it.todo("adds nothing to a cutoff for DoT ticks landing after it (needs Dragoon)");
 });

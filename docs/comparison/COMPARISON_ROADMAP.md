@@ -1,6 +1,6 @@
 # Comparison system roadmap
 
-Plan only; nothing here is implemented. Based on [COMPARISON_AUDIT.md](COMPARISON_AUDIT.md) and
+Milestone plan; see the status table for what is implemented. Based on [COMPARISON_AUDIT.md](COMPARISON_AUDIT.md) and
 [COMPARISON_SPEC.md](COMPARISON_SPEC.md). Effort: L / M / H. Each milestone should be one reviewable
 commit series ending with `/verify-task`. Bump `AVAILABLE_RULESETS` only if a milestone changes
 game data or mechanics (none planned); bump `SCHEMA_VERSION` with a migration whenever a stored
@@ -10,7 +10,8 @@ document shape changes (M1, M7).
 
 | Milestone | Status |
 | --- | --- |
-| M0–M8 | not started (update this row by row as each is committed) |
+| M0 | done, awaiting commit (2026-11-04), including the time tolerance and pull-hit rule (spec Q1) |
+| M1–M8 | not started (update this row by row as each is committed) |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
