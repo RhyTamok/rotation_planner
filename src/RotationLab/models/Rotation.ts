@@ -8,7 +8,8 @@ import type { GearOverrides } from "./GearSet";
 // 1 → 2: character stats moved from scenarios into gear sets chosen per rotation.
 // 2 → 3: rotations have a target count (used by the action recommendations).
 // 3 → 4: the target count is replaced by target ranges (used by damage and recommendations).
-export const SCHEMA_VERSION = 4;
+// 4 → 5: workspaces have stored comparisons.
+export const SCHEMA_VERSION = 5;
 
 export type CombatMode = "reborn" | "evolved";
 

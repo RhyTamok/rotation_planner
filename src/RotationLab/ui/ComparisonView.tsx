@@ -7,6 +7,7 @@ import {
 	sampleTimes,
 	TimeWindow,
 } from "../comparison/compare";
+import { ComparisonDocument, DEFAULT_CHARTS_FROM, editComparison } from "../models/Comparison";
 import { GearSetDocument, resolveGear } from "../models/GearSet";
 import { RotationDocument } from "../models/Rotation";
 import { BurstWindow, ScenarioDocument } from "../models/Scenario";
@@ -294,21 +295,33 @@ export function ComparisonView(props: {
 	rotations: RotationDocument[];
 	scenario: ScenarioDocument;
 	cache: SimulationCache;
-	defaultA: string;
+	// The comparison on show: stored, or the default that is stored on its first edit.
+	comparison: ComparisonDocument;
+	// All stored comparisons, to choose from.
+	comparisons: ComparisonDocument[];
+	onSelectComparison: (id: string) => void;
+	onComparisonChange: (comparison: ComparisonDocument) => void;
 	onScenarioChange: (scenario: ScenarioDocument) => void;
 	gearSets: GearSetDocument[];
 }) {
-	const { rotations, scenario, cache, onScenarioChange, gearSets } = props;
-	const [idA, setIdA] = useState(props.defaultA);
-	const [idB, setIdB] = useState(
-		() => rotations.find((r) => r.id !== props.defaultA)?.id ?? props.defaultA,
-	);
-	const [extraCutoffs, setExtraCutoffs] = useState<number[]>([]);
+	const { rotations, scenario, cache, comparison: doc, onScenarioChange, gearSets } = props;
+	const edit = (patch: Parameters<typeof editComparison>[1]) =>
+		props.onComparisonChange(editComparison(doc, patch));
+	const extraCutoffs = doc.cutoffs;
 	const [cutoffText, setCutoffText] = useState("");
-	const [from, setFrom] = useState(10);
+	const from = doc.display.chartsFrom ?? DEFAULT_CHARTS_FROM;
 
-	const rotationA = rotations.find((r) => r.id === idA) ?? rotations[0];
-	const rotationB = rotations.find((r) => r.id === idB) ?? rotations[0];
+	// This view shows the first two configurations; the others are kept untouched (roadmap M3).
+	const [configA, configB] = doc.configurations;
+	const candidates = rotations.filter((r) => r.job === doc.job);
+	const rotationA = rotations.find((r) => r.id === configA.rotationId) ?? rotations[0];
+	const rotationB = rotations.find((r) => r.id === configB.rotationId) ?? rotations[0];
+	const setRotation = (configId: string, rotationId: string) =>
+		edit({
+			configurations: doc.configurations.map((c) =>
+				c.id === configId ? { ...c, rotationId } : c,
+			),
+		});
 	const resultA = useMemo(
 		() => simulate(cache, rotationA, scenario, gearSets),
 		[cache, rotationA, scenario, gearSets],
@@ -356,7 +369,7 @@ export function ComparisonView(props: {
 			value={value}
 			onChange={(e) => onChange(e.target.value)}
 		>
-			{rotations.map((r) => <option key={r.id} value={r.id}>
+			{candidates.map((r) => <option key={r.id} value={r.id}>
 				{r.name || "(unnamed)"}
 			</option>)}
 		</select>
@@ -364,8 +377,20 @@ export function ComparisonView(props: {
 
 	return <section className="rl-compare" aria-label="Comparison">
 		<div className="rl-compare-controls">
-			{picker("A", rotationA.id, setIdA)}
-			{picker("B", rotationB.id, setIdB)}
+			{props.comparisons.length > 1 && <label>
+				Comparison{" "}
+				<select
+					aria-label="Comparison"
+					value={doc.id}
+					onChange={(e) => props.onSelectComparison(e.target.value)}
+				>
+					{props.comparisons.map((c) => <option key={c.id} value={c.id}>
+						{c.name || "(unnamed)"}
+					</option>)}
+				</select>
+			</label>}
+			{picker("A", rotationA.id, (id) => setRotation(configA.id, id))}
+			{picker("B", rotationB.id, (id) => setRotation(configB.id, id))}
 			<label>
 				Charts from{" "}
 				<input
@@ -376,7 +401,9 @@ export function ComparisonView(props: {
 					value={from}
 					onChange={(e) => {
 						const t = Number(e.target.value);
-						if (Number.isFinite(t) && t >= 0) setFrom(t);
+						if (Number.isFinite(t) && t >= 0) {
+							edit({ display: { ...doc.display, chartsFrom: t } });
+						}
 					}}
 					style={{ width: 64 }}
 				/>{" "}
@@ -386,6 +413,9 @@ export function ComparisonView(props: {
 				Scenario “{scenario.name}” · gear A: {gearName(rotationA)} · gear B:{" "}
 				{gearName(rotationB)}
 			</span>
+			{doc.configurations.length > 2 && <span className="rl-note">
+				Showing the first two of {doc.configurations.length} configurations.
+			</span>}
 		</div>
 
 		{typeof resultA === "string" && <div className="rl-banner">
@@ -394,7 +424,7 @@ export function ComparisonView(props: {
 		{typeof resultB === "string" && <div className="rl-banner">
 			B cannot be simulated: {resultB}
 		</div>}
-		{rotations.length < 2 && <div className="rl-banner">
+		{candidates.length < 2 && <div className="rl-banner">
 			Create or duplicate a second rotation to compare against.
 		</div>}
 
@@ -443,7 +473,7 @@ export function ComparisonView(props: {
 					onClick={() => {
 						const t = Number(cutoffText);
 						if (cutoffText.trim() !== "" && Number.isFinite(t) && t > 0) {
-							setExtraCutoffs((cs) => [...new Set([...cs, t])]);
+							edit({ cutoffs: [...new Set([...extraCutoffs, t])] });
 							setCutoffText("");
 						}
 					}}
@@ -488,7 +518,7 @@ export function ComparisonView(props: {
 								className="rl-remove"
 								aria-label="Remove cutoff"
 								onClick={() =>
-									setExtraCutoffs((cs) => cs.filter((t) => t !== c.time))
+									edit({ cutoffs: extraCutoffs.filter((t) => t !== c.time) })
 								}
 							>
 								×

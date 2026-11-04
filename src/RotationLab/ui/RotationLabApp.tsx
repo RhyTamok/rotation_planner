@@ -15,9 +15,16 @@ import {
 	removeEntries,
 	updateStep,
 } from "../editor/rotationEdits";
+import {
+	ComparisonDocument,
+	createComparison,
+	editComparison,
+	removeRotationFromComparisons,
+} from "../models/Comparison";
 import { createRotation, newId, RotationDocument } from "../models/Rotation";
 import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import {
+	parseComparisonDocument,
 	parseGearSetDocument,
 	parseRotationDocument,
 	parseScenarioDocument,
@@ -30,6 +37,7 @@ import { PartyBuffWindow, RotationStep } from "../simulation/types";
 import {
 	KeyValueStorage,
 	loadWorkspace,
+	mergeWorkspace,
 	parseWorkspace,
 	saveWorkspace,
 	serializeWorkspace,
@@ -82,7 +90,21 @@ function validationProblems(workspace: Workspace): string[] {
 			const parsed = parseGearSetDocument(g);
 			return parsed.ok ? [] : [`${g.name}: ${parsed.errors.join("; ")}`];
 		}),
+		...workspace.comparisons.flatMap((c) => {
+			const parsed = parseComparisonDocument(c, workspace);
+			return parsed.ok ? [] : [`${c.name}: ${parsed.errors.join("; ")}`];
+		}),
 	];
+}
+
+// Stores a comparison, adding it if it was still the unsaved default.
+function storeComparison(ws: Workspace, doc: ComparisonDocument): Workspace {
+	return {
+		...ws,
+		comparisons: ws.comparisons.some((c) => c.id === doc.id)
+			? ws.comparisons.map((c) => (c.id === doc.id ? doc : c))
+			: [...ws.comparisons, doc],
+	};
 }
 
 function downloadText(filename: string, text: string) {
@@ -137,6 +159,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	const [messages, setMessages] = useState<string[]>(initial.errors);
 	const [rotationId, setRotationId] = useState(initial.workspace.rotations[0].id);
 	const [scenarioId, setScenarioId] = useState(initial.workspace.scenarios[0].id);
+	const [comparisonId, setComparisonId] = useState<string>();
 	// The selection is the range from `anchorId` (when extended with Shift) to `selectedId`, the
 	// row that moves with the arrow keys.
 	const [selectedId, setSelectedId] = useState<string>();
@@ -146,7 +169,31 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 	const fileInput = useRef<HTMLInputElement>(null);
 
 	const rotation = workspace.rotations.find((r) => r.id === rotationId) ?? workspace.rotations[0];
-	const scenario = workspace.scenarios.find((s) => s.id === scenarioId) ?? workspace.scenarios[0];
+	const selectedScenario =
+		workspace.scenarios.find((s) => s.id === scenarioId) ?? workspace.scenarios[0];
+
+	// Until a comparison is first edited there is nothing to store: the view shows this default, the
+	// current rotation against the next one of its job. Clicking Compare therefore adds no undo step.
+	const otherRotationId =
+		workspace.rotations.find((r) => r.id !== rotation.id && r.job === rotation.job)?.id ??
+		rotation.id;
+	const defaultComparison = useMemo(
+		() =>
+			createComparison({
+				job: rotation.job,
+				scenarioId: selectedScenario.id,
+				rotationIds: [rotation.id, otherRotationId],
+			}),
+		[rotation.job, rotation.id, otherRotationId, selectedScenario.id],
+	);
+	const comparison =
+		workspace.comparisons.find((c) => c.id === comparisonId) ??
+		workspace.comparisons[0] ??
+		defaultComparison;
+	// In Compare the scenario panel and summary show the comparison's own scenario.
+	const scenario =
+		(mode === "compare" && workspace.scenarios.find((s) => s.id === comparison.scenarioId)) ||
+		selectedScenario;
 
 	const gear = useMemo(
 		() => resolveGear(rotation, workspace.gearSets),
@@ -203,6 +250,14 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			...ws,
 			scenarios: ws.scenarios.map((s) => (s.id === next.id ? next : s)),
 		}));
+
+	const replaceComparison = (next: ComparisonDocument) =>
+		setWorkspace((ws) => storeComparison(ws, next));
+	// In Compare, choosing a scenario also changes the one the comparison is stored with.
+	const selectScenario = (id: string) => {
+		setScenarioId(id);
+		if (mode === "compare") replaceComparison(editComparison(comparison, { scenarioId: id }));
+	};
 
 	// Selects one row, or with `extend` grows the selection from its anchor to `id`.
 	const select = (id: string | undefined, extend = false) => {
@@ -283,49 +338,25 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		select(undefined);
 	};
 	const deleteRotation = () => {
-		if (!window.confirm(`Delete "${rotation.name}"?`)) return;
+		const comparisons = removeRotationFromComparisons(workspace.comparisons, rotation.id);
+		const dropped = workspace.comparisons.length - comparisons.length;
+		const warning =
+			dropped > 0
+				? ` This also deletes ${dropped} comparison(s) that would have fewer than two configurations left.`
+				: "";
+		if (!window.confirm(`Delete "${rotation.name}"?${warning}`)) return;
 		const remaining = workspace.rotations.filter((r) => r.id !== rotation.id);
 		const rotations = remaining.length > 0 ? remaining : [newRotation()];
-		setWorkspace((ws) => ({ ...ws, rotations }));
+		setWorkspace((ws) => ({ ...ws, rotations, comparisons }));
 		setRotationId(rotations[0].id);
 		select(undefined);
 	};
 
 	const importFile = async (file: File) => {
 		const { workspace: imported, errors } = parseWorkspace(await file.text());
-		// Never overwrite existing documents: clashing ids get fresh ones.
-		const rotationIds = new Set(workspace.rotations.map((r) => r.id));
-		const scenarioIds = new Set(workspace.scenarios.map((s) => s.id));
-		// Imported gear sets with clashing ids get fresh ones; their rotations follow.
-		const gearIds = new Map(
-			imported.gearSets.map((g) => [
-				g.id,
-				workspace.gearSets.some((x) => x.id === g.id) ? newId() : g.id,
-			]),
-		);
-		setWorkspace((ws) => ({
-			...ws,
-			rotations: [
-				...ws.rotations,
-				...imported.rotations.map((r) => ({
-					...r,
-					id: rotationIds.has(r.id) ? newId() : r.id,
-					gearSetId: r.gearSetId && (gearIds.get(r.gearSetId) ?? r.gearSetId),
-				})),
-			],
-			gearSets: [
-				...ws.gearSets,
-				...imported.gearSets.map((g) => ({ ...g, id: gearIds.get(g.id)! })),
-			],
-			scenarios: [
-				...ws.scenarios,
-				...imported.scenarios.map((s) =>
-					scenarioIds.has(s.id) ? { ...s, id: newId() } : s,
-				),
-			],
-		}));
+		setWorkspace((ws) => mergeWorkspace(ws, imported));
 		setMessages([
-			`Imported ${imported.rotations.length} rotation(s) and ${imported.scenarios.length} scenario(s) from ${file.name}.`,
+			`Imported ${imported.rotations.length} rotation(s), ${imported.scenarios.length} scenario(s) and ${imported.comparisons.length} comparison(s) from ${file.name}.`,
 			...errors.map((e) => `Import: ${e}`),
 		]);
 	};
@@ -403,7 +434,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 				<select
 					aria-label="Scenario"
 					value={scenario.id}
-					onChange={(e) => setScenarioId(e.target.value)}
+					onChange={(e) => selectScenario(e.target.value)}
 				>
 					{workspace.scenarios.map((s) => <option key={s.id} value={s.id}>
 						{s.name || "(unnamed)"}
@@ -417,7 +448,16 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 						id: newId(),
 						name: `${scenario.name} (copy)`,
 					};
-					setWorkspace((ws) => ({ ...ws, scenarios: [...ws.scenarios, doc] }));
+					// One undo step, so the comparison never points at a scenario undo has removed.
+					setWorkspace((ws) => {
+						const next = { ...ws, scenarios: [...ws.scenarios, doc] };
+						return mode === "compare"
+							? storeComparison(
+									next,
+									editComparison(comparison, { scenarioId: doc.id }),
+								)
+							: next;
+					});
 					setScenarioId(doc.id);
 				}}
 			>
@@ -513,7 +553,10 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 					rotations={workspace.rotations}
 					scenario={scenario}
 					cache={cache}
-					defaultA={rotation.id}
+					comparison={comparison}
+					comparisons={workspace.comparisons}
+					onSelectComparison={setComparisonId}
+					onComparisonChange={replaceComparison}
 					onScenarioChange={replaceScenario}
 					gearSets={workspace.gearSets}
 				/>

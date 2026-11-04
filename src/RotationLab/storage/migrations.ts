@@ -87,7 +87,29 @@ function v3ToV4(workspace: Obj): Obj {
 	};
 }
 
-const STEPS: Record<number, (workspace: Obj) => Obj> = { 1: v1ToV2, 2: v2ToV3, 3: v3ToV4 };
+// 4 → 5: workspaces get stored comparisons. Earlier comparisons were never saved, so there are
+// none to carry over.
+function v4ToV5(workspace: Obj): Obj {
+	const bump = (docs: unknown) =>
+		Array.isArray(docs)
+			? docs.map((doc) => (isObject(doc) ? { ...doc, schemaVersion: 5 } : doc))
+			: docs;
+	return {
+		...workspace,
+		schemaVersion: 5,
+		rotations: bump(workspace.rotations),
+		scenarios: bump(workspace.scenarios),
+		gearSets: bump(workspace.gearSets),
+		comparisons: [],
+	};
+}
+
+const STEPS: Record<number, (workspace: Obj) => Obj> = {
+	1: v1ToV2,
+	2: v2ToV3,
+	3: v3ToV4,
+	4: v4ToV5,
+};
 
 // Returns the workspace at SCHEMA_VERSION, or an error for versions it cannot upgrade.
 export function migrateWorkspace(workspace: Obj): { workspace: Obj } | { error: string } {

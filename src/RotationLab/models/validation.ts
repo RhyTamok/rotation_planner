@@ -5,6 +5,7 @@ import { ActionKey } from "../../Game/Data";
 import { ALL_JOBS, ShellJob } from "../../Game/Data/Jobs";
 import { jobHasSkill } from "../../Game/Skills";
 import { RotationStep, SimulationEnd } from "../simulation/types";
+import { ComparisonDocument, MAX_CONFIGURATIONS, MIN_CONFIGURATIONS } from "./Comparison";
 import { GEAR_STAT_KEYS, GearSetDocument } from "./GearSet";
 import { CombatMode, RotationDocument, SCHEMA_VERSION } from "./Rotation";
 import { SCENARIO_STAT_KEYS, ScenarioDocument, ScenarioStats } from "./Scenario";
@@ -209,6 +210,106 @@ function isSimulationEnd(x: unknown): x is SimulationEnd {
 	return x === "lastAction" || x === "settled" || isFiniteNumber(x);
 }
 
+function validateBurstWindows(windows: unknown, errors: string[]) {
+	if (windows === undefined) return;
+	if (!Array.isArray(windows)) {
+		errors.push("burstWindows must be an array");
+		return;
+	}
+	windows.forEach((w, i) => {
+		if (
+			!isObject(w) ||
+			!isFiniteNumber(w.start) ||
+			!isFiniteNumber(w.end) ||
+			!(w.end > w.start) ||
+			(w.label !== undefined && typeof w.label !== "string")
+		) {
+			errors.push(
+				`burstWindows[${i}]: must have numeric start and end, with end after start`,
+			);
+		}
+	});
+}
+
+// The documents a comparison refers to. Its references are checked against these, so a comparison
+// can only be valid as part of a workspace.
+export interface ComparisonReferences {
+	rotations: readonly Pick<RotationDocument, "id" | "name" | "job">[];
+	scenarios: readonly Pick<ScenarioDocument, "id">[];
+}
+
+export function parseComparisonDocument(
+	input: unknown,
+	references: ComparisonReferences,
+): ParseResult<ComparisonDocument> {
+	const errors: string[] = [];
+	if (!isObject(input)) {
+		return { ok: false, errors: ["comparison must be an object"] };
+	}
+	checkSchemaVersion(input, errors);
+	checkCommonFields(input, errors);
+	if (!Number.isInteger(input.revision) || (input.revision as number) < 1) {
+		errors.push("revision must be a positive integer");
+	}
+	if (typeof input.job !== "string" || !(ALL_JOBS as string[]).includes(input.job)) {
+		errors.push(`unknown job ${JSON.stringify(input.job)}`);
+	}
+	if (!references.scenarios.some((s) => s.id === input.scenarioId)) {
+		errors.push(`scenarioId ${JSON.stringify(input.scenarioId)} is not in the workspace`);
+	}
+
+	if (!Array.isArray(input.configurations)) {
+		errors.push("configurations must be an array");
+	} else {
+		const count = input.configurations.length;
+		if (count < MIN_CONFIGURATIONS || count > MAX_CONFIGURATIONS) {
+			errors.push(
+				`configurations must have ${MIN_CONFIGURATIONS} to ${MAX_CONFIGURATIONS} entries, found ${count}`,
+			);
+		}
+		const seenIds = new Set<string>();
+		input.configurations.forEach((c, i) => {
+			const where = `configurations[${i}]`;
+			if (!isObject(c) || !isNonEmptyString(c.id)) {
+				errors.push(`${where}: must have a non-empty id`);
+				return;
+			}
+			if (seenIds.has(c.id)) errors.push(`${where}: duplicate id ${c.id}`);
+			seenIds.add(c.id);
+			const rotation = references.rotations.find((r) => r.id === c.rotationId);
+			if (!rotation) {
+				errors.push(
+					`${where}: rotation ${JSON.stringify(c.rotationId)} is not in the workspace`,
+				);
+			} else if (rotation.job !== input.job) {
+				errors.push(
+					`${where}: rotation "${rotation.name}" is ${rotation.job}, not ${JSON.stringify(input.job)}`,
+				);
+			}
+		});
+		if (typeof input.baselineId !== "string" || !seenIds.has(input.baselineId)) {
+			errors.push(`baselineId ${JSON.stringify(input.baselineId)} is not a configuration`);
+		}
+	}
+
+	if (!Array.isArray(input.cutoffs) || !input.cutoffs.every((t) => isFiniteNumber(t) && t > 0)) {
+		errors.push("cutoffs must be an array of positive numbers");
+	}
+	validateBurstWindows(input.burstWindows, errors);
+	if (!isObject(input.display)) {
+		errors.push("display must be an object");
+	} else if (
+		input.display.chartsFrom !== undefined &&
+		!(isFiniteNumber(input.display.chartsFrom) && input.display.chartsFrom >= 0)
+	) {
+		errors.push("display.chartsFrom must be a non-negative number");
+	}
+
+	return errors.length > 0
+		? { ok: false, errors }
+		: { ok: true, value: input as unknown as ComparisonDocument };
+}
+
 export function parseScenarioDocument(input: unknown): ParseResult<ScenarioDocument> {
 	const errors: string[] = [];
 	if (!isObject(input)) {
@@ -224,25 +325,7 @@ export function parseScenarioDocument(input: unknown): ParseResult<ScenarioDocum
 	) {
 		errors.push("tinctureGrade must be 1, 2, 3 or 4");
 	}
-	if (input.burstWindows !== undefined) {
-		if (!Array.isArray(input.burstWindows)) {
-			errors.push("burstWindows must be an array");
-		} else {
-			input.burstWindows.forEach((w, i) => {
-				if (
-					!isObject(w) ||
-					!isFiniteNumber(w.start) ||
-					!isFiniteNumber(w.end) ||
-					!(w.end > w.start) ||
-					(w.label !== undefined && typeof w.label !== "string")
-				) {
-					errors.push(
-						`burstWindows[${i}]: must have numeric start and end, with end after start`,
-					);
-				}
-			});
-		}
-	}
+	validateBurstWindows(input.burstWindows, errors);
 	if (!isSimulationEnd(input.end)) {
 		errors.push('end must be "lastAction", "settled" or a number');
 	}

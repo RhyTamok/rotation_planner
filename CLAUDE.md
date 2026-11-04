@@ -13,7 +13,7 @@ it when needed, don't read it whole.
 Treat both as context. Inspect the repository and run the tests before relying on any status
 described there.
 
-**Comparison system** (M0 done, M1–M8 planned, all spec questions decided), `docs/comparison/`; read only when
+**Comparison system** (M0–M1 done, M2–M8 planned, all spec questions decided), `docs/comparison/`; read only when
 working on comparison features, not otherwise: start with `COMPARISON_ROADMAP.md` (status table and
 the milestone), then `COMPARISON_SPEC.md` sections 2–3 for definitions and data model; the
 `COMPARISON_AUDIT.md` lists what exists today and where. Work one milestone at a time, only the one
@@ -90,6 +90,8 @@ the user names; update the roadmap status table when it is done.
     this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8). Run it from
     PowerShell with an absolute root path.
 -   Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>`, never plain `prettier`.
+-   Run Vitest from PowerShell. From Git Bash (`cd /c/Dev/...`) every suite failed at `describe` with
+    "Cannot read properties of undefined (reading 'config')", though the tests were fine.
 -   `DEFAULT_CONFIG` is Black Mage's; use `makeDefaultConfig(job)`.
 -   Never reference `controller` in a GameState field initializer.
 -   Lab potency/damage calls pass `bossDebuffsOnPrimaryOnly: true`; a new `getAmount`/`getPotency`

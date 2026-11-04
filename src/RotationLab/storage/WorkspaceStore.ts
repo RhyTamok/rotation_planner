@@ -1,7 +1,9 @@
+import { ComparisonDocument } from "../models/Comparison";
 import { GearSetDocument } from "../models/GearSet";
-import { RotationDocument, SCHEMA_VERSION } from "../models/Rotation";
+import { newId, RotationDocument, SCHEMA_VERSION } from "../models/Rotation";
 import { ScenarioDocument } from "../models/Scenario";
 import {
+	parseComparisonDocument,
 	parseGearSetDocument,
 	parseRotationDocument,
 	parseScenarioDocument,
@@ -16,6 +18,7 @@ export interface Workspace {
 	rotations: RotationDocument[];
 	scenarios: ScenarioDocument[];
 	gearSets: GearSetDocument[];
+	comparisons: ComparisonDocument[];
 }
 
 // The subset of the Web Storage API used here, so tests can supply an in-memory store.
@@ -26,7 +29,13 @@ export const WORKSPACE_KEY = "rotationLab.workspace";
 export const CORRUPT_BACKUP_KEY = "rotationLab.workspace.corrupt";
 
 export function emptyWorkspace(): Workspace {
-	return { schemaVersion: SCHEMA_VERSION, rotations: [], scenarios: [], gearSets: [] };
+	return {
+		schemaVersion: SCHEMA_VERSION,
+		rotations: [],
+		scenarios: [],
+		gearSets: [],
+		comparisons: [],
+	};
 }
 
 export interface WorkspaceParseResult {
@@ -81,10 +90,59 @@ export function parseWorkspace(text: string): WorkspaceParseResult {
 	collect(obj.rotations, "rotation", parseRotationDocument, workspace.rotations);
 	collect(obj.scenarios, "scenario", parseScenarioDocument, workspace.scenarios);
 	collect(obj.gearSets, "gear set", parseGearSetDocument, workspace.gearSets);
+	// Last: a comparison needs the rotations and scenario it refers to to have been accepted.
+	collect(
+		obj.comparisons,
+		"comparison",
+		(item) => parseComparisonDocument(item, workspace),
+		workspace.comparisons,
+	);
 	const version = (raw as Record<string, unknown>).schemaVersion;
 	return version === SCHEMA_VERSION
 		? { workspace, errors }
 		: { workspace, errors, migratedFrom: version as number };
+}
+
+// Adds an imported workspace to the current one without overwriting anything: clashing ids get
+// fresh ones, and the documents that refer to them follow.
+export function mergeWorkspace(current: Workspace, imported: Workspace): Workspace {
+	const freshIds = (docs: { id: string }[], existing: { id: string }[]) =>
+		new Map(docs.map((d) => [d.id, existing.some((x) => x.id === d.id) ? newId() : d.id]));
+	const rotationIds = freshIds(imported.rotations, current.rotations);
+	const scenarioIds = freshIds(imported.scenarios, current.scenarios);
+	const gearIds = freshIds(imported.gearSets, current.gearSets);
+	const comparisonIds = freshIds(imported.comparisons, current.comparisons);
+	return {
+		...current,
+		rotations: [
+			...current.rotations,
+			...imported.rotations.map((r) => ({
+				...r,
+				id: rotationIds.get(r.id)!,
+				gearSetId: r.gearSetId && (gearIds.get(r.gearSetId) ?? r.gearSetId),
+			})),
+		],
+		gearSets: [
+			...current.gearSets,
+			...imported.gearSets.map((g) => ({ ...g, id: gearIds.get(g.id)! })),
+		],
+		scenarios: [
+			...current.scenarios,
+			...imported.scenarios.map((s) => ({ ...s, id: scenarioIds.get(s.id)! })),
+		],
+		comparisons: [
+			...current.comparisons,
+			...imported.comparisons.map((c) => ({
+				...c,
+				id: comparisonIds.get(c.id)!,
+				scenarioId: scenarioIds.get(c.scenarioId)!,
+				configurations: c.configurations.map((x) => ({
+					...x,
+					rotationId: rotationIds.get(x.rotationId)!,
+				})),
+			})),
+		],
+	};
 }
 
 export function serializeWorkspace(workspace: Workspace): string {

@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import { BuffType } from "../Game/Common";
 import { ActionKey } from "../Game/Data";
 import {
+	ComparisonDocument,
+	createComparison,
+	editComparison,
+	removeRotationFromComparisons,
+} from "../RotationLab/models/Comparison";
+import {
 	AVAILABLE_RULESETS,
 	createRotation,
 	RotationDocument,
@@ -14,6 +20,7 @@ import {
 	scenarioToOptions,
 } from "../RotationLab/models/Scenario";
 import {
+	parseComparisonDocument,
 	parseGearSetDocument,
 	parseRotationDocument,
 	parseScenarioDocument,
@@ -30,6 +37,7 @@ import {
 	CORRUPT_BACKUP_KEY,
 	KeyValueStorage,
 	loadWorkspace,
+	mergeWorkspace,
 	parseWorkspace,
 	saveWorkspace,
 	serializeWorkspace,
@@ -286,6 +294,7 @@ describe("Rotation Lab - workspace storage", () => {
 			],
 			scenarios: [createScenario({ name: "Patchwerk", end: 120 })],
 			gearSets: [gear],
+			comparisons: [] as ComparisonDocument[],
 		};
 	}
 
@@ -436,6 +445,222 @@ describe("Rotation Lab - workspace storage", () => {
 		expect("targetCount" in workspace.rotations[0]).toBe(false);
 		expect(workspace.rotations[0].targets).toEqual([]);
 	});
+
+	it("migrates version 4 workspaces: documents are kept and there are no comparisons yet", () => {
+		const current = sampleWorkspace();
+		const asV4 = <T extends object>(doc: T) => ({ ...doc, schemaVersion: 4 });
+		const v4 = {
+			schemaVersion: 4,
+			rotations: current.rotations.map(asV4),
+			scenarios: current.scenarios.map(asV4),
+			gearSets: current.gearSets.map(asV4),
+		};
+
+		const storage = memoryStorage();
+		storage.setItem(WORKSPACE_KEY, JSON.stringify(v4));
+		const { workspace, errors, migratedFrom } = loadWorkspace(storage);
+
+		expect(errors).toEqual([]);
+		expect(migratedFrom).toBe(4);
+		expect(storage.data.get(`${WORKSPACE_KEY}.v4`)).toBe(JSON.stringify(v4));
+		expect(workspace).toEqual(current);
+		expect(workspace.comparisons).toEqual([]);
+	});
+});
+
+describe("Rotation Lab - comparison documents", () => {
+	function sampleWorkspace() {
+		const a = createRotation({ name: "A", job: "VPR", steps: FILLER });
+		const b = createRotation({ name: "B", job: "VPR", steps: FILLER });
+		const c = createRotation({ name: "C", job: "VPR", steps: FILLER });
+		const scenario = createScenario({ name: "Patchwerk" });
+		const comparison = createComparison({
+			name: "Kill times",
+			job: "VPR",
+			scenarioId: scenario.id,
+			rotationIds: [a.id, b.id, c.id],
+		});
+		return {
+			schemaVersion: SCHEMA_VERSION,
+			rotations: [a, b, c],
+			scenarios: [scenario],
+			gearSets: [],
+			comparisons: [comparison],
+		};
+	}
+
+	it("creates a valid document with the first configuration as the baseline", () => {
+		const workspace = sampleWorkspace();
+		const [doc] = workspace.comparisons;
+
+		expect(parseComparisonDocument(doc, workspace).ok).toBe(true);
+		expect(doc.schemaVersion).toBe(SCHEMA_VERSION);
+		expect(doc.revision).toBe(1);
+		expect(doc.baselineId).toBe(doc.configurations[0].id);
+		expect(new Set(doc.configurations.map((c) => c.id)).size).toBe(3);
+	});
+
+	it("round-trips every field through parseWorkspace and through storage", () => {
+		const workspace = sampleWorkspace();
+		const doc = workspace.comparisons[0];
+		workspace.comparisons[0] = {
+			...doc,
+			baselineId: doc.configurations[1].id,
+			cutoffs: [120, 360.5],
+			burstWindows: [{ start: 0, end: 20, label: "Opener" }],
+			display: { chartsFrom: 30 },
+		};
+
+		expect(parseWorkspace(serializeWorkspace(workspace))).toEqual({ workspace, errors: [] });
+		const storage = memoryStorage();
+		saveWorkspace(workspace, storage);
+		expect(loadWorkspace(storage)).toEqual({ workspace, errors: [] });
+	});
+
+	it("rejects invalid documents with readable errors", () => {
+		const workspace = sampleWorkspace();
+		const dragoon = createRotation({ name: "Drg", job: "DRG", steps: [] });
+		const references = { ...workspace, rotations: [...workspace.rotations, dragoon] };
+		const valid = workspace.comparisons[0];
+		const [a, b, c] = valid.configurations;
+		const cases: [string, (doc: ComparisonDocument) => unknown][] = [
+			["schemaVersion", (d) => ({ ...d, schemaVersion: 4 })],
+			["revision", (d) => ({ ...d, revision: 0 })],
+			["unknown job", (d) => ({ ...d, job: "XYZ" })],
+			["scenarioId", (d) => ({ ...d, scenarioId: "gone" })],
+			["2 to 4 entries, found 1", (d) => ({ ...d, configurations: [a] })],
+			[
+				"2 to 4 entries, found 5",
+				(d) => ({
+					...d,
+					configurations: [
+						a,
+						b,
+						c,
+						{ id: "d", rotationId: a.rotationId },
+						{ id: "e", rotationId: a.rotationId },
+					],
+				}),
+			],
+			["duplicate id", (d) => ({ ...d, configurations: [a, a] })],
+			[
+				"is not in the workspace",
+				(d) => ({ ...d, configurations: [a, { id: "x", rotationId: "gone" }] }),
+			],
+			[
+				'rotation "Drg" is DRG, not "VPR"',
+				(d) => ({ ...d, configurations: [a, { id: "x", rotationId: dragoon.id }] }),
+			],
+			["baselineId", (d) => ({ ...d, baselineId: "gone" })],
+			["cutoffs", (d) => ({ ...d, cutoffs: [0] })],
+			["cutoffs", (d) => ({ ...d, cutoffs: "60" })],
+			["burstWindows[0]", (d) => ({ ...d, burstWindows: [{ start: 5, end: 5 }] })],
+			["display must be", (d) => ({ ...d, display: undefined })],
+			["display.chartsFrom", (d) => ({ ...d, display: { chartsFrom: -1 } })],
+		];
+		for (const [expectedError, mutate] of cases) {
+			const parsed = parseComparisonDocument(mutate(valid), references);
+			expect(parsed.ok, expectedError).toBe(false);
+			expect(errorsOf(parsed)).toContain(expectedError);
+		}
+	});
+
+	it("allows the same rotation twice, as long as the configurations have their own ids", () => {
+		const workspace = sampleWorkspace();
+		const rotationId = workspace.rotations[0].id;
+		const doc = createComparison({
+			job: "VPR",
+			scenarioId: workspace.scenarios[0].id,
+			rotationIds: [rotationId, rotationId],
+		});
+		expect(parseComparisonDocument(doc, workspace).ok).toBe(true);
+	});
+
+	it("skips a comparison whose rotation was itself skipped, and reports both", () => {
+		const workspace = sampleWorkspace();
+		const text = JSON.stringify({
+			...workspace,
+			rotations: [{ ...workspace.rotations[0], job: "XYZ" }, ...workspace.rotations.slice(1)],
+		});
+		const parsed = parseWorkspace(text);
+
+		expect(parsed.workspace.comparisons).toEqual([]);
+		expect(parsed.errors).toHaveLength(2);
+		expect(parsed.errors[1]).toContain('comparison "Kill times" skipped');
+	});
+
+	it("bumps the revision on every edit and leaves the original untouched", () => {
+		const [doc] = sampleWorkspace().comparisons;
+		const edited = editComparison(doc, { cutoffs: [60] });
+
+		expect(edited.revision).toBe(2);
+		expect(edited.cutoffs).toEqual([60]);
+		expect(doc.cutoffs).toEqual([]);
+		expect(doc.revision).toBe(1);
+	});
+
+	it("removes a deleted rotation, moving the baseline if needed", () => {
+		const workspace = sampleWorkspace();
+		const [doc] = workspace.comparisons;
+		const [, b, c] = workspace.rotations;
+		const [configA] = doc.configurations;
+
+		// The baseline's rotation goes: the baseline moves to the first one left.
+		const [withoutA] = removeRotationFromComparisons([doc], configA.rotationId);
+		expect(withoutA.configurations.map((x) => x.rotationId)).toEqual([b.id, c.id]);
+		expect(withoutA.baselineId).toBe(withoutA.configurations[0].id);
+		expect(withoutA.revision).toBe(2);
+		expect(
+			parseComparisonDocument(withoutA, {
+				...workspace,
+				rotations: workspace.rotations.slice(1),
+			}).ok,
+		).toBe(true);
+
+		// Another rotation goes: the baseline stays.
+		const [withoutB] = removeRotationFromComparisons([doc], b.id);
+		expect(withoutB.baselineId).toBe(doc.baselineId);
+
+		// Fewer than two left: the comparison cannot stand.
+		expect(removeRotationFromComparisons([withoutA], b.id)).toEqual([]);
+
+		// Not involved: the very same document comes back.
+		const unrelated = removeRotationFromComparisons([doc], "other")[0];
+		expect(unrelated).toBe(doc);
+	});
+
+	it("re-points imported comparisons at the fresh ids of clashing documents", () => {
+		const current = sampleWorkspace();
+		const merged = mergeWorkspace(current, sampleWorkspaceCopy(current));
+
+		expect(merged.rotations).toHaveLength(6);
+		expect(merged.comparisons).toHaveLength(2);
+		const [original, imported] = merged.comparisons;
+		expect(original).toEqual(current.comparisons[0]);
+		expect(imported.id).not.toBe(original.id);
+		expect(imported.scenarioId).toBe(merged.scenarios[1].id);
+		expect(imported.scenarioId).not.toBe(original.scenarioId);
+		expect(imported.configurations.map((c) => c.rotationId)).toEqual(
+			merged.rotations.slice(3).map((r) => r.id),
+		);
+		// The configuration ids are local to the document, so the baseline stays valid.
+		for (const doc of merged.comparisons) {
+			expect(parseComparisonDocument(doc, merged).ok).toBe(true);
+		}
+	});
+
+	it("keeps an imported comparison's ids when nothing clashes", () => {
+		const imported = sampleWorkspace();
+		const merged = mergeWorkspace(
+			{ ...sampleWorkspace(), rotations: [], scenarios: [], comparisons: [] },
+			imported,
+		);
+		expect(merged.comparisons).toEqual(imported.comparisons);
+	});
+
+	function sampleWorkspaceCopy<T>(workspace: T): T {
+		return JSON.parse(JSON.stringify(workspace)) as T;
+	}
 });
 
 describe("Rotation Lab - gear sets", () => {

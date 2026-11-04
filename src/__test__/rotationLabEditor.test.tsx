@@ -318,6 +318,133 @@ describe("Rotation Lab - editor page", () => {
 		expect(within(comparison).getAllByTestId("window-row")).toHaveLength(1);
 	});
 
+	// Two rotations with different lengths; returns the page's storage, open on Compare.
+	async function openComparison(user: ReturnType<typeof userEvent.setup>) {
+		const storage = memoryStorage();
+		const view = render(<RotationLabApp storage={storage} />);
+		const palette = screen.getByRole("complementary", { name: "Skill palette" });
+		const reaving = within(palette).getByRole("button", { name: /Reaving Fangs/ });
+		await user.click(reaving);
+		await user.click(screen.getByRole("button", { name: "Duplicate" }));
+		await user.click(reaving);
+		await user.click(screen.getByRole("button", { name: "Compare" }));
+		return { storage, view };
+	}
+	const savedComparisons = (storage: ReturnType<typeof memoryStorage>) =>
+		JSON.parse(storage.data.get(WORKSPACE_KEY)!).comparisons as {
+			cutoffs: number[];
+			display: { chartsFrom?: number };
+			revision: number;
+		}[];
+
+	it("stores a comparison on its first edit, with undo and redo, and restores it on reload", async () => {
+		const user = userEvent.setup();
+		const { storage, view } = await openComparison(user);
+		const undo = screen.getByRole("button", { name: "Undo" });
+		const redo = screen.getByRole("button", { name: "Redo" });
+
+		// Looking at the default comparison stores nothing.
+		expect(savedComparisons(storage)).toEqual([]);
+
+		const region = screen.getByRole("region", { name: "Comparison" });
+		await user.type(within(region).getByRole("spinbutton", { name: "Cutoff seconds" }), "1");
+		await user.click(within(region).getByRole("button", { name: "Add cutoff" }));
+		expect(within(region).getAllByTestId("cutoff-row")).toHaveLength(2);
+		expect(savedComparisons(storage)[0].cutoffs).toEqual([1]);
+
+		await user.click(undo);
+		expect(within(region).getAllByTestId("cutoff-row")).toHaveLength(1);
+		expect(savedComparisons(storage)).toEqual([]);
+		await user.click(redo);
+		expect(within(region).getAllByTestId("cutoff-row")).toHaveLength(2);
+		expect(savedComparisons(storage)[0].cutoffs).toEqual([1]);
+
+		// The picked rotation and the chart start are stored too, and each edit is undoable.
+		const pickerB = within(region).getByRole("combobox", { name: "Rotation B" });
+		const before = (pickerB as HTMLSelectElement).value;
+		const other = within(pickerB)
+			.getAllByRole<HTMLOptionElement>("option")
+			.find((o) => o.value !== before)!.value;
+		await user.selectOptions(pickerB, other);
+		expect((pickerB as HTMLSelectElement).value).toBe(other);
+		await user.click(undo);
+		expect((pickerB as HTMLSelectElement).value).toBe(before);
+		await user.click(redo);
+		fireEvent.change(within(region).getByRole("spinbutton", { name: "Charts from seconds" }), {
+			target: { value: "30" },
+		});
+		expect(savedComparisons(storage)[0].display.chartsFrom).toBe(30);
+
+		// A reload brings back everything that was stored.
+		view.unmount();
+		render(<RotationLabApp storage={storage} />);
+		await user.click(screen.getByRole("button", { name: "Compare" }));
+		const reloaded = screen.getByRole("region", { name: "Comparison" });
+		expect(within(reloaded).getAllByTestId("cutoff-row")).toHaveLength(2);
+		expect(
+			(
+				within(reloaded).getByRole("combobox", {
+					name: "Rotation B",
+				}) as HTMLSelectElement
+			).value,
+		).toBe(other);
+		expect(
+			(
+				within(reloaded).getByRole("spinbutton", {
+					name: "Charts from seconds",
+				}) as HTMLInputElement
+			).value,
+		).toBe("30");
+	});
+
+	it("keeps the comparison's own scenario, separate from the one being edited", async () => {
+		const user = userEvent.setup();
+		const { storage } = await openComparison(user);
+		const saved = () => JSON.parse(storage.data.get(WORKSPACE_KEY)!);
+		const scenarioPicker = screen.getByRole("combobox", {
+			name: "Scenario",
+		}) as HTMLSelectElement;
+		const original = scenarioPicker.value;
+
+		// Copying in Compare moves the comparison to the copy, in a single undo step.
+		await user.click(screen.getByRole("button", { name: "Copy scenario" }));
+		const copy = scenarioPicker.value;
+		expect(copy).not.toBe(original);
+		expect(saved().comparisons[0].scenarioId).toBe(copy);
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(saved().scenarios).toHaveLength(1);
+		expect(saved().comparisons).toEqual([]);
+		await user.click(screen.getByRole("button", { name: "Redo" }));
+
+		// In Edit, choosing a scenario leaves the stored comparison where it is, and Compare
+		// returns to the comparison's scenario.
+		await user.click(screen.getByRole("button", { name: "Edit" }));
+		await user.selectOptions(scenarioPicker, original);
+		expect(saved().comparisons[0].scenarioId).toBe(copy);
+		await user.click(screen.getByRole("button", { name: "Compare" }));
+		expect(scenarioPicker.value).toBe(copy);
+	});
+
+	it("removes a stored comparison with a rotation it cannot do without, undoably", async () => {
+		const user = userEvent.setup();
+		const { storage } = await openComparison(user);
+		const region = screen.getByRole("region", { name: "Comparison" });
+		await user.type(within(region).getByRole("spinbutton", { name: "Cutoff seconds" }), "1");
+		await user.click(within(region).getByRole("button", { name: "Add cutoff" }));
+		expect(savedComparisons(storage)).toHaveLength(1);
+
+		const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+		await user.click(screen.getByRole("button", { name: "Delete" }));
+		expect(confirm.mock.calls[0][0]).toContain("1 comparison(s)");
+		confirm.mockRestore();
+		// Still saved: the workspace stayed valid. The view is back on the default comparison.
+		expect(savedComparisons(storage)).toEqual([]);
+		expect(screen.queryByText(/Changes not saved/)).toBeNull();
+
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(savedComparisons(storage)).toHaveLength(1);
+	});
+
 	it("removes a row with its × button and shows debug timing columns", async () => {
 		const user = userEvent.setup();
 		render(<RotationLabApp storage={memoryStorage()} />);

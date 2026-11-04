@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-04 (comparison milestone M0: cutoff and window semantics).
+Last updated 2026-11-04 (comparison milestone M1: stored comparison documents).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -48,9 +48,10 @@ set changes.
 
 ## 3. Current state (verified 2026-11-04)
 
--   Branch `feature/rotation-lab`. Full suite: 41 files, 307 passed + 9 expected-fail (upstream
+-   Branch `feature/rotation-lab`. Full suite: 41 files, 320 passed + 9 expected-fail (upstream
     `it.fails`) + 1 todo (DoT after a cutoff). `tsc --noEmit` clean;
-    ESLint clean on the files M0 changed; dev-load page check last run in session 5.
+    ESLint clean on `src/RotationLab`; dev-load page check `errors: none` (M1, no browser review
+    yet).
 -   The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
 -   Rotation Lab: http://localhost:3000/rotation-lab.html (`npm.cmd run start`).
 
@@ -87,6 +88,8 @@ set changes.
     buffs, downtime, and custom burst windows.
 -   **Compare** (`ui/ComparisonView.tsx`):
     -   Pick rotations A and B, each simulated with its own gear under one scenario.
+    -   The picks, cutoffs, chart start and scenario are stored in a comparison document (below) and
+        are undoable.
     -   Running-DPS chart (A blue, B orange; palette validated for colour blindness), DPS-lead chart,
         a "Charts from" start (default 10 s).
     -   Cutoff table: DPS, totals and gauges per rotation; any number of cutoffs.
@@ -104,7 +107,7 @@ All Rotation Lab code is in `src/RotationLab/`; its tests are `src/__test__/rota
 | Encounter rules   | `rules/encounterRules.ts`                                                                  | Pull rule, downtime target rule (on when `encounterRules: true`; always on for editor scenarios)                                                         |
 | Resource tracking | `rules/resourceTracking.ts`                                                                | Per-job gauges, timers (with icons) and combos with finishers, for row snapshots and combo-break notes                                                   |
 | Damage            | `damage/DamageModel.ts`                                                                    | xivgear formulas; verified for VPR at levels 80/90/100 only                                                                                              |
-| Documents         | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `validation.ts`                         | `SCHEMA_VERSION` 4 (rotations have `targets` ranges); `AVAILABLE_RULESETS` (reborn `reborn-dt-2`)                                                        |
+| Documents         | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `Comparison.ts`, `validation.ts`        | `SCHEMA_VERSION` 5 (workspaces have `comparisons`); `AVAILABLE_RULESETS` (reborn `reborn-dt-2`)                                                          |
 | Targets           | `rules/targets.ts`                                                                         | Effective ranges (overlaps resolved), enemies at a time, lowest count from press to landing                                                              |
 | Storage           | `storage/WorkspaceStore.ts`, `storage/migrations.ts`                                       | Each migration keeps a backup under `rotationLab.workspace.v<old>`                                                                                       |
 | Recommendations   | `recommend/context.ts`, `recommender.ts`, `vpr.ts`                                         | Shared context (legality, timers, weave slots) and `arrange` (slot fitting); one ruleset per job registered in `recommender.ts`. Rules: `docs/rulesets/` |
@@ -222,12 +225,13 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     - DoT ticks stopping when their enemy leaves (with Dragoon);
     - a step's explicit `targets` (from upstream imports) still overrides the ranges. That is
       harmless for Viper, but decide whether the Lab should ignore it.
-3. **Comparison system (M0 done, M1–M8 not started):** the locked design is in
+3. **Comparison system (M0–M1 done, M2–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
    questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
    comparison is the two-rotation view described in section 3.
+
     - M0 changed `totalBetween` from `[start, end]` to `(start, end]` (spec Q1). The old assertion
       in `rotationLabCompare.test.ts` changed from 1110 to 1100, with a note on the test. The burst
       table now gives a hit exactly on a shared boundary to the window ending there.
@@ -236,12 +240,30 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
       pull hit was off 0 by up to 3.6e-15 s in 24 of 216 measured runs). A window starting at 0 s
       includes the pull hit, and one ending at 0 s does not, so adjacent windows never double count.
     - Still raw floats: the engine's downtime check, kept for upstream parity (audit section 2).
+    - M1 stores comparisons in `Workspace.comparisons` (schema 5; the migration creates none). What
+      later milestones should know:
+        - Until its first edit the view shows an unsaved default (current rotation against the next
+          of its job). Opening Compare therefore adds no undo step, and undoing the first edit
+          falls back to the default. Once stored, A and B no longer follow the current rotation.
+        - The view is still A/B over the first two configurations. A 3–4 configuration document (only
+          possible by import for now) is kept intact and the view says it shows two. `baselineId` is
+          stored but unused until M2 and M3.
+        - `burstWindows` on the document is validated and round-tripped but not read: the editor
+          still writes `ScenarioDocument.burstWindows`, and moving them is M5's listed change (the user confirmed waiting).
+        - In Compare, the header scenario picker and "Copy scenario" change the comparison's own
+          scenario. Edit mode keeps its own selection.
+        - Deleting a rotation removes its configurations. A comparison left with fewer than two is
+          deleted too; the confirm dialog says so, and undo restores it.
+        - Validation is cross-document (`parseComparisonDocument(input, references)`): a comparison
+          whose rotation or scenario was skipped on load is skipped and reported.
+        - No UI yet to create, rename or delete comparisons (the user is fine with that for now); a selector appears with two or more.
 
-   Comparison extras that stay open:
-    - persist cutoffs and the chart start time;
+    Comparison extras that stay open:
+
     - compare more than two rotations;
     - optionally an "expired combo" note;
     - a different UI for buff lanes, which the user may revisit.
+
 4. **Dragoon:**
     - add damage-model constants (jobmod, delay, trait) from xivgear;
     - parity tests like Viper's;
@@ -262,13 +284,13 @@ Known limitations:
 
 -   Expected damage is VPR-only at levels 80/90/100; other jobs and levels report potency.
 -   Gauges at a cutoff are those after the last action pressed before it.
--   Comparison settings reset on reload.
 
 ## 8. Verification
 
 -   **Tests:** `npm.cmd exec -- vitest run src/__test__/rotationLab` while iterating, then the full
     `npm.cmd exec -- vitest run` once. Also `npm.cmd run typecheck` and
-    `npm.cmd exec -- eslint src/RotationLab`.
+    `npm.cmd exec -- eslint src/RotationLab`. Run Vitest from PowerShell: from Git Bash every suite
+    failed at `describe` with "reading 'config'" (seen in M1; exact cause not investigated).
 -   **Dev-server page check** (after adding engine imports to the page, or a new entry point):
     start a second server with `npm.cmd exec -- vite --port 3100 --strictPort` in the background,
     then run `node tools/dev-load/dev-load.mjs C:\Dev\rotation_planner http://localhost:3100 /src/RotationLab/ui/main.tsx`
