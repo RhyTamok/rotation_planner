@@ -13,9 +13,11 @@ it when needed, don't read it whole.
 Treat both as context. Inspect the repository and run the tests before relying on any status
 described there.
 
-**Comparison system:** the agreed design, audit and plan are in `docs/comparison/`
-(`COMPARISON_SPEC.md`, `COMPARISON_AUDIT.md`, `COMPARISON_ROADMAP.md`). They describe planned work;
-only the audit states what exists. Do not implement from them until the user approves a milestone.
+**Comparison system** (planned, all design questions decided), `docs/comparison/`; read only when
+working on comparison features, not otherwise: start with `COMPARISON_ROADMAP.md` (status table and
+the milestone), then `COMPARISON_SPEC.md` sections 2–3 for definitions and data model; the
+`COMPARISON_AUDIT.md` lists what exists today and where. Work one milestone at a time, only the one
+the user names; update the roadmap status table when it is done.
 
 ## Primary Goals
 

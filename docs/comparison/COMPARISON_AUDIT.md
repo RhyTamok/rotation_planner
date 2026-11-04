@@ -1,5 +1,6 @@
 # Comparison system: codebase audit
 
+A snapshot taken before any comparison milestone; after each milestone, update the rows it changed.
 Audited 2026-11-04 against branch `feature/rotation-lab` (HEAD `2dd8b467`) by static inspection only.
 No tests were run for this audit and no production code was changed. Everything below is
 **verified from source** unless marked *(unverified)*. Requirements are the locked decisions in
@@ -21,7 +22,7 @@ A two-rotation comparison, `ui/ComparisonView.tsx`, over pure maths in `comparis
     Cutoffs, chart start and baseline-less A/B are UI state; none is persisted.
 -   Charts: running DPS (A, B) and running-DPS lead (`dpsA − dpsB`) sampled every whole second from
     "Charts from" (default 10 s). Burst windows are shaded and cutoffs dashed.
--   Cutoff table: totals, DPS, gauges. Burst table: damage per window (not weighted potency).
+-   Cutoff table: totals, DPS, gauges. Burst table: damage per window.
 
 ## 2. Engine semantics that the comparison must reuse (requirement 2.3)
 
@@ -110,29 +111,18 @@ Findings on these semantics:
     difference anywhere. Baseline switching need not resimulate: all results are `SimulationCache`
     entries keyed by `simulationKey()` and the baseline is not part of that key (good, reusable as is).
 
-### 2.6 Burst analysis, weighted potency, raid buffs
+### 2.6 Burst analysis and raid buffs
 
 -   **Status: Partial.** Shared burst windows exist: `ScenarioDocument.burstWindows` (manual, "not a
     simulation input") or derived by merging party buffs (`burstWindows()` in `compare.ts`). They are
     per scenario, hence shared by every compared rotation. Not tied to 2-minute cycles. The raid buff
     schedule is also a scenario input (`partyBuffs: PartyBuffWindow[]`).
--   **Actual behavior of the numbers:**
-    -   `DamageEvent.potency` = `Potency.getAmount({includePartyBuffs: true, tincturePotencyMultiplier,
-        bossDebuffsOnPrimaryOnly: true})`: it **includes** party buffs and the flat potion multiplier. It is
-        not weighted potency.
-    -   `expectedDamage` is the xivgear-style chain (`DamageModel`) with party buffs as a ratio on top
-        (`#expectedDamage`, l. 340).
-    -   `totals.appliedPotencyWithoutPot` excludes potion **and** party buffs but keeps self buffs, as a
-        single total only (no per-event, no per-window).
-    -   The burst table reports `totalBetween` of the chosen metric (damage if available, otherwise
-        potency), i.e. **raid-buffed damage**. It does not report weighted potency.
--   **Gap:** no `rawPotency × selfBuffMultipliers × fixedJobModifiers` series. `Potency` exposes
-    `getDisplayedModifiers()` with `source` and `kind` (`PotencyModifierType`), which likely allows
-    separating self buffs from party buffs and potion per event. *(Unverified: whether every self
-    buff is a `Potency` modifier or part of the base.)* "Fixed job modifiers" has no counterpart in
-    the engine (jobmod lives in `DamageModel`).
--   **Ambiguity to resolve (Q2):** whether "fixed job modifiers" means jobmod/trait constants from
-    `DamageModel` and whether crit/DH expectation is in or out of weighted potency.
+-   **Actual behavior of the numbers:** the burst table reports `totalBetween` of the chosen metric
+    (expected damage if available, otherwise potency), i.e. **raid-buffed damage** per window.
+    `expectedDamage` is the xivgear-style chain (`DamageModel`) with party buffs as a ratio on top
+    (`#expectedDamage`, l. 340).
+-   **Gap:** only the window boundary convention (decided: `(start, end]`, see spec Q1) and N-way
+    support. Windows currently live on the scenario; the roadmap moves them into the comparison.
 
 ### 2.7 Leftover resources
 
@@ -165,7 +155,7 @@ Findings on these semantics:
 | --- | --- | --- |
 | A Difference graph | Partial | Two configs, no baseline, no downtime markers (unverified), burst and cutoff markers exist |
 | B Cutoff table | Partial | DPS and totals for A/B; no % vs baseline, no ranking, no 3–4 configs |
-| C Burst table | Partial | Raid-buffed damage per window; no weighted potency |
+| C Burst table | Partial | Raid-buffed damage per window; N-way and baseline missing |
 | D Leftover resources | Partial | Gauges in cutoff table (see 2.7) |
 | E Downtime and drift | Missing | |
 

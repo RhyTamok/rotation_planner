@@ -225,7 +225,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). Waiting for
-   the user's approval and answers to spec questions Q1–Q8. Today's comparison is the two-rotation
+   the user's approval; all spec questions are decided (section 6); implementation awaits milestone approval. Today's comparison is the two-rotation
    view described in section 3. Comparison extras that stay open:
     - persist cutoffs and the chart start time;
     - compare more than two rotations;

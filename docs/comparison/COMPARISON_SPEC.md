@@ -41,24 +41,24 @@ version control; an archival platform; new engine formulas.
 -   Ranking at a cutoff: configurations sorted by `DPS_i(t)` descending; ties share a rank.
 -   One implementation (`comparison/compare.ts`) feeds the table, the chart and every export, so that
     boundaries cannot diverge. No alternative cutoff calculation.
--   Window total convention is **open** (Q1): the code currently uses `[start, end]`.
+-   Window totals use `(start, end]`, matching cutoffs (decided, Q1): a hit exactly at `start` belongs to
+    the previous window and a hit exactly at `end` to this one, so adjacent windows never double count.
+    Today's `totalBetween` uses `[start, end]` and must change (roadmap M0).
 
 ### 2.3 Views
 
 A. Difference-over-time graph: `deltaDPS(t)` per non-baseline configuration, with downtime, burst
-and cutoff markers. B. Cutoff table: DPS, absolute and % difference, rank. C. Burst table: weighted
-potency per window, kept visibly separate from damage. D. Leftover-resource indicators at cutoffs
+and cutoff markers. B. Cutoff table: DPS, absolute and % difference, rank. C. Burst table: raid-buffed damage per
+shared window versus the baseline (a manual comparison aid). D. Leftover-resource indicators at cutoffs
 (neutral styling: no "good/bad" colors, no wasted/lost wording). E. Downtime and drift analysis.
 Layout is undecided; only these contents are agreed.
 
 ### 2.4 Burst analysis
 
 -   Windows are defined **once per comparison**, shared by all configurations, free-form (not 2 min).
--   `weightedPotency = rawPotency × selfBuffMultipliers × fixedJobModifiers`, party buffs excluded
-    from this metric only. Raid buffs remain relevant to actual damage and may be applied over time
-    intervals afterwards; because damage distributions differ, they are never dismissed as neutral.
--   Three quantities must never be conflated: weighted potency (self-buffed), raid-buffed damage,
-    total DPS.
+-   The burst table reports expected damage per window, with the scenario's raid buffs applied as
+    simulated. Raid buffs are not treated as neutral between configurations: different damage
+    distributions benefit differently.
 
 ### 2.5 Leftover resources, downtime, drift
 
@@ -116,9 +116,8 @@ Dependency classes (derived from the code, see audit):
 | Baseline, cutoffs, cutoff preset, burst windows, drift cooldown selection, comparison metric | **Re-aggregation** from stored `DamageEvent`s and action records | Pure functions of the timeline |
 | Colors, visible series, tab, layout | **UI only** | Not in any fingerprint |
 
-Caveat: burst-window weighted potency and drift need per-event/per-use data the result does not carry
-today (audit 2.6, 2.9); those are extensions of `RotationResult`, so they change the result schema and
-therefore the result fingerprint, not the input fingerprint.
+Caveat: drift needs per-use cooldown data (`readyAt`) that the result does not carry today (audit
+2.9). That extends `RotationResult`, so it changes the result fingerprint, not the input fingerprint.
 
 ## 4. Provenance
 
@@ -132,7 +131,7 @@ Principle: a saved comparison is a self-contained research artifact.
 -   **Result fingerprint** = SHA-256 of the canonical serialization of the stored result payload
     (damage events, per-action records, derived summaries) with fixed number formatting.
 -   **Version identifiers** (audit section 3): ruleset `reborn-dt-2` exists; schema version exists;
-    **an engine version identifier does not** and is a prerequisite (Q3). Never read git at runtime.
+    **an engine version identifier does not** and is a prerequisite (Q3, decided: hand-bumped constant). Never read git at runtime.
 -   **Snapshot lifecycle:** a working comparison is editable and carries `revision`. "Save snapshot"
     writes an immutable record (definition + frozen configurations + execution + stored results).
     Editing afterward bumps the working revision; the snapshot is never rewritten. No branching or diffs.
@@ -151,8 +150,7 @@ Principle: a saved comparison is a self-contained research artifact.
     a tag in the repository for every ruleset bump (`git tag ruleset/<version>`); optionally keep a
     built copy of old releases. Anything beyond is out of scope.
 -   **Persistence:** reuse `parseWorkspace`/migration/validation patterns. Snapshots with stored events
-    can be large; localStorage (about 5 MB) is probably insufficient and IndexedDB is the likely home
-    (Q5). The JSON snapshot file carries `schemaVersion`, is validated on import (type, size and range
+    can be large; localStorage (about 5 MB) is probably insufficient and IndexedDB is the store (Q5, decided). The JSON snapshot file carries `schemaVersion`, is validated on import (type, size and range
     checks, no code execution, reject unknown future schema versions), and imported snapshots are
     labelled by their own ruleset and engine.
 
@@ -163,28 +161,50 @@ Principle: a saved comparison is a self-contained research artifact.
 3. Changing the baseline performs no simulation (provable by a spy on the simulator).
 4. Table, chart and CSV agree to the last digit for every cutoff, with boundary hits attributed
    identically.
-5. Burst table shows weighted potency separately from raid-buffed damage; windows are shared.
+5. Burst table shows raid-buffed damage per shared window with baseline-relative values; adjacent
+   windows never double count a boundary hit.
 6. Leftover resources appear with neutral wording and no derived damage.
 7. A saved snapshot reproduces its numbers after a ruleset bump, is labelled Historical, and is never
    mutated; a re-export/import round trip preserves inputs and results.
 8. Malformed snapshot files are rejected with a message and never touch the workspace.
 9. Existing engine parity and encounter tests still pass unchanged.
 
-## 6. Open questions (need a product decision)
+## 6. Questions and decisions
 
--   **Q1** Window boundaries: `[start, end]` (current) double-counts a hit at a shared boundary;
-    `(start, end]` matches cutoff semantics. Which?
--   **Q2** Weighted potency definition: what counts as "fixed job modifiers"; are crit/DH expectation
-    and the potion included? Which self buffs count?
--   **Q3** Engine version: a hand-bumped `ENGINE_VERSION` constant next to `AVAILABLE_RULESETS`, a
-    build-time id from Vite `define`, or both?
--   **Q4** Downtime instants: "entering" = state at the downtime start, or after the last action
-    pressed before it? "Exiting" = at the end, or at the first usable action? Gauges at an instant are
-    currently "after the last action pressed" (audit section 2).
--   **Q5** Snapshot storage: IndexedDB as the store for snapshots only, leaving the live workspace in
-    localStorage?
--   **Q6** Which cooldowns are the "key" ones for Viper and Dragoon, and per-interval attribution
-    rules for held time (per fight phase between downtimes?).
--   **Q7** Cutoff presets per ruleset: which values for Reborn?
--   **Q8** Should a comparison require identical `scenario.end`/party buffs, or may configurations
-    differ in fight conditions? (Current design: one shared scenario.)
+Decided by the user on 2026-11-04:
+
+-   **Q1 Window boundaries:** match cutoffs, i.e. `(start, end]`.
+-   **Q3 Engine version:** delegated to us. Decision (coding grounds): a hand-bumped `ENGINE_VERSION`
+    string constant beside `AVAILABLE_RULESETS`, bumped whenever simulation code, damage formulas or game
+    data change. Rationale: deterministic, visible in review, works in tests and any build; a build-time id
+    adds tooling and cannot tell a comment-only change from a numeric one. A build id may be added later as
+    informational metadata only.
+-   **Q4 Downtime instants:**
+    -   Entering downtime (start `D`): the existing `gaugesAt` semantics, i.e. the state after the last
+        action pressed at or before `D` (snapshot at the end of that action's animation lock).
+    -   Exiting (end `E`): the state at `E` (read with the same function; no action needing a target can
+        be pressed inside downtime, so this is the state the downtime left behind).
+    -   Relative DPS gap: `deltaDPS(D)` and `deltaDPS(E)`, both measured from the pull as in 2.2.
+-   **Q5 Snapshot storage:** IndexedDB for saved snapshots, `localStorage` stays for the live workspace.
+    Snapshots sit behind a small store interface (in-memory store in tests). Every snapshot can also be
+    exported as a JSON file, which is the durable copy.
+-   **Q7 Cutoff presets:** no values yet; worked out during implementation and testing.
+-   **Q8 Scenario:** configurations may differ in rotation and gear, but all share one scenario.
+-   **Q6 Drift** (all decided; seconds held, per interval):
+    -   Tracked skills. Viper: Serpent's Ire; Vicewinder and Vicepit. Dragoon: Lance Charge,
+        Geirskogul, Battle Litany, High Jump, Dragonfire Dive. Every tracked skill gets the same
+        treatment; there is no special rule for Lance Charge or Battle Litany for now.
+    -   "Overcap" is not a gauge metric. For stack skills it means a recharge going unused: the skill
+        sits at maximum stacks, so spending a stack before downtime avoids it and loses no stack.
+    -   Stack skills (Q6a): held seconds = time spent at maximum stacks, excluding untargetable time.
+        Single-use skills: the wait between ready and press. Vicewinder and Vicepit share a cooldown
+        (confirmed by the user), so they are evaluated as **one pool**, not per skill. The engine's
+        cooldown group should be checked when implementing to confirm that matches.
+    -   Attribution (Q6b): the hold clock runs from `max(readyAt, end of any downtime containing
+        readyAt)` to the press (for stack skills, over the capped stretch), minus every downtime second
+        it spans. Hold seconds belong to the interval containing each second, where intervals are the
+        stretches between downtime windows (plus optional manual boundaries). A skill that is ready
+        during downtime is never reported as held for it.
+
+No open questions remain. Details found during implementation (for example the engine's cooldown
+groups) are recorded in the handoff.
