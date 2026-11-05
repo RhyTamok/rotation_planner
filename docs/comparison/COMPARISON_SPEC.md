@@ -19,7 +19,7 @@ recommendations. No game-basics explanations.
 -   Adaptable to Evolved (Evercold) and other rulesets without assuming future mechanics.
 
 Non-goals: cross-job comparison; HP-based phases; RNG/Monte Carlo; standardized 2-minute cycles;
-a "maximum/missed achievable uses" optimizer; converting leftover resources into damage; Git-like
+a "maximum achievable uses" optimizer (amended by Q9: overcap and missed uses are now shown as observed counts); converting leftover resources into damage; Git-like
 version control; an archival platform; new engine formulas.
 
 ## 2. Locked decisions
@@ -211,5 +211,16 @@ Decided by the user on 2026-11-04:
         stretches between downtime windows (plus optional manual boundaries). A skill that is ready
         during downtime is never reported as held for it.
 
-No open questions remain. Details found during implementation (for example the engine's cooldown
+Decided by the user on 2026-11-05 (amends Q6 and 2.5):
+
+-   **Q9 Overcap and missed uses are shown.** Gauge overcap and missed uses of tracked skills are reported
+    per configuration, in addition to leftover gauges and held seconds. This supersedes "overcap is not a
+    gauge metric" (Q6) and "report held time, not a recast ceiling" (2.5). Still excluded: converting
+    anything into damage or DPS, and a theoretical-maximum optimizer. Counts are observed from the
+    simulated timeline only. Exact definitions are settled in M6 (proposal: gauge overcap = gain discarded
+    above the cap, per gauge, recorded by the simulator; missed use = a recharge or cooldown that went
+    unused because the skill sat at maximum stacks, or a use that never happened before the end of the
+    fight, derived from `readyAt`). Neutral wording rules for leftovers (2.5) are unchanged.
+
+No further open questions remain except Q9's definitions. Details found during implementation (for example the engine's cooldown
 groups) are recorded in the handoff.

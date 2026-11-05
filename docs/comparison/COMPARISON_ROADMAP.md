@@ -12,8 +12,9 @@ document shape changes (M1, M7).
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
 | M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
-| M2        | done, awaiting commit (2026-11-05): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                                 |
-| M3–M8     | not started (update this row by row as each is committed)                                                                                                    |
+| M2        | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
+| M3a       | proposed (design-spec reconciliation below): exact competitiveness and regret maths, pure, no UI                                                             |
+| M3–M8     | not started (update this row by row as each is committed). M3b (UI for M3a, local sensitivity) and M6b (event timeline) are proposed additions            |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
@@ -23,6 +24,102 @@ status above, the audit rows the milestone changes, and the handoff at the end o
 
 Q1 (`(start, end]`), Q3 (hand-bumped `ENGINE_VERSION`), Q7 (later) and Q8 (shared scenario) are settled.
 Still open: Q4, Q5, Q6a and Q6b are decided too (spec section 6). No open questions remain.
+
+## Reconciliation with `comparison-design-spec.md` (2026-11-05, proposed, awaiting review)
+
+The design spec ("DS") is the UI/metric baseline; `COMPARISON_SPEC.md` ("CS") stays the locked
+engine/provenance record. Nothing below changes simulation maths, event timing or boundary rules.
+Status vocabulary follows DS section 11.
+
+### Fit against the code
+
+| DS item                                        | Status      | Evidence / action                                                                                                                                                                                                      |
+| ---------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2–4 same-job configurations, baseline          | Implemented | `models/Comparison.ts` (M1), validation rejects mixed jobs                                                                                                                                                             |
+| `DPS`, `ΔDPS`, `Δ%`, rank, zero-baseline `N/A` | Implemented | `baseline.ts` (M2). Rank ties use `TIE_TOLERANCE` (1e-9 relative)                                                                                                                                                      |
+| Landing-time cutoffs, `(start,end]`, ties      | Implemented | `compare.ts`, pinned by M0 tests                                                                                                                                                                                       |
+| One settled simulation serves all cutoffs      | Implemented | Audit §2; answers DS open decision 5 (re-aggregation needs no rerun)                                                                                                                                                   |
+| `ΔDPS` over time                               | Partial     | `deltaDpsSeries` samples every event time plus extras; no `Δ%` series; the UI still shows A/B only                                                                                                                     |
+| ε, competitive, leader coverage, regret        | Missing     | No code. Exact, no sampling needed: see M3a                                                                                                                                                                            |
+| Local cutoff sensitivity `T±δ`                 | Missing     | Falls out of M3a (interval analysis over `[T−δ,T+δ]`); UI in M3b                                                                                                                                                       |
+| Mode (general / fight-specific)                | Dropped     | No mode field (decided). Fight-specific analysis is implied by custom timeframes (cutoffs, downtime, windows). Cutoff presets are still Q7 (no values)                                                                 |
+| Analysis settings (ε, interval, δ, units)      | Missing     | No home yet. They are analysis settings, not display: they belong beside `cutoffs`, outside the input fingerprint (schema 6 in M3b)                                                                                    |
+| Burst table                                    | Partial     | Exists as raid-buffed damage (party buffs included, tincture included) over scenario windows; windows still fall back to `burstWindows(resultA)` (DS: manual only)                                                     |
+| Weighted potency (DS 1, 4.6)                   | Dropped     | Decided not to implement. The burst metric stays raid-buffed expected damage as simulated; DS wording to be read accordingly                                                                                           |
+| Downtime gauges, drift                         | Missing     | As M6. DS open decision 3 is already answered by CS Q6b                                                                                                                                                                |
+| Event timeline tab                             | Missing     | `RotationTable` shows one rotation only; no milestone existed. Added as M6b                                                                                                                                            |
+| One-configuration state                        | Conflicting | Decided: allowed. `MIN_CONFIGURATIONS = 2` and `removeRotationFromComparisons` (drops below 2) must change, with validation and tests (M3)                                                                              |
+| Provenance, fingerprints, states, snapshots    | Planned     | Matches M7 (CS section 4, IndexedDB Q5). DS open decision 7 is answered by CS section 4                                                                                                                                |
+| CSV timeline and cutoff export                 | Planned     | M4. CSV rotation import M8                                                                                                                                                                                             |
+
+### Conflicts and unit traps to settle
+
+1.  **Burst metric (resolved).** DS 1/4.6 describes weighted potency without party buffs; that is dropped.
+    The burst metric is raid-buffed expected damage as simulated (CS 2.4/M5, party buffs and tincture
+    included), so M5 needs no engine change.
+2.  **`deltaPct` scale.** Code returns a fraction; DS and ε use percentage points. Proposal: keep fractions
+    in the maths layer and convert only at the display and ε boundary; name ε `epsilonPct`.
+3.  **Chart shape.** Between event times the totals are constant, so `ΔDPS` follows `c/t`, not a straight
+    line, and `Δ%` is a pure step. M3 must not draw straight lines across long gaps.
+4.  **Burst windows.** Remove the `burstWindows(resultA)` fallback when M5 moves windows (DS: manual only).
+
+### Open decisions already answered by existing records
+
+DS #3 held-seconds intervals: CS Q6b. DS #4 event stream sufficiency and #5 re-aggregation: audit §2 and
+M3a below. DS #7 historical replay: CS section 4 (stored results, not engine replay). DS #2 exact ties:
+`TIE_TOLERANCE`; display rounding remains open.
+
+### Decisions from review (2026-11-05)
+
+-   **C1:** weighted potency is not implemented. Tincture remains a self-buff, included as simulated.
+-   **C2:** no per-configuration gear override. To compare gear on one rotation, duplicate the rotation and
+    change its gear. Gear stays with the rotation.
+-   **C3:** a one-configuration comparison is allowed (M3 changes `MIN_CONFIGURATIONS` to 1 and the removal
+    rule). Comparison-only metrics (baseline deltas, rank, competitiveness, regret) are disabled with one
+    entry. The per-configuration diagnostics stay: leftover gauges and cooldown held seconds (M6).
+    Gauge overcap and missed uses of tracked skills are added too (CS Q9, reverses Q6 on overcap and the
+    "no lost-use counts" wording). They show for one configuration as well as in comparisons. M6 gains a
+    sub-task: record gauge gains discarded above the cap (read-only observation, engine-adjacent, full parity
+    rerun, `RotationResult` shape change) and derive missed uses from `readyAt`. Definitions to confirm
+    at M6 start (see CS Q9).
+-   **C4:** ε default 0.10%, range 0.01–1.00, step 0.01. No mode field. Fight-specific analysis is implied
+    by custom timeframes (custom cutoffs, downtime, windows).
+-   **C5:** accepted: a cutoff beyond an entry's last landed hit is a flat total (DPS keeps decaying).
+
+### New and adjusted milestones (existing numbers kept)
+
+**M3a Competitiveness and regret maths (M, pure, depends on M2).** `comparison/competitive.ts`.
+Between consecutive event times in the union of all series every `D_i` is constant, so leader sets,
+`regretPct` and `Δ%` are piecewise constant and can change only at event times. Therefore:
+
+-   `intervalAnalysis(series, ids, T1, T2, epsilonPct)` with `0 < T1 < T2`: exact leader and competitive
+    coverage (sum interval lengths, no sampling), maximum regret (`(Dmax−D_i)/t` is largest at the
+    left end of each piece), mean regret in closed form `(Dmax−D_i)·ln(t2/t1)` per piece, and
+    competitive-set entry/exit timestamps with the landing events at that instant.
+-   Competitiveness versus the current best, never the baseline; exact leader by rank 1 (`TIE_TOLERANCE`),
+    distinct from competitive-within-ε; all-zero DPS counts as a tie and competitive, percentage regret `N/A`.
+-   Reuses `totalAt`, `dpsAt`, `TIME_TOLERANCE`; no new cutoff or boundary code. Also adds a `Δ%` series.
+-   **Accept:** DS section 9 practical-equivalence list. **Tests:** hand-computed fixtures with several
+    rapid reversals, gaps under ε, event-boundary and simultaneous events, short intervals, 2/3/4 entries,
+    ε changes alter only classification, numerical check of the integral against fine sampling, ε/baseline
+    change causes no resimulation (spy). **Risk:** low; unit discipline (conflict 2).
+
+**M3 (as written, plus):** graph uses `c/t` curves and steps, `Δ%` toggle, exact cutoff marker, one-entry state per C3 (`MIN_CONFIGURATIONS` 1, validation and removal rule changed, comparison metrics disabled).
+
+**M3b Interpretive UI (M, depends on M3, M3a).** ε control, competitiveness bars and regret columns,
+local sensitivity `[T−δ,T+δ]` clamped to the available positive-time domain with effective bounds shown,
+transition annotations, "all within threshold" message, analysis settings stored on the comparison
+(schema 6 + migration; ε default 0.10 within 0.01–1.00 step 0.01, interval, δ). Component tests for classification text and clamping.
+
+**M5 (adjusted):** manual windows only (drop the `burstWindows(resultA)` fallback). No weighted potency.
+
+**M6b Event timeline tab (M, depends on M3, M4).** Per-action and per-landing records for the selected cutoff,
+linked to graph selection, reusing M4's rows. Landing time shown beside press time.
+
+**M7 (adjusted):** snapshots include the analysis settings, kept out of the input fingerprint.
+
+Suggested order: M3a, M3, M3b (MVP boundary stays M0–M3; M3a/M3b are the first post-MVP step),
+then M4, M5, M6, M6b, M7, M8.
 
 ## Minimum viable comparison = M0 + M1 + M2 + M3
 
