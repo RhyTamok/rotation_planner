@@ -1,4 +1,5 @@
 import { ActionKey, RESOURCES, ResourceKey } from "../../Game/Data";
+import { SimulatedAction } from "../simulation/types";
 import { actionLabel, Candidate, RecommenderContext } from "./context";
 
 // Viper recommendations, implementing docs/rulesets/vpr-recommendations.md (draft v1). Row numbers
@@ -115,6 +116,33 @@ interface Detour {
 
 const buffName = (buff: Upkeep) => RESOURCES[buff].name;
 
+// Burst window (ruleset section 4). A Reawaken belongs to a burst if it is Serpent's Ire's Ready to
+// Reawaken (cast up to 30 s after the Ire), or a gauge Reawaken cast up to 15 s before an Ire.
+const READY_TO_REAWAKEN_SECONDS = 30;
+const GAUGE_REAWAKEN_BEFORE_IRE_SECONDS = 15;
+// GCDs allowed between the Reawakens of one burst, counted in presses, not seconds.
+export const BURST_GAP_GCDS = 3;
+
+// Number of GCDs pressed since the last Reawaken's own chain (Reawaken and Generations excluded),
+// if that Reawaken belongs to a burst; otherwise undefined. The burst is still open for a further
+// Reawaken while this is below BURST_GAP_GCDS. Only valid presses count.
+export function viperBurstGap(history: readonly SimulatedAction[]): number | undefined {
+	const valid = history.filter((a) => a.valid);
+	const last = valid.findLastIndex((a) => a.executedAction === "REAWAKEN");
+	if (last < 0) return undefined;
+	const at = valid[last].startTime;
+	const anchored = valid.some(
+		(a) =>
+			a.executedAction === "SERPENTS_IRE" &&
+			(a.startTime <= at
+				? at - a.startTime <= READY_TO_REAWAKEN_SECONDS
+				: a.startTime - at <= GAUGE_REAWAKEN_BEFORE_IRE_SECONDS),
+	);
+	if (!anchored) return undefined;
+	return valid.slice(last + 1).filter((a) => a.isGCD && !REAWAKEN_GCDS.has(a.executedAction))
+		.length;
+}
+
 export function recommendViper(ctx: RecommenderContext): Candidate[] {
 	const out: Candidate[] = [];
 	const add = (button: ActionKey, rule: string, reason: string, group?: string) => {
@@ -219,9 +247,11 @@ export function recommendViper(ctx: RecommenderContext): Candidate[] {
 		(charges >= viceCd.maxStacks() ||
 			(charges === viceCd.maxStacks() - 1 &&
 				viceCd.timeTillNextStackAvailable() <= CHARGE_CAP_WINDOW));
-	// Section 4: the burst runs from Serpent's Ire to the end of the Reawakened it readies. Outside
-	// Reawakened (handled above), that is while Ready to Reawaken is up.
-	const inBurst = ctx.has("READY_TO_REAWAKEN");
+	// Section 4: Ready to Reawaken is up, or fewer than BURST_GAP_GCDS GCDs have passed since the
+	// last Reawaken of a burst (Reawakened itself is handled above).
+	const burstGap = viperBurstGap(ctx.history);
+	const inBurst =
+		ctx.has("READY_TO_REAWAKEN") || (burstGap !== undefined && burstGap < BURST_GAP_GCDS);
 
 	// Rows 5-8: what would be inserted before the combo continues.
 	const detours: Detour[] = [];

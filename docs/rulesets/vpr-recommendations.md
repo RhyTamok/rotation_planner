@@ -75,15 +75,22 @@ is refreshed early when the buff is not at risk.
 
 ## 4. Burst window
 
-Start: Serpent's Ire cast. Anchor: the first Reawaken after that Ire that consumes
-`READY_TO_REAWAKEN`. End: when `REAWAKENED` ends. Effect: only row 8 changes. Inside the window,
-Vicewinder/Vicepit are recommended only through 5a (cap guard). Raid buffs are not part of the
-definition. Tests may later change this.
+A burst holds one or two Reawakens back to back: the one Serpent's Ire readies (Ready to Reawaken)
+and one from gauge, in either order. Agreed with the user in session 6.
 
-**To revise (user, session 6):** a burst window normally holds two Reawakens back to back (one
-from Ire's Ready to Reawaken, one from gauge). In niche cases a gauge Reawaken is started first
-and Ire is used right after its cast; anchoring on the first Reawaken after Ire then loses most of
-that first Reawaken. The new definition is not decided yet.
+-   A Reawaken belongs to a burst if it is cast up to 30 s after a Serpent's Ire (Ready to Reawaken's
+    duration), or up to 15 s before one (a gauge Reawaken, then Ire).
+-   The window runs from the earliest such Reawaken until the last one's `REAWAKENED` ends, plus a
+    gap of up to 3 GCDs (counted by presses, Reawaken and Generations excluded), because players
+    place a GCD or two between the Reawakens to extend a buff or gain gauge.
+-   Effect: only row 8 changes. While Ready to Reawaken is up, or fewer than 3 GCDs have passed since
+    the last burst Reawaken, Vicewinder/Vicepit are recommended only through 5a (cap guard).
+    Implemented as `viperBurstGap` in `recommend/vpr.ts`.
+-   Raid buffs are not part of the definition.
+-   Limitation: the recommender only looks back. After a burst Reawakened ends it cannot know whether
+    a second Reawaken follows, so Vicewinder is held for up to 3 GCDs even if none does. A gauge
+    Reawakened that ends before the Ire is cast does not hold Vicewinder (it would need a look-ahead
+    on Ire's cooldown); during Reawakened itself row 8 is not reached.
 
 ## 5. Direct follow-ups (take the parent's slot, priority row 2)
 
@@ -133,8 +140,8 @@ resources for a particular raid-buff window.
 -   Equal buff timers (e.g. both missing at the pull): Swiftscaled first.
 -   Combo step choice: the engine's highlight (Honed buffs, venoms); without one, Steel Fangs / Steel
     Maw. The sting (step 2) refreshes the buff with less time left.
--   Burst window from the history: the last Serpent's Ire, then the first Reawaken after it
-    (within Ready to Reawaken's 30 s); the window ends when that Reawakened ends.
+-   Burst window from the history (`viperBurstGap`): the last Reawaken, if a Serpent's Ire was cast
+    up to 30 s before it or up to 15 s after it; the gap counts valid GCD presses since then.
 -   Encounter filter: during downtime, actions that need a target move to a separate "filtered"
     list with the reason "needs a target" (checked at the GCD's ready time for GCDs).
 

@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { ActionKey } from "../Game/Data";
 import { arrange, Candidate } from "../RotationLab/recommend/context";
 import { recommendAfter, Recommendations } from "../RotationLab/recommend/recommender";
-import { DowntimeWindow, RotationStep, TargetRange } from "../RotationLab/simulation/types";
+import { viperBurstGap } from "../RotationLab/recommend/vpr";
+import {
+	DowntimeWindow,
+	RotationStep,
+	SimulatedAction,
+	TargetRange,
+} from "../RotationLab/simulation/types";
 
 // Viper ruleset: docs/rulesets/vpr-recommendations.md. Test names cite its priority rows.
 
@@ -271,6 +277,73 @@ describe("Rotation Lab - Viper recommendations", () => {
 			});
 			expect(entry(burst, "VICEWINDER")).toBeUndefined();
 			expect(entry(recommend([PULL], [...BUFFS_UP, charge]), "VICEWINDER")!.rule).toBe("8");
+		});
+
+		describe("burst window across Reawakens", () => {
+			const act = (
+				executedAction: ActionKey,
+				startTime: number,
+				isGCD = true,
+				valid = true,
+			) => ({ executedAction, startTime, isGCD, valid }) as SimulatedAction;
+			const GENS = [
+				"FIRST_GENERATION",
+				"SECOND_GENERATION",
+				"THIRD_GENERATION",
+				"FOURTH_GENERATION",
+				"OUROBOROS",
+			] as const;
+			const chain = (reawakenAt: number) => [
+				act("REAWAKEN", reawakenAt),
+				...GENS.map((g, i) => act(g, reawakenAt + 2 + i * 2)),
+				act("FIRST_LEGACY", reawakenAt + 3, false),
+			];
+
+			it("counts only GCDs after the Reawaken chain, by presses", () => {
+				const history = [act("SERPENTS_IRE", 0, false), ...chain(2)];
+				expect(viperBurstGap(history)).toBe(0);
+				expect(viperBurstGap([...history, act("STEEL_FANGS", 14)])).toBe(1);
+				expect(
+					viperBurstGap([
+						...history,
+						act("STEEL_FANGS", 14),
+						act("HUNTERS_STING", 16.5, true, false),
+					]),
+				).toBe(1);
+			});
+
+			it("needs an Ire: Ire before the Reawaken (30 s) or at most 15 s after it", () => {
+				expect(viperBurstGap(chain(2))).toBeUndefined();
+				expect(
+					viperBurstGap([act("SERPENTS_IRE", 0, false), ...chain(31)]),
+				).toBeUndefined();
+				expect(viperBurstGap([act("SERPENTS_IRE", 0, false), ...chain(30)])).toBe(0);
+				expect(viperBurstGap([...chain(2), act("SERPENTS_IRE", 16, false)])).toBe(0);
+				expect(
+					viperBurstGap([...chain(2), act("SERPENTS_IRE", 17.5, false)]),
+				).toBeUndefined();
+			});
+
+			it("holds Vicewinder for up to 3 GCDs after the burst Reawaken, then row 8 returns", () => {
+				const reawaken: Step[] = [PULL, "SERPENTS_IRE", "REAWAKEN", ...GENS];
+				const gaps: Step[] = ["STEEL_FANGS", "HUNTERS_STING", "HINDSTING_STRIKE"];
+				const charge = [...BUFFS_UP, set("cd_VICEWINDER", 1, 80)];
+				const viceRule = (n: number) =>
+					entry(recommend([...reawaken, ...gaps.slice(0, n)], charge), "VICEWINDER")
+						?.rule;
+				expect([0, 1, 2].map(viceRule)).toEqual([undefined, undefined, undefined]);
+				expect(viceRule(3)).toBe("8");
+			});
+
+			it("is not a burst without an Ire", () => {
+				const gaugeReawaken: Step[] = [PULL, "REAWAKEN", ...GENS];
+				const charge = [
+					...BUFFS_UP,
+					set("cd_VICEWINDER", 1, 80),
+					set("SERPENT_OFFERINGS", 50, 0),
+				];
+				expect(entry(recommend(gaugeReawaken, charge), "VICEWINDER")?.rule).toBe("8");
+			});
 		});
 	});
 

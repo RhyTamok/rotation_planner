@@ -8,11 +8,11 @@ document shape changes (M1, M7).
 
 ## Status and how to use this file
 
-| Milestone | Status                                                                                                                                                   |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                   |
+| Milestone | Status                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
 | M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
-| M2–M8     | not started (update this row by row as each is committed)                                                                                                |
+| M2–M8     | not started (update this row by row as each is committed)                                                                                                    |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
