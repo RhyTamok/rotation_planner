@@ -11,6 +11,7 @@ import { ResourceSnapshot } from "../rules/resourceTracking";
 export type RotationStep =
 	// `delay`: extra seconds to wait after the action first becomes usable (normally the end of
 	// the previous animation lock), e.g. to place an oGCD later in a GCD gap.
+	// `targets`: kept so stored/imported steps still parse, but the simulator ignores it.
 	| { type: "skill"; action: ActionKey; targets?: number[]; delay?: number }
 	// Idle for a fixed duration.
 	| { type: "wait"; seconds: number }

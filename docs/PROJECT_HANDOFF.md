@@ -213,18 +213,25 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
 Ordered roughly by the user's priorities. Discuss each with the user before starting.
 
 1. **Recommendations:**
-    - Viper is implemented (session 4). The user still has to review it in the browser, and the
-      interpretation choices in section 8 of the Viper ruleset doc need their confirmation.
+    - Viper is implemented (session 4). The user reviewed it in the browser and confirmed the
+      interpretation choices in section 8 of the Viper ruleset doc, except the burst window.
+    - **Viper burst window to revise (user, session 6):** the window is anchored on one Reawaken
+      after the last Serpent's Ire. Real burst windows hold two Reawakens back to back (one from
+      Ire's Ready to Reawaken, one from gauge), and in niche cases a gauge Reawaken is cast first and
+      Ire is used right after it, so the current rule would lose most of that first Reawaken. Not
+      yet re-specified: agree the new definition with the user (ruleset doc section 4), then change
+      `recommend/vpr.ts` and its tests.
     - Golden replay tests: postponed by the user until after another feature. Ask for an opener
       and a 2-minute cycle for each job then.
     - Dragoon: implement `docs/rulesets/drg-recommendations.md` as `recommend/drg.ts` on the same
       context. `arrange` already handles weave slots (Stardiver: `slots: 2`). It needs DRG resource
       tracking (open work 4) only for the UI, not for the rules.
 2. **Targets:** implemented in session 5 (rules in section 6). Still open:
-    - the user's browser review of the Targets panel and the table column;
-    - DoT ticks stopping when their enemy leaves (with Dragoon);
-    - a step's explicit `targets` (from upstream imports) still overrides the ranges. That is
-      harmless for Viper, but decide whether the Lab should ignore it.
+    - DoT ticks stopping when their enemy leaves (with Dragoon).
+
+    Done in session 6: the user's browser review of the Targets panel and column. Decided: a
+    step's own `targets` (from upstream imports) is ignored by the simulator; the rotation's target
+    ranges are the only source. The field stays on `RotationStep` so stored documents still parse.
 3. **Comparison system (M0–M1 done, M2–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is

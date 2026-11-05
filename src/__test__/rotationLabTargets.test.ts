@@ -174,6 +174,14 @@ describe("Rotation Lab - multi-target damage", () => {
 		expect(result.actions[1].targetsHit).toBe(3);
 	});
 
+	it("ignores a step's own targets list (upstream imports); the ranges decide", () => {
+		const hits = (step: RotationStep, targets: TargetRange[]) =>
+			action(simulate([AT_10, step], { targets }).actions, "STEEL_MAW").targetsHit;
+		const withList: RotationStep = { type: "skill", action: "STEEL_MAW", targets: [0, 1, 2] };
+		expect(hits(withList, [])).toBe(1);
+		expect(hits(withList, WHOLE_FIGHT)).toBe(3);
+	});
+
 	it("simulates a rotation document with its own target ranges", () => {
 		const scenario = createScenario({ name: "s", end: "settled", stats: { fps: 0 } });
 		const steps: RotationStep[] = [AT_10, { type: "skill", action: "STEEL_MAW" }];

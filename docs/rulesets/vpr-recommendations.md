@@ -80,6 +80,11 @@ Start: Serpent's Ire cast. Anchor: the first Reawaken after that Ire that consum
 Vicewinder/Vicepit are recommended only through 5a (cap guard). Raid buffs are not part of the
 definition. Tests may later change this.
 
+**To revise (user, session 6):** a burst window normally holds two Reawakens back to back (one
+from Ire's Ready to Reawaken, one from gauge). In niche cases a gauge Reawaken is started first
+and Ire is used right after its cast; anchoring on the first Reawaken after Ire then loses most of
+that first Reawaken. The new definition is not decided yet.
+
 ## 5. Direct follow-ups (take the parent's slot, priority row 2)
 
 | Parent (just pressed)            | Follow-up                                                                                                                                                                  | Engine marker                                          |

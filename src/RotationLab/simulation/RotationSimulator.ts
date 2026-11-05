@@ -132,7 +132,9 @@ export class RotationSimulator {
 		const normalized: RotationStep =
 			typeof step === "string" ? { type: "skill", action: step } : step;
 		if (normalized.type === "skill") {
-			this.#useSkill(stepIndex, normalized.action, normalized.targets, normalized.delay ?? 0);
+			// A step's own `targets` (from upstream imports) is ignored on purpose: the rotation's
+			// target ranges are the only source of truth in the Lab.
+			this.#useSkill(stepIndex, normalized.action, normalized.delay ?? 0);
 		} else if (normalized.type === "wait") {
 			this.#tick(normalized.seconds);
 		} else {
@@ -153,12 +155,7 @@ export class RotationSimulator {
 	// animation lock), so it always moves the action later.
 	// Without explicit `targets`, the step hits the enemies present from the press to the damage
 	// application (rules/targets.ts); the engine then cuts single-target skills down to one.
-	#useSkill(
-		stepIndex: number,
-		requestedAction: ActionKey,
-		explicitTargets: number[] | undefined,
-		delay: number,
-	) {
+	#useSkill(stepIndex: number, requestedAction: ActionKey, delay: number) {
 		let status = this.game.getSkillAvailabilityStatus(requestedAction);
 		this.#tick(status.timeTillAvailable + delay);
 
@@ -194,13 +191,11 @@ export class RotationSimulator {
 		}
 
 		const press = this.game.getDisplayTime();
-		const targetList =
-			explicitTargets ??
-			targetListFor(
-				this.#targets,
-				press,
-				press + (status.status.ready() ? status.timeTillDamageApplication : 0),
-			);
+		const targetList = targetListFor(
+			this.#targets,
+			press,
+			press + (status.status.ready() ? status.timeTillDamageApplication : 0),
+		);
 		const node = skillNode(executedAction, this.#filterTargetList(targetList, executedAction));
 		const actionIndex = this.#executed.length;
 
