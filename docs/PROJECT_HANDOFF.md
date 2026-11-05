@@ -240,6 +240,13 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
    questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
    comparison is the two-rotation view described in section 3.
+   **Plan approved 2026-11-05** (nothing implemented yet; next is M3a, awaiting the user's go-ahead).
+   `comparison-design-spec.md` is the UI/metric baseline; the roadmap's "Reconciliation" section maps it
+   to the code and adds M3a (exact competitiveness/regret maths), M3b (its UI, local sensitivity,
+   schema 6) and M6b (event timeline). Decisions: no weighted potency (burst = party-buffed expected
+   damage), no mode field, no per-configuration gear override (duplicate the rotation), one-configuration
+   comparisons allowed, ε 0.10% (0.01–1.00, step 0.01), overcap and missed uses shown as observed counts
+   (CS Q9, definitions confirmed at M6, which becomes engine-adjacent).
 
     - M0 changed `totalBetween` from `[start, end]` to `(start, end]` (spec Q1). The old assertion
       in `rotationLabCompare.test.ts` changed from 1110 to 1100, with a note on the test. The burst
