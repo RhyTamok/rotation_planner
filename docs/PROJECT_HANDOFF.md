@@ -234,7 +234,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     step's own `targets` (from upstream imports) is ignored by the simulator; the rotation's target
     ranges are the only source. The field stays on `RotationStep` so stored documents still parse.
 
-3. **Comparison system (M0–M1 done, M2–M8 not started):** the locked design is in
+3. **Comparison system (M0–M2 done, M3–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
@@ -251,6 +251,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     - Still raw floats: the engine's downtime check, kept for upstream parity (audit section 2).
     - M1 stores comparisons in `Workspace.comparisons` (schema 5; the migration creates none). What
       later milestones should know:
+
         - Until its first edit the view shows an unsaved default (current rotation against the next
           of its job). Opening Compare therefore adds no undo step, and undoing the first edit
           falls back to the default. Once stored, A and B no longer follow the current rotation.
@@ -266,6 +267,16 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
         - Validation is cross-document (`parseComparisonDocument(input, references)`): a comparison
           whose rotation or scenario was skipped on load is skipped and reported.
         - No UI yet to create, rename or delete comparisons (the user is fine with that for now); a selector appears with two or more.
+
+    - M2 added `comparison/baseline.ts` (pure, not yet used by the UI): `compareConfigurations`
+      (per cutoff: total, DPS, deltaDps, deltaPct, rank) and `deltaDpsSeries` (deltaDps at every
+      event time plus extra times). Choices made there, for M3 to rely on:
+        - At t <= 0 only the total is set; DPS, delta and rank are undefined.
+        - The baseline row has deltaDps exactly 0; deltaPct is undefined for every row when the
+          baseline DPS is 0 (including the baseline's own).
+        - Ties share the best rank (1, 1, 3), compared with a relative 1e-9 tolerance.
+        - Samples at event times suffice for extremes: between events deltaDps is monotonic.
+        - Switching the baseline changes only the delta columns, never a configuration's own DPS.
 
     Comparison extras that stay open:
 

@@ -47,7 +47,7 @@ export function cumulativeSeries(
 
 // Simulated times are computed floats (a hit due at 7.5 s can be recorded at 7.500000000000002 s),
 // so times this close, in seconds, count as the same instant. Far below any real gap between hits.
-const TIME_TOLERANCE = 1e-6;
+export const TIME_TOLERANCE = 1e-6;
 
 // Index of the last step at or before `limit`; -1 if none.
 function lastIndex(series: CumulativeSeries, limit: number): number {
