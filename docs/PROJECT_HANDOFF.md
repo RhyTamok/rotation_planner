@@ -234,13 +234,13 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     step's own `targets` (from upstream imports) is ignored by the simulator; the rotation's target
     ranges are the only source. The field stays on `RotationStep` so stored documents still parse.
 
-3. **Comparison system (M0–M2 done, M3–M8 not started):** the locked design is in
+3. **Comparison system (M0–M2 and M3a done, M3–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
    questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
    comparison is the two-rotation view described in section 3.
-   **Plan approved 2026-11-05** (nothing implemented yet; next is M3a, awaiting the user's go-ahead).
+   **Plan approved 2026-11-05** (M3a is implemented; next is M3, awaiting the user's go-ahead).
    `comparison-design-spec.md` is the UI/metric baseline; the roadmap's "Reconciliation" section maps it
    to the code and adds M3a (exact competitiveness/regret maths), M3b (its UI, local sensitivity,
    schema 6) and M6b (event timeline). Decisions: no weighted potency (burst = party-buffed expected
@@ -278,12 +278,32 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     - M2 added `comparison/baseline.ts` (pure, not yet used by the UI): `compareConfigurations`
       (per cutoff: total, DPS, deltaDps, deltaPct, rank) and `deltaDpsSeries` (deltaDps at every
       event time plus extra times). Choices made there, for M3 to rely on:
+
         - At t <= 0 only the total is set; DPS, delta and rank are undefined.
         - The baseline row has deltaDps exactly 0; deltaPct is undefined for every row when the
           baseline DPS is 0 (including the baseline's own).
         - Ties share the best rank (1, 1, 3), compared with a relative 1e-9 tolerance.
         - Samples at event times suffice for extremes: between events deltaDps is monotonic.
         - Switching the baseline changes only the delta columns, never a configuration's own DPS.
+
+    - M3a added `comparison/competitive.ts` (pure, not yet used by the UI): `intervalAnalysis` takes
+      `(series, ids, T1, T2, epsilonPct)` and gives leader and competitive coverage, maximum and mean
+      regret, the constant-total pieces and the competitive-set changes; `deltaPctSeries` joined `baseline.ts`,
+      which now also exports `TIE_TOLERANCE` and `rankOf`. Choices made there, confirmed by the user on 2026-11-05, for M3 and M3b to rely on:
+        - All results are fractions; only the `epsilonPct` argument is in percentage points (0.10 = 0.10%).
+          Multiply by 100 at display.
+        - Competitiveness is against the current best and takes no baseline at all.
+        - Leaders are rank 1 as in the cutoff table and are always competitive. A gap of exactly ε
+          is competitive (`TIE_TOLERANCE` slack on that comparison).
+        - The last piece is a zero-length one at T2: a hit landing at T2 counts for maximum regret
+          and transitions, as the cutoff table at T2 would show it, but not for coverage or mean regret.
+        - A landing within 1e-6 s of T1 is part of the state at T1, so it is not a transition. The set
+          at T1 is `pieces[0].competitive`.
+        - All-zero totals: all entries tie as leaders and are competitive; DPS regret is 0 and
+          `regretFraction` is undefined (N/A).
+        - Known edge: below 1 DPS, `rankOf`'s tolerance is absolute, so a tie between totals differing
+          by under 1e-9 × t could in theory end inside a piece, and the analysis uses the state at the
+          piece's start. Real gaps between hits are far larger, and float noise far smaller.
 
     Comparison extras that stay open:
 

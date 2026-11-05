@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { compareConfigurations, deltaDpsSeries } from "../RotationLab/comparison/baseline";
+import {
+	compareConfigurations,
+	deltaDpsSeries,
+	deltaPctSeries,
+} from "../RotationLab/comparison/baseline";
 import { cumulativeSeries, dpsAt } from "../RotationLab/comparison/compare";
 import { simulateRotation } from "../RotationLab/simulation/RotationSimulator";
 import { RotationResult } from "../RotationLab/simulation/types";
@@ -182,6 +186,57 @@ describe("Rotation Lab - delta DPS series", () => {
 			[],
 		);
 		expect(deltaDpsSeries(cmp).times[0]).toBe(5);
+	});
+});
+
+describe("Rotation Lab - delta percent series", () => {
+	it("gives a fraction per non-baseline configuration, at the delta DPS instants", () => {
+		const cmp = compareConfigurations(configs(["a", A], ["b", B], ["c", C]), "a", []);
+		const pct = deltaPctSeries(cmp, [12, 0]);
+		expect(pct.times).toEqual(deltaDpsSeries(cmp, [12, 0]).times);
+		expect(pct.times).toEqual([5, 10, 12, 15, 20]);
+		expect(pct.series.map((s) => s.id)).toEqual(["b", "c"]);
+		// b/a: 800/1000 at 5 and 10 s, and at 12 s since no hit lands; 1800/1200 from 15 s.
+		const b = pct.series[0].deltaPct;
+		expect(b[0]).toBeCloseTo(-0.2, 12);
+		expect(b[1]).toBeCloseTo(-0.2, 12);
+		expect(b[2]).toBeCloseTo(-0.2, 12);
+		expect(b[3]).toBeCloseTo(0.5, 12);
+		expect(b[4]).toBeCloseTo(0.5, 12);
+		// c/a: 0 at 5 s, 600/1000 at 10 s, 600/1200 at 15 s, 1000/1200 at 20 s.
+		const c = pct.series[1].deltaPct;
+		expect(c[0]).toBeCloseTo(-1, 12);
+		expect(c[1]).toBeCloseTo(-0.4, 12);
+		expect(c[3]).toBeCloseTo(-0.5, 12);
+		expect(c[4]).toBeCloseTo(-1 / 6, 12);
+	});
+
+	it("is undefined only where the baseline DPS is 0", () => {
+		// C deals nothing until 10 s.
+		const cmp = compareConfigurations(configs(["c", C], ["a", A]), "c", []);
+		const { times, series } = deltaPctSeries(cmp);
+		expect(times).toEqual([5, 10, 15, 20]);
+		expect(series[0].deltaPct[0]).toBeUndefined();
+		// a/c: 1000/600 at 10 s.
+		expect(series[0].deltaPct[1]).toBeCloseTo(2 / 3, 12);
+		// Delta DPS still exists at 5 s, in absolute terms.
+		expect(deltaDpsSeries(cmp).series[0].deltaDps[0]).toBeCloseTo(200, 12);
+	});
+
+	it("agrees with the cutoff table at a shared time", () => {
+		const cmp = compareConfigurations(configs(["a", A], ["b", B]), "a", [10]);
+		const pct = deltaPctSeries(cmp, [10]);
+		const at = pct.times.indexOf(10);
+		expect(pct.series[0].deltaPct[at]).toBe(cmp.cutoffs[0].rows[1].deltaPct);
+	});
+
+	it("drops the pull hit's float noise instead of dividing by it", () => {
+		const cmp = compareConfigurations(
+			configs(["a", [[3.6e-15, 100], ...A]], ["b", B]),
+			"a",
+			[],
+		);
+		expect(deltaPctSeries(cmp).times[0]).toBe(5);
 	});
 });
 

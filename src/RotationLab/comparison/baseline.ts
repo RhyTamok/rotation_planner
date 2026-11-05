@@ -48,7 +48,7 @@ export interface BaselineComparison {
 
 // DPS values closer than this, relative to their size, tie: equal totals summed in a different
 // order differ by float noise.
-const TIE_TOLERANCE = 1e-9;
+export const TIE_TOLERANCE = 1e-9;
 
 function assertValid(configs: { id: string }[], baselineId: string) {
 	const ids = new Set(configs.map((c) => c.id));
@@ -56,7 +56,7 @@ function assertValid(configs: { id: string }[], baselineId: string) {
 	if (!ids.has(baselineId)) throw new Error(`Baseline "${baselineId}" is not a configuration.`);
 }
 
-function rankOf(dps: number, all: number[]): number {
+export function rankOf(dps: number, all: number[]): number {
 	const tolerance = TIE_TOLERANCE * Math.max(1, Math.abs(dps));
 	return 1 + all.filter((other) => other > dps + tolerance).length;
 }
@@ -106,6 +106,16 @@ export function compareConfigurations(
 	};
 }
 
+type SeriesComparison = Pick<BaselineComparison, "baselineId" | "ids" | "series">;
+
+// Ascending and after the pull: DPS is undefined at or before it.
+function deltaSampleTimes(comparison: SeriesComparison, extraTimes: number[]): number[] {
+	const { ids, series } = comparison;
+	return [...new Set([...ids.flatMap((id) => series[id].times), ...extraTimes])]
+		.filter((t) => t > TIME_TOLERANCE)
+		.sort((a, b) => a - b);
+}
+
 export interface DeltaDpsSeries {
 	// Ascending, all after the pull.
 	times: number[];
@@ -118,13 +128,11 @@ export interface DeltaDpsSeries {
 // totals are constant, so deltaDps = (Ta - Tb) / t moves monotonically; the extremes are therefore
 // at these samples and nowhere else. Instants at or before the pull are dropped (DPS undefined).
 export function deltaDpsSeries(
-	comparison: Pick<BaselineComparison, "baselineId" | "ids" | "series">,
+	comparison: SeriesComparison,
 	extraTimes: number[] = [],
 ): DeltaDpsSeries {
 	const { baselineId, ids, series } = comparison;
-	const times = [...new Set([...ids.flatMap((id) => series[id].times), ...extraTimes])]
-		.filter((t) => t > TIME_TOLERANCE)
-		.sort((a, b) => a - b);
+	const times = deltaSampleTimes(comparison, extraTimes);
 	const baseline = series[baselineId];
 	return {
 		times,
@@ -133,6 +141,38 @@ export function deltaDpsSeries(
 			.map((id) => ({
 				id,
 				deltaDps: times.map((t) => dpsAt(series[id], t)! - dpsAt(baseline, t)!),
+			})),
+	};
+}
+
+export interface DeltaPctSeries {
+	// Ascending, all after the pull.
+	times: number[];
+	// Per non-baseline configuration, in the given order: deltaPct at each of `times`. A fraction
+	// (0.05 = 5%), as in `CutoffRow`, and undefined where the baseline DPS is 0.
+	series: { id: string; deltaPct: (number | undefined)[] }[];
+}
+
+// deltaPct at the same instants as `deltaDpsSeries`. It equals (Ta - Tb) / Tb, in which t cancels,
+// so it is a pure step that holds between events (unlike deltaDps, which follows c / t).
+export function deltaPctSeries(
+	comparison: SeriesComparison,
+	extraTimes: number[] = [],
+): DeltaPctSeries {
+	const { baselineId, ids, series } = comparison;
+	const times = deltaSampleTimes(comparison, extraTimes);
+	const baseline = series[baselineId];
+	return {
+		times,
+		series: ids
+			.filter((id) => id !== baselineId)
+			.map((id) => ({
+				id,
+				deltaPct: times.map((t) => {
+					const baselineDps = dpsAt(baseline, t)!;
+					if (baselineDps === 0) return undefined;
+					return (dpsAt(series[id], t)! - baselineDps) / baselineDps;
+				}),
 			})),
 	};
 }

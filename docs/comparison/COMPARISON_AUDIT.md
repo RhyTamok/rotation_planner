@@ -113,12 +113,17 @@ Findings on these semantics:
     `DPS_a(t) − DPS_b(t) = (T_a(t) − T_b(t)) / t` and `t > 0`, the **sign** (hence lead changes and
     ranking reversals) is identical, but the magnitudes differ. The primary metric must be the DPS
     form; `differenceSeries` should stay internal or be renamed when generalized.
+-   **Maths since this audit:** `deltaDpsSeries` (M2) and `deltaPctSeries` (M3a) in `baseline.ts` sample
+    every event time for N configurations against a baseline. Competitiveness and regret over an
+    interval are in `competitive.ts` (M3a). The UI gaps above stay until M3 and M3b.
 
 ### 2.5 Baseline
 
 -   **Status: Missing.** A is implicitly the minuend; there is no designated baseline, no percentage
     difference anywhere. Baseline switching need not resimulate: all results are `SimulationCache`
     entries keyed by `simulationKey()` and the baseline is not part of that key (good, reusable as is).
+    Update: the baseline maths and percentage difference exist in `baseline.ts` (M2, M3a); the view
+    does not use them until M3.
 
 ### 2.6 Burst analysis and raid buffs
 
