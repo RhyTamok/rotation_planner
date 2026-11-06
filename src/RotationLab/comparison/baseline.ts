@@ -106,7 +106,7 @@ export function compareConfigurations(
 	};
 }
 
-type SeriesComparison = Pick<BaselineComparison, "baselineId" | "ids" | "series">;
+export type SeriesComparison = Pick<BaselineComparison, "baselineId" | "ids" | "series">;
 
 // Ascending and after the pull: DPS is undefined at or before it.
 function deltaSampleTimes(comparison: SeriesComparison, extraTimes: number[]): number[] {

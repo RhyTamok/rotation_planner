@@ -3,16 +3,14 @@ import { describe, expect, it } from "vitest";
 import { BuffType } from "../Game/Common";
 import {
 	burstWindows,
-	compareRotations,
 	cumulativeSeries,
 	dpsAt,
-	dpsSamples,
 	gaugesAt,
-	leadChanges,
-	sampleTimes,
 	totalAt,
 	totalBetween,
 } from "../RotationLab/comparison/compare";
+import { cutoffTable } from "../RotationLab/comparison/baseline";
+import { burstTable } from "../RotationLab/comparison/burst";
 import { simulateRotation } from "../RotationLab/simulation/RotationSimulator";
 import { RotationResult } from "../RotationLab/simulation/types";
 
@@ -83,31 +81,6 @@ describe("Rotation Lab - comparison maths", () => {
 		expect(totalBetween(series, 5.5, 9)).toBe(100);
 	});
 
-	it("finds lead changes, ignoring ties", () => {
-		const a = cumulativeSeries(
-			fakeResult([
-				[1, 100],
-				[3, 100],
-				[6, 300],
-			]),
-			"damage",
-		);
-		const b = cumulativeSeries(
-			fakeResult([
-				[2, 150],
-				[3, 50],
-				[4, 200],
-			]),
-			"damage",
-		);
-		// A leads at 1 s; B passes at 2 s; tied at 3 s (200 each) and still B from 4 s; A at 6 s.
-		expect(leadChanges(a, b)).toEqual([
-			{ time: 1, leader: "a" },
-			{ time: 2, leader: "b" },
-			{ time: 6, leader: "a" },
-		]);
-	});
-
 	it("merges overlapping buff windows into burst windows", () => {
 		const result = fakeResult(
 			[],
@@ -122,57 +95,6 @@ describe("Rotation Lab - comparison maths", () => {
 			{ start: 0, end: 32 },
 			{ start: 120, end: 140 },
 		]);
-	});
-
-	it("compares two results at cutoffs and in burst windows", () => {
-		const buffs = [{ time: 0, duration: 10 }];
-		const comparison = compareRotations(
-			fakeResult(
-				[
-					[1, 100],
-					[20, 100],
-				],
-				buffs,
-			),
-			fakeResult(
-				[
-					[1, 50],
-					[20, 200],
-				],
-				buffs,
-			),
-			[10, 20],
-		);
-		expect(comparison.metric).toBe("damage");
-		expect(comparison.cutoffs).toEqual([
-			{ time: 10, a: 100, b: 50, dpsA: 10, dpsB: 5 },
-			{ time: 20, a: 200, b: 250, dpsA: 10, dpsB: 12.5 },
-		]);
-		expect(comparison.windows).toEqual([{ start: 0, end: 10, a: 100, b: 50 }]);
-		expect(comparison.leadChanges.map((c) => c.leader)).toEqual(["a", "b"]);
-	});
-
-	it("samples running DPS at whole seconds from the pull", () => {
-		expect(sampleTimes(0, 3.5)).toEqual([1, 2, 3]);
-		expect(sampleTimes(1.5, 4)).toEqual([2, 3, 4]);
-		const series = cumulativeSeries(
-			fakeResult([
-				[0, 100],
-				[2, 300],
-			]),
-			"damage",
-		);
-		expect(dpsSamples(series, [1, 2, 4])).toEqual([100, 200, 100]);
-	});
-
-	it("uses custom burst windows when given", () => {
-		const comparison = compareRotations(
-			fakeResult([[5, 100]], [{ time: 0, duration: 2 }]),
-			fakeResult([[5, 40]]),
-			[],
-			[{ start: 4, end: 6, label: "Opener" }],
-		);
-		expect(comparison.windows).toEqual([{ start: 4, end: 6, label: "Opener", a: 100, b: 40 }]);
 	});
 
 	it("reports each rotation's gauges as of a cutoff", () => {
@@ -256,16 +178,13 @@ describe("Rotation Lab - cutoff and window boundaries", () => {
 			[10, 10],
 			[15, 100],
 		];
-		const comparison = compareRotations(
-			fakeResult(hits),
-			fakeResult(hits),
-			[],
-			[
-				{ start: 5, end: 10 },
-				{ start: 10, end: 15 },
-			],
-		);
-		expect(comparison.windows.map((w) => w.a)).toEqual([10, 100]);
+		// Moved with the UI from the retired compareRotations (roadmap M3); same hits, same result.
+		const series = { a: cumulativeSeries(fakeResult(hits), "damage") };
+		const windows = burstTable({ baselineId: "a", ids: ["a"], series }, [
+			{ start: 5, end: 10 },
+			{ start: 10, end: 15 },
+		]);
+		expect(windows.map((w) => w.rows[0].total)).toEqual([10, 100]);
 	});
 
 	// Decided by the user after M0: the pull hit has no earlier window, so it belongs to the window
@@ -314,10 +233,13 @@ describe("Rotation Lab - cutoff and window boundaries", () => {
 		expect(totalBetween(series, 10, 15)).toBe(0);
 	});
 
-	it("reports no lead when float noise is all that separates two hits", () => {
+	// Ported from the retired lead changes list (roadmap M3): the same two hits, now as a tie.
+	it("reports a tie when float noise is all that separates two hits", () => {
 		const a = cumulativeSeries(fakeResult([[7.5, 100]]), "damage");
 		const b = cumulativeSeries(fakeResult([[7.500000000000002, 100]]), "damage");
-		expect(leadChanges(a, b)).toEqual([]);
+		const { rows } = cutoffTable({ a, b }, ["a", "b"], "a", 7.5);
+		expect(rows.map((r) => r.rank)).toEqual([1, 1]);
+		expect(rows[1].deltaDps).toBe(0);
 	});
 
 	it("reads gauges within float noise of a press as after that press", () => {

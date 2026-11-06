@@ -11,20 +11,21 @@ Status key: **Implemented**, **Partial**, **Missing**, **Conflicting**, **Unveri
 
 ## 1. What exists today
 
-A two-rotation comparison, `ui/ComparisonView.tsx`, over pure maths in `comparison/compare.ts`.
+Updated after M3: an N-way comparison, `ui/ComparisonView.tsx` and `ui/compare/`, over pure maths in
+`comparison/` (`compare.ts`, `baseline.ts`, `cutoffs.ts`, `curves.ts`, `burst.ts`).
 
--   Two pickers (A, B) over the first two configurations of a stored `ComparisonDocument`
-    (`models/Comparison.ts`, in `Workspace.comparisons`, M1). Until its first edit, the view shows an
-    unsaved default.
+-   One to four configurations of a stored `ComparisonDocument` (`models/Comparison.ts`, in
+    `Workspace.comparisons`, M1), with a baseline. Until its first edit, the view shows an unsaved
+    default.
 -   Each rotation is simulated with its own gear (`resolveGear`) under one shared
     `ScenarioDocument`, through `SimulationCache` (`simulation/SimulationManager.ts`).
--   `compareRotations()` builds one `CumulativeSeries` per result from `RotationResult.damageEvents`
-    and derives everything else (cutoff rows, lead changes, burst-window totals) from those series.
-    Cutoffs and chart start are stored in the comparison. `baselineId` is stored but not used yet
-    (M2, M3).
--   Charts: running DPS (A, B) and running-DPS lead (`dpsA − dpsB`) sampled every whole second from
-    "Charts from" (default 10 s). Burst windows are shaded and cutoffs dashed.
--   Cutoff table: totals, DPS, gauges. Burst table: damage per window.
+-   `compareConfigurations()` builds one `CumulativeSeries` per result from
+    `RotationResult.damageEvents`, and the cutoff rows, burst totals and chart curves all derive from
+    those series. Cutoffs, baseline and chart start are stored in the comparison.
+-   Charts: `ΔDPS` or `Δ%` from the baseline, and running DPS, as exact curves from "Charts from"
+    (default 10 s). Burst windows are shaded, downtime hatched and cutoffs dashed.
+-   Cutoff table: DPS, `ΔDPS`, `Δ%`, rank. Second table: totals and gauges. Burst table: damage per
+    window and its difference from the baseline.
 
 ## 2. Engine semantics that the comparison must reuse (requirement 2.3)
 
@@ -164,13 +165,13 @@ Findings on these semantics:
 
 ### 2.10 Views A–E
 
-| View                 | Status  | Notes                                                                                      |
-| -------------------- | ------- | ------------------------------------------------------------------------------------------ |
-| A Difference graph   | Partial | Two configs, no baseline, no downtime markers (unverified), burst and cutoff markers exist |
-| B Cutoff table       | Partial | DPS and totals for A/B; no % vs baseline, no ranking, no 3–4 configs                       |
-| C Burst table        | Partial | Raid-buffed damage per window; N-way and baseline missing                                  |
-| D Leftover resources | Partial | Gauges in cutoff table (see 2.7)                                                           |
-| E Downtime and drift | Missing |                                                                                            |
+| View                 | Status  | Notes                                                                            |
+| -------------------- | ------- | -------------------------------------------------------------------------------- |
+| A Difference graph   | Done    | M3: N configurations against a baseline, with downtime, burst and cutoff markers |
+| B Cutoff table       | Done    | M3: DPS, `ΔDPS`, `Δ%` and rank for 1–4 configurations                            |
+| C Burst table        | Partial | M3: N-way with baseline differences; windows move to the comparison in M5        |
+| D Leftover resources | Partial | Gauges in a table beside the cutoff table (see 2.7); overcap comes in M6         |
+| E Downtime and drift | Missing |                                                                                  |
 
 ### 2.11 Import / export
 

@@ -13,6 +13,8 @@
 	--rl-warning: #b54708;
 	--rl-series-a: #2a78d6;
 	--rl-series-b: #eb6834;
+	--rl-series-c: #1baf7a;
+	--rl-series-d: #eda100;
 	--rl-timers-height: 40px;
 	color-scheme: light;
 }
@@ -33,6 +35,8 @@
 		--rl-warning: #f5b85c;
 		--rl-series-a: #3987e5;
 		--rl-series-b: #d95926;
+		--rl-series-c: #199e70;
+		--rl-series-d: #c98500;
 		color-scheme: dark;
 	}
 }
@@ -298,13 +302,51 @@ select {
 	width: auto;
 }
 
-.rl-compare-table th {
+/* Two classes, to beat the sticky `.rl-table th` further down: these headers scroll with their
+   table. Left sticky inside `.rl-table-scroll`, its `top` would push them over the rows. */
+.rl-table.rl-compare-table th {
 	position: static;
 }
 
-.rl-compare-list {
-	margin: 0;
-	padding-left: 20px;
+.rl-table-scroll {
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+/* The time column stays in view when four configurations scroll sideways. */
+.rl-cutoff-table tbody td:first-child,
+.rl-cutoff-table thead tr:first-child th:first-child {
+	position: sticky;
+	left: 0;
+	top: auto;
+	background: var(--rl-bg);
+}
+
+.rl-cutoff-table th {
+	white-space: nowrap;
+}
+
+.rl-compare-details {
+	margin-top: 10px;
+}
+
+.rl-compare-details summary {
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--rl-muted);
+	margin-bottom: 4px;
+}
+
+.rl-config-list {
+	margin-bottom: 8px;
+}
+
+.rl-config-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 12px;
+	margin-bottom: 4px;
 }
 
 .rl-chart {
@@ -312,7 +354,7 @@ select {
 	max-width: 960px;
 }
 
-.rl-chart svg {
+.rl-chart > svg {
 	display: block;
 	width: 100%;
 	height: auto;
@@ -324,21 +366,26 @@ select {
 	stroke-linejoin: round;
 }
 
-/* Two-series palette (categorical slots 1 and 2), validated for CVD separation and contrast
-   on this page's light and dark surfaces. */
+/* Four-series palette (categorical slots 1 to 4), validated for CVD separation on this page's
+   light and dark surfaces. In light mode aqua and yellow are under 3:1 against the surface, so
+   every line also has its own pattern and a lettered label. */
 .rl-series-a {
 	stroke: var(--rl-series-a);
-	background: var(--rl-series-a);
 }
 
 .rl-series-b {
 	stroke: var(--rl-series-b);
-	background: var(--rl-series-b);
+	stroke-dasharray: 8 4;
 }
 
-.rl-series-lead {
-	stroke: var(--rl-accent);
-	background: var(--rl-accent);
+.rl-series-c {
+	stroke: var(--rl-series-c);
+	stroke-dasharray: 2 3;
+}
+
+.rl-series-d {
+	stroke: var(--rl-series-d);
+	stroke-dasharray: 8 3 2 3;
 }
 
 .rl-legend {
@@ -351,9 +398,6 @@ select {
 
 .rl-swatch {
 	display: inline-block;
-	width: 12px;
-	height: 3px;
-	border-radius: 2px;
 	margin-right: 6px;
 	vertical-align: middle;
 }
@@ -367,8 +411,9 @@ select {
 }
 
 .rl-chart-zero {
-	stroke: var(--rl-muted);
+	stroke: var(--rl-text);
 	stroke-width: 1;
+	stroke-dasharray: 6 3;
 }
 
 .rl-chart-grid {
@@ -380,10 +425,22 @@ select {
 	fill: var(--rl-accent-soft);
 }
 
+.rl-chart-downtime {
+	stroke: none;
+}
+
+.rl-chart-hatch {
+	stroke: var(--rl-muted);
+	stroke-width: 2;
+	stroke-opacity: 0.45;
+}
+
+/* Lighter than the data: the default grid draws one every 30 s. */
 .rl-chart-cutoff {
 	stroke: var(--rl-muted);
 	stroke-width: 1;
 	stroke-dasharray: 4 4;
+	stroke-opacity: 0.5;
 }
 
 .rl-chart-crosshair {

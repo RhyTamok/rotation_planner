@@ -174,15 +174,15 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 
 	// Until a comparison is first edited there is nothing to store: the view shows this default, the
 	// current rotation against the next one of its job. Clicking Compare therefore adds no undo step.
-	const otherRotationId =
-		workspace.rotations.find((r) => r.id !== rotation.id && r.job === rotation.job)?.id ??
-		rotation.id;
+	const otherRotationId = workspace.rotations.find(
+		(r) => r.id !== rotation.id && r.job === rotation.job,
+	)?.id;
 	const defaultComparison = useMemo(
 		() =>
 			createComparison({
 				job: rotation.job,
 				scenarioId: selectedScenario.id,
-				rotationIds: [rotation.id, otherRotationId],
+				rotationIds: otherRotationId ? [rotation.id, otherRotationId] : [rotation.id],
 			}),
 		[rotation.job, rotation.id, otherRotationId, selectedScenario.id],
 	);
@@ -342,7 +342,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		const dropped = workspace.comparisons.length - comparisons.length;
 		const warning =
 			dropped > 0
-				? ` This also deletes ${dropped} comparison(s) that would have fewer than two configurations left.`
+				? ` This also deletes ${dropped} comparison(s) that would have no configurations left.`
 				: "";
 		if (!window.confirm(`Delete "${rotation.name}"?${warning}`)) return;
 		const remaining = workspace.rotations.filter((r) => r.id !== rotation.id);

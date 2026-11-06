@@ -295,8 +295,8 @@ describe("Rotation Lab - editor page", () => {
 		// The copy is the current rotation, so it is A by default and the original is B.
 		const comparison = screen.getByRole("region", { name: "Comparison" });
 		expect(within(comparison).getAllByTestId("cutoff-row")).toHaveLength(1);
-		expect(comparison.textContent).toMatch(/A: .*\(copy\) pulls ahead/);
-		expect(comparison.textContent).not.toContain("overtakes");
+		// The lead changes list is gone until roadmap M3b; the table names the configurations.
+		expect(comparison.textContent).toMatch(/A: .*\(copy\)/);
 
 		await user.type(
 			within(comparison).getByRole("spinbutton", { name: "Cutoff seconds" }),
@@ -304,7 +304,8 @@ describe("Rotation Lab - editor page", () => {
 		);
 		await user.click(within(comparison).getByRole("button", { name: "Add cutoff" }));
 		expect(within(comparison).getAllByTestId("cutoff-row")).toHaveLength(2);
-		expect(within(comparison).getAllByTestId("cutoff-row")[1].textContent).toContain(
+		// Gauges moved from the cutoff row to the table of totals and gauges (roadmap M3).
+		expect(within(comparison).getAllByTestId("resource-row")[1].textContent).toContain(
 			"Rattling Coil",
 		);
 
@@ -425,24 +426,33 @@ describe("Rotation Lab - editor page", () => {
 		expect(scenarioPicker.value).toBe(copy);
 	});
 
-	it("removes a stored comparison with a rotation it cannot do without, undoably", async () => {
+	// Changed on purpose (roadmap C3): deleting one of two rotations used to delete the comparison.
+	it("keeps a stored comparison with one configuration, and drops it with the last, undoably", async () => {
 		const user = userEvent.setup();
 		const { storage } = await openComparison(user);
 		const region = screen.getByRole("region", { name: "Comparison" });
 		await user.type(within(region).getByRole("spinbutton", { name: "Cutoff seconds" }), "1");
 		await user.click(within(region).getByRole("button", { name: "Add cutoff" }));
-		expect(savedComparisons(storage)).toHaveLength(1);
+		const stored = () =>
+			savedComparisons(storage) as unknown as { configurations: unknown[] }[];
+		expect(stored()[0].configurations).toHaveLength(2);
 
 		const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 		await user.click(screen.getByRole("button", { name: "Delete" }));
-		expect(confirm.mock.calls[0][0]).toContain("1 comparison(s)");
-		confirm.mockRestore();
-		// Still saved: the workspace stayed valid. The view is back on the default comparison.
-		expect(savedComparisons(storage)).toEqual([]);
+		expect(confirm.mock.calls[0][0]).not.toContain("comparison(s)");
+		expect(stored()[0].configurations).toHaveLength(1);
 		expect(screen.queryByText(/Changes not saved/)).toBeNull();
-
 		await user.click(screen.getByRole("button", { name: "Undo" }));
-		expect(savedComparisons(storage)).toHaveLength(1);
+		expect(stored()[0].configurations).toHaveLength(2);
+		await user.click(screen.getByRole("button", { name: "Redo" }));
+
+		// The current rotation is now the remaining one, and the comparison's last.
+		await user.click(screen.getByRole("button", { name: "Delete" }));
+		expect(confirm.mock.calls[1][0]).toContain("1 comparison(s)");
+		confirm.mockRestore();
+		expect(stored()).toEqual([]);
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(stored()).toHaveLength(1);
 	});
 
 	it("removes a row with its × button and shows debug timing columns", async () => {

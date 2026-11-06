@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-04 (comparison milestone M1: stored comparison documents).
+Last updated 2026-11-06 (comparison milestone M3: N-way comparison view).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -87,35 +87,39 @@ set changes.
     bonus, countdown, FPS tax (0 = off, the default), gemdraught grade, end mode or cutoff, party
     buffs, downtime, and custom burst windows.
 -   **Compare** (`ui/ComparisonView.tsx`):
-    -   Pick rotations A and B, each simulated with its own gear under one scenario.
-    -   The picks, cutoffs, chart start and scenario are stored in a comparison document (below) and
-        are undoable.
-    -   Running-DPS chart (A blue, B orange; palette validated for colour blindness), DPS-lead chart,
-        a "Charts from" start (default 10 s).
-    -   Cutoff table: DPS, totals and gauges per rotation; any number of cutoffs.
-    -   Lead changes and damage per burst window; windows are `(start, end]`, like cutoffs.
+    -   Pick one to four configurations (A to D) and a baseline, each simulated with its own gear
+        under one scenario.
+    -   The picks, baseline, cutoffs, chart start and scenario are stored in a comparison document
+        (below) and are undoable.
+    -   `ΔDPS`/`Δ%` chart against the baseline, and a running-DPS chart, from a "Charts from" start
+        (default 10 s). Each configuration has its own colour (validated for colour blindness), line
+        pattern and lettered label.
+    -   Cutoff table: DPS, `ΔDPS`, `Δ%` and rank. Default cutoffs every 30 s plus the end of the fight,
+        editable. Totals and gauges in a collapsible table below it.
+    -   Damage per burst window and its difference from the baseline; windows are `(start, end]`,
+        like cutoffs.
 -   **Persistence:** JSON workspace in `localStorage`, export/import as a file, schema migrations.
 
 ## 4. Architecture map
 
 All Rotation Lab code is in `src/RotationLab/`; its tests are `src/__test__/rotationLab*.test.ts(x)`.
 
-| Area              | Files                                                                                      | Notes                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Engine seam       | `src/Game/SimulationHost.ts`, `GameState.host`, `getGameState(config, host)`               | Each simulation reports to its own host, not the global `controller`                                                                                     |
-| Simulation        | `simulation/RotationSimulator.ts`, `RecordingHost.ts`, `types.ts`                          | One GameConfig + GameState + host per run. `simulateRotation()` wraps it, including the pull re-anchor                                                   |
-| Encounter rules   | `rules/encounterRules.ts`                                                                  | Pull rule, downtime target rule (on when `encounterRules: true`; always on for editor scenarios)                                                         |
-| Resource tracking | `rules/resourceTracking.ts`                                                                | Per-job gauges, timers (with icons) and combos with finishers, for row snapshots and combo-break notes                                                   |
-| Damage            | `damage/DamageModel.ts`                                                                    | xivgear formulas; verified for VPR at levels 80/90/100 only                                                                                              |
-| Documents         | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `Comparison.ts`, `validation.ts`        | `SCHEMA_VERSION` 5 (workspaces have `comparisons`); `AVAILABLE_RULESETS` (reborn `reborn-dt-2`)                                                          |
-| Targets           | `rules/targets.ts`                                                                         | Effective ranges (overlaps resolved), enemies at a time, lowest count from press to landing                                                              |
-| Storage           | `storage/WorkspaceStore.ts`, `storage/migrations.ts`                                       | Each migration keeps a backup under `rotationLab.workspace.v<old>`                                                                                       |
-| Recommendations   | `recommend/context.ts`, `recommender.ts`, `vpr.ts`                                         | Shared context (legality, timers, weave slots) and `arrange` (slot fitting); one ruleset per job registered in `recommender.ts`. Rules: `docs/rulesets/` |
-| Cache             | `simulation/SimulationManager.ts`                                                          | LRU keyed by job, ruleset, steps and the merged options (`rotationOptions`: scenario + resolved gear + the rotation's targets)                           |
-| Editor logic      | `editor/rotationEdits.ts`, `history.ts`, `clipboard.ts`, `paletteState.ts`, `buffLanes.ts` | Pure and unit-tested                                                                                                                                     |
-| Comparison        | `comparison/compare.ts`                                                                    | Pure: cumulative series, DPS samples, lead changes, burst windows, gauges at cutoffs                                                                     |
-| xivgear import    | `import/xivgear.ts`                                                                        | `api.xivgear.app/fulldata?url=<link>`                                                                                                                    |
-| UI                | `ui/*.tsx`, `ui/RotationLab.css`, `ui/main.tsx`                                            | Page entry `rotation-lab.html`, a second Vite input                                                                                                      |
+| Area              | Files                                                                                           | Notes                                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine seam       | `src/Game/SimulationHost.ts`, `GameState.host`, `getGameState(config, host)`                    | Each simulation reports to its own host, not the global `controller`                                                                                     |
+| Simulation        | `simulation/RotationSimulator.ts`, `RecordingHost.ts`, `types.ts`                               | One GameConfig + GameState + host per run. `simulateRotation()` wraps it, including the pull re-anchor                                                   |
+| Encounter rules   | `rules/encounterRules.ts`                                                                       | Pull rule, downtime target rule (on when `encounterRules: true`; always on for editor scenarios)                                                         |
+| Resource tracking | `rules/resourceTracking.ts`                                                                     | Per-job gauges, timers (with icons) and combos with finishers, for row snapshots and combo-break notes                                                   |
+| Damage            | `damage/DamageModel.ts`                                                                         | xivgear formulas; verified for VPR at levels 80/90/100 only                                                                                              |
+| Documents         | `models/Rotation.ts`, `Scenario.ts`, `GearSet.ts`, `Comparison.ts`, `validation.ts`             | `SCHEMA_VERSION` 5 (workspaces have `comparisons`); `AVAILABLE_RULESETS` (reborn `reborn-dt-2`)                                                          |
+| Targets           | `rules/targets.ts`                                                                              | Effective ranges (overlaps resolved), enemies at a time, lowest count from press to landing                                                              |
+| Storage           | `storage/WorkspaceStore.ts`, `storage/migrations.ts`                                            | Each migration keeps a backup under `rotationLab.workspace.v<old>`                                                                                       |
+| Recommendations   | `recommend/context.ts`, `recommender.ts`, `vpr.ts`                                              | Shared context (legality, timers, weave slots) and `arrange` (slot fitting); one ruleset per job registered in `recommender.ts`. Rules: `docs/rulesets/` |
+| Cache             | `simulation/SimulationManager.ts`                                                               | LRU keyed by job, ruleset, steps and the merged options (`rotationOptions`: scenario + resolved gear + the rotation's targets)                           |
+| Editor logic      | `editor/rotationEdits.ts`, `history.ts`, `clipboard.ts`, `paletteState.ts`, `buffLanes.ts`      | Pure and unit-tested                                                                                                                                     |
+| Comparison        | `comparison/compare.ts`, `baseline.ts`, `competitive.ts`, `cutoffs.ts`, `curves.ts`, `burst.ts` | Pure: cumulative series, baseline deltas and rank, competitiveness, default cutoffs, chart curves, burst tables, gauges at cutoffs                       |
+| xivgear import    | `import/xivgear.ts`                                                                             | `api.xivgear.app/fulldata?url=<link>`                                                                                                                    |
+| UI                | `ui/*.tsx`, `ui/RotationLab.css`, `ui/main.tsx`                                                 | Page entry `rotation-lab.html`, a second Vite input                                                                                                      |
 
 ## 5. Engine facts and pitfalls
 
@@ -234,13 +238,14 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     step's own `targets` (from upstream imports) is ignored by the simulator; the rotation's target
     ranges are the only source. The field stays on `RotationStep` so stored documents still parse.
 
-3. **Comparison system (M0–M2 and M3a done, M3–M8 not started):** the locked design is in
+3. **Comparison system (M0–M3 and M3a done, M3b and M4–M8 not started):** the locked design is in
    `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
    modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
    `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
    questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
-   comparison is the two-rotation view described in section 3.
-   **Plan approved 2026-11-05** (M3a is implemented; next is M3, awaiting the user's go-ahead).
+   comparison is the N-way view described in section 3.
+   **Plan approved 2026-11-05** (M3 is implemented; the suggested next step is M3b, awaiting the
+   user's go-ahead).
    `comparison-design-spec.md` is the UI/metric baseline; the roadmap's "Reconciliation" section maps it
    to the code and adds M3a (exact competitiveness/regret maths), M3b (its UI, local sensitivity,
    schema 6) and M6b (event timeline). Decisions: no weighted potency (burst = party-buffed expected
@@ -262,15 +267,12 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
         - Until its first edit the view shows an unsaved default (current rotation against the next
           of its job). Opening Compare therefore adds no undo step, and undoing the first edit
           falls back to the default. Once stored, A and B no longer follow the current rotation.
-        - The view is still A/B over the first two configurations. A 3–4 configuration document (only
-          possible by import for now) is kept intact and the view says it shows two. `baselineId` is
-          stored but unused until M2 and M3.
         - `burstWindows` on the document is validated and round-tripped but not read: the editor
           still writes `ScenarioDocument.burstWindows`, and moving them is M5's listed change (the user confirmed waiting).
         - In Compare, the header scenario picker and "Copy scenario" change the comparison's own
           scenario. Edit mode keeps its own selection.
-        - Deleting a rotation removes its configurations. A comparison left with fewer than two is
-          deleted too; the confirm dialog says so, and undo restores it.
+        - Deleting a rotation removes its configurations. Since M3 a comparison is deleted only with
+          its last configuration; the confirm dialog says so, and undo restores it.
         - Validation is cross-document (`parseComparisonDocument(input, references)`): a comparison
           whose rotation or scenario was skipped on load is skipped and reported.
         - No UI yet to create, rename or delete comparisons (the user is fine with that for now); a selector appears with two or more.
@@ -290,6 +292,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
       `(series, ids, T1, T2, epsilonPct)` and gives leader and competitive coverage, maximum and mean
       regret, the constant-total pieces and the competitive-set changes; `deltaPctSeries` joined `baseline.ts`,
       which now also exports `TIE_TOLERANCE` and `rankOf`. Choices made there, confirmed by the user on 2026-11-05, for M3 and M3b to rely on:
+
         - All results are fractions; only the `epsilonPct` argument is in percentage points (0.10 = 0.10%).
           Multiply by 100 at display.
         - Competitiveness is against the current best and takes no baseline at all.
@@ -305,9 +308,25 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
           by under 1e-9 × t could in theory end inside a piece, and the analysis uses the state at the
           piece's start. Real gaps between hits are far larger, and float noise far smaller.
 
+    - M3 moved the UI to N configurations; the roadmap's M3 "As built" lists every choice. For later
+      milestones:
+
+        - An empty `cutoffs` means every 30 s (`comparison/cutoffs.ts`, spec Q7) and follows the fight's
+          length. The first add or remove stores the list as shown. Removing the last stored cutoff
+          therefore brings the default back.
+        - `compareRotations`, the lead changes list and the whole-second sampling are gone. M3b's
+          transition annotations replace the list.
+        - Chart lines come from `comparison/curves.ts`, which gives the value before and after each hit.
+          Its y-range needs those lows, which `deltaDpsSeries` does not sample. Hover values use
+          `cutoffTable`, the table's own calculation.
+        - A configuration's letter, colour and pattern come from its position in the document.
+        - The visual review is the user's. It found that `.rl-table th` (sticky, `top` 40 px) comes later
+          in `RotationLab.css` and so beat the old `.rl-compare-table th` override: inside
+          `.rl-table-scroll` the headers then covered the first rows. The override now uses two classes.
+          jsdom cannot catch this; only a browser check does.
+
     Comparison extras that stay open:
 
-    - compare more than two rotations;
     - optionally an "expired combo" note;
     - a different UI for buff lanes, which the user may revisit.
 

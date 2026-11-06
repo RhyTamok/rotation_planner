@@ -8,13 +8,14 @@ document shape changes (M1, M7).
 
 ## Status and how to use this file
 
-| Milestone | Status                                                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
-| M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
-| M2        | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
-| M3a       | done, awaiting commit (2026-11-05): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                             |
-| M3–M8     | not started (update this row by row as each is committed). M3b (UI for M3a, local sensitivity) and M6b (event timeline) are proposed additions               |
+| Milestone  | Status                                                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0         | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
+| M1         | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
+| M2         | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
+| M3a        | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
+| M3         | done, awaiting commit and the user's visual review (2026-11-06): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired    |
+| M3b, M4–M8 | not started (update this row by row as each is committed). M3b (UI for M3a, local sensitivity) and M6b (event timeline) are additions                        |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
@@ -22,10 +23,10 @@ status above, the audit rows the milestone changes, and the handoff at the end o
 
 ## Decisions
 
-Q1 (`(start, end]`), Q3 (hand-bumped `ENGINE_VERSION`), Q7 (later) and Q8 (shared scenario) are settled.
-Still open: Q4, Q5, Q6a and Q6b are decided too (spec section 6). No open questions remain.
+All spec questions are decided (spec section 6), except that Q9's exact definitions are confirmed at
+the start of M6. Q7 was answered on 2026-11-06: the default cutoffs are every 30 s.
 
-## Reconciliation with `comparison-design-spec.md` (2026-11-05, proposed, awaiting review)
+## Reconciliation with `comparison-design-spec.md` (2026-11-05, reviewed and approved)
 
 The design spec ("DS") is the UI/metric baseline; `COMPARISON_SPEC.md` ("CS") stays the locked
 engine/provenance record. Nothing below changes simulation maths, event timing or boundary rules.
@@ -39,16 +40,16 @@ Status vocabulary follows DS section 11.
 | `DPS`, `ΔDPS`, `Δ%`, rank, zero-baseline `N/A` | Implemented | `baseline.ts` (M2). Rank ties use `TIE_TOLERANCE` (1e-9 relative)                                                                                                  |
 | Landing-time cutoffs, `(start,end]`, ties      | Implemented | `compare.ts`, pinned by M0 tests                                                                                                                                   |
 | One settled simulation serves all cutoffs      | Implemented | Audit §2; answers DS open decision 5 (re-aggregation needs no rerun)                                                                                               |
-| `ΔDPS` over time                               | Partial     | `deltaDpsSeries` and `deltaPctSeries` sample every event time plus extras; the UI still shows A/B only                                                             |
+| `ΔDPS` over time                               | Implemented | M3: `comparison/curves.ts` draws `c/t` curves and `Δ%` steps for N configurations                                                                                  |
 | ε, competitive, leader coverage, regret        | Partial     | Maths done and exact (`competitive.ts`, M3a); no UI until M3b                                                                                                      |
 | Local cutoff sensitivity `T±δ`                 | Partial     | `intervalAnalysis` over `[T−δ,T+δ]` covers the maths; clamping and UI in M3b                                                                                       |
-| Mode (general / fight-specific)                | Dropped     | No mode field (decided). Fight-specific analysis is implied by custom timeframes (cutoffs, downtime, windows). Cutoff presets are still Q7 (no values)             |
+| Mode (general / fight-specific)                | Dropped     | No mode field (decided). Fight-specific analysis is implied by custom timeframes (cutoffs, downtime, windows). Default cutoffs: every 30 s (Q7, M3)                |
 | Analysis settings (ε, interval, δ, units)      | Missing     | No home yet. They are analysis settings, not display: they belong beside `cutoffs`, outside the input fingerprint (schema 6 in M3b)                                |
 | Burst table                                    | Partial     | Exists as raid-buffed damage (party buffs included, tincture included) over scenario windows; windows still fall back to `burstWindows(resultA)` (DS: manual only) |
 | Weighted potency (DS 1, 4.6)                   | Dropped     | Decided not to implement. The burst metric stays raid-buffed expected damage as simulated; DS wording to be read accordingly                                       |
 | Downtime gauges, drift                         | Missing     | As M6. DS open decision 3 is already answered by CS Q6b                                                                                                            |
 | Event timeline tab                             | Missing     | `RotationTable` shows one rotation only; no milestone existed. Added as M6b                                                                                        |
-| One-configuration state                        | Conflicting | Decided: allowed. `MIN_CONFIGURATIONS = 2` and `removeRotationFromComparisons` (drops below 2) must change, with validation and tests (M3)                         |
+| One-configuration state                        | Implemented | M3: `MIN_CONFIGURATIONS = 1`; a comparison is dropped only with its last configuration; comparison metrics are hidden with one entry                               |
 | Provenance, fingerprints, states, snapshots    | Planned     | Matches M7 (CS section 4, IndexedDB Q5). DS open decision 7 is answered by CS section 4                                                                            |
 | CSV timeline and cutoff export                 | Planned     | M4. CSV rotation import M8                                                                                                                                         |
 
@@ -111,6 +112,24 @@ Between consecutive event times in the union of all series every `D_i` is consta
     sensitivity are UI, so they remain for M3 and M3b.
 
 **M3 (as written, plus):** graph uses `c/t` curves and steps, `Δ%` toggle, exact cutoff marker, one-entry state per C3 (`MIN_CONFIGURATIONS` 1, validation and removal rule changed, comparison metrics disabled).
+
+-   **As built (decided with the user, 2026-11-06):**
+    -   Default cutoffs are every 30 s plus the end of the fight (`comparison/cutoffs.ts`). An empty stored
+        list means the default, which follows the fight's length. The first add or remove stores the list
+        as shown, and "Use every 30 s" empties it again. No schema change. Removing the last stored
+        cutoff also returns to the default, so "end of fight only" is not available (accepted by the
+        user). No other preset values exist yet.
+    -   The running DPS chart, burst table and gauges went N-way. Gauges and totals moved to a
+        collapsible table (open with one entry). The burst table has per-configuration totals and
+        differences (`comparison/burst.ts`); moving the windows remains M5.
+    -   The lead changes list is removed until M3b's transition annotations.
+    -   `compareRotations`, `leadChanges`, `differenceSeries`, `sampleTimes` and `dpsSamples` are retired.
+    -   A failed configuration no longer hides the others. If the baseline fails, differences hide
+        while DPS, totals and ranks stay.
+    -   The graph unit is session-only until M3b's stored analysis settings.
+    -   A configuration's letter, colour and pattern come from its position: stable across baseline
+        changes, but removing A renames the rest.
+    -   Not built: stat summaries on cards, row-to-graph selection, line and overlay toggles.
 
 **M3b Interpretive UI (M, depends on M3, M3a).** ε control, competitiveness bars and regret columns,
 local sensitivity `[T−δ,T+δ]` clamped to the available positive-time domain with effective bounds shown,
@@ -179,7 +198,7 @@ schema change, so it cannot disturb numerical correctness.
 
 -   **Objective:** views A and B for N configurations.
 -   **Reuse:** chart component and `rl-chart` styles in `ComparisonView.tsx`, `ScenarioPanel`.
--   **Changes:** configuration picker (add/remove, 2–4), baseline radio, cutoff presets (Q7) with
+-   **Changes:** configuration picker (add/remove, 1–4 per C3), baseline radio, default cutoffs (Q7) with
     editable list persisted in the comparison, table with abs/%/rank, difference chart with baseline at
     zero, downtime, burst and cutoff markers, colorblind-safe palette for 4 series. Split the 548-line
     view into components.

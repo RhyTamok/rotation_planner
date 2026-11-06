@@ -528,9 +528,10 @@ describe("Rotation Lab - comparison documents", () => {
 			["revision", (d) => ({ ...d, revision: 0 })],
 			["unknown job", (d) => ({ ...d, job: "XYZ" })],
 			["scenarioId", (d) => ({ ...d, scenarioId: "gone" })],
-			["2 to 4 entries, found 1", (d) => ({ ...d, configurations: [a] })],
+			// Was "2 to 4, found 1" until one-configuration comparisons were allowed (roadmap C3).
+			["1 to 4 entries, found 0", (d) => ({ ...d, configurations: [] })],
 			[
-				"2 to 4 entries, found 5",
+				"1 to 4 entries, found 5",
 				(d) => ({
 					...d,
 					configurations: [
@@ -621,8 +622,12 @@ describe("Rotation Lab - comparison documents", () => {
 		const [withoutB] = removeRotationFromComparisons([doc], b.id);
 		expect(withoutB.baselineId).toBe(doc.baselineId);
 
-		// Fewer than two left: the comparison cannot stand.
-		expect(removeRotationFromComparisons([withoutA], b.id)).toEqual([]);
+		// Changed on purpose (roadmap C3): one configuration left is a valid comparison. Only
+		// losing the last one drops it, where falling below two used to.
+		const [onlyC] = removeRotationFromComparisons([withoutA], b.id);
+		expect(onlyC.configurations.map((x) => x.rotationId)).toEqual([c.id]);
+		expect(onlyC.baselineId).toBe(onlyC.configurations[0].id);
+		expect(removeRotationFromComparisons([onlyC], c.id)).toEqual([]);
 
 		// Not involved: the very same document comes back.
 		const unrelated = removeRotationFromComparisons([doc], "other")[0];

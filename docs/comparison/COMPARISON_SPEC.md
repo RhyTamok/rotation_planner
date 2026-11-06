@@ -26,6 +26,9 @@ version control; an archival platform; new engine formulas.
 
 ### 2.1 Modes
 
+Superseded on 2026-11-05 (roadmap C4): there is no mode field, and the `kind` field in section 3 is
+dropped. Fight-specific analysis is implied by custom timeframes. The two uses it describes remain:
+
 -   **General:** DPS at standardized cutoff timestamps (adjustable presets, per ruleset), versus the
     baseline.
 -   **Fight-specific:** a sweep of cutoffs and fixed-timestamp downtime intervals; ranking versus kill
@@ -86,38 +89,55 @@ Layered so that results can be recomputed (A, B) or merely inspected (C).
 ```ts
 // Layer A: shared definition (simulation inputs marked [S], presentation marked [P])
 interface ComparisonDefinition {
-  id: string; revision: number; job: ShellJob; kind: "general" | "fightSpecific";   // [P] kind
-  baselineConfigId: string;                          // [P] changing it never reruns a simulation
-  cutoffs: number[]; cutoffPresetId?: string;        // [A] re-aggregation only, no rerun
-  scenario: { level, partyBonus, countdown, fps, tinctureGrade, end: "settled",   // [S]
-              partyBuffs: PartyBuffWindow[]; downtime: DowntimeWindow[] };
-  burstWindows: { start: number; end: number; label?: string }[];                   // [A]
-  driftCooldowns?: ActionKey[];                                                     // [A]
-  display: { colors?, visibleSeries?, activeTab? };                                 // [P]
+	id: string;
+	revision: number;
+	job: ShellJob;
+	kind: "general" | "fightSpecific"; // [P] kind
+	baselineConfigId: string; // [P] changing it never reruns a simulation
+	cutoffs: number[];
+	cutoffPresetId?: string; // [A] re-aggregation only, no rerun
+	scenario: {
+		level;
+		partyBonus;
+		countdown;
+		fps;
+		tinctureGrade;
+		end: "settled"; // [S]
+		partyBuffs: PartyBuffWindow[];
+		downtime: DowntimeWindow[];
+	};
+	burstWindows: { start: number; end: number; label?: string }[]; // [A]
+	driftCooldowns?: ActionKey[]; // [A]
+	display: { colors?; visibleSeries?; activeTab? }; // [P]
 }
 // Layer B: one per configuration, a frozen copy (never only a reference)
 interface ConfigurationDefinition {
-  id: string; label: string;
-  steps: RotationStep[];                  // exact replay input, from RotationDocument.entries
-  targets: TargetRange[];
-  stats: ResolvedGear;                    // complete numeric stats + weaponDelay, as simulated
-  gearRef?: { id?: string; name?: string };   // informational, never used to reproduce
+	id: string;
+	label: string;
+	steps: RotationStep[]; // exact replay input, from RotationDocument.entries
+	targets: TargetRange[];
+	stats: ResolvedGear; // complete numeric stats + weaponDelay, as simulated
+	gearRef?: { id?: string; name?: string }; // informational, never used to reproduce
 }
 // Layer C: execution record
 interface SimulationExecution {
-  ruleset: Ruleset; engineVersion: string; formulaVersion?: string;
-  settings: { end: "settled" };  simulatedAt: string;
-  inputFingerprint: string;  resultFingerprint: string;   // SHA-256 hex
+	ruleset: Ruleset;
+	engineVersion: string;
+	formulaVersion?: string;
+	settings: { end: "settled" };
+	simulatedAt: string;
+	inputFingerprint: string;
+	resultFingerprint: string; // SHA-256 hex
 }
 ```
 
 Dependency classes (derived from the code, see audit):
 
-| Change | Needs | Why |
-| --- | --- | --- |
-| Steps, targets, stats/weapon delay, scenario fight conditions, party buffs, downtime, ruleset | **Simulation rerun** for the affected configuration only | These form `simulationKey()` |
-| Baseline, cutoffs, cutoff preset, burst windows, drift cooldown selection, comparison metric | **Re-aggregation** from stored `DamageEvent`s and action records | Pure functions of the timeline |
-| Colors, visible series, tab, layout | **UI only** | Not in any fingerprint |
+| Change                                                                                        | Needs                                                            | Why                            |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------ |
+| Steps, targets, stats/weapon delay, scenario fight conditions, party buffs, downtime, ruleset | **Simulation rerun** for the affected configuration only         | These form `simulationKey()`   |
+| Baseline, cutoffs, cutoff preset, burst windows, drift cooldown selection, comparison metric  | **Re-aggregation** from stored `DamageEvent`s and action records | Pure functions of the timeline |
+| Colors, visible series, tab, layout                                                           | **UI only**                                                      | Not in any fingerprint         |
 
 Caveat: drift needs per-use cooldown data (`readyAt`) that the result does not carry today (audit
 2.9). That extends `RotationResult`, so it changes the result fingerprint, not the input fingerprint.
@@ -139,12 +159,12 @@ Principle: a saved comparison is a self-contained research artifact.
     writes an immutable record (definition + frozen configurations + execution + stored results).
     Editing afterward bumps the working revision; the snapshot is never rewritten. No branching or diffs.
 -   **Result states** (computed, never stored as a flag, so they cannot go stale themselves):
-    -   *Current:* stored `inputFingerprint` equals the fingerprint of the inputs now, and
+    -   _Current:_ stored `inputFingerprint` equals the fingerprint of the inputs now, and
         ruleset/engine equal the running build's.
-    -   *Stale:* the working comparison's inputs changed since its displayed results.
-    -   *Historical:* the snapshot's ruleset or engine differs from the running build. Numbers are shown
+    -   _Stale:_ the working comparison's inputs changed since its displayed results.
+    -   _Historical:_ the snapshot's ruleset or engine differs from the running build. Numbers are shown
         as stored, labelled by their ruleset; never silently recomputed.
-    -   *Unverified:* the original engine is unavailable and the result fingerprint cannot be
+    -   _Unverified:_ the original engine is unavailable and the result fingerprint cannot be
         re-established (or a stored fingerprint fails to match its payload).
 -   **UI:** one small line under the title: ruleset/version, configuration count, revision, state;
     expandable details with fingerprints and settings.
@@ -160,6 +180,7 @@ Principle: a saved comparison is a self-contained research artifact.
 ## 5. Acceptance criteria (feature-level)
 
 1. Two to four configurations compare under one scenario; exactly one baseline is shown prominently.
+   One configuration is also allowed, with comparison metrics disabled (roadmap C3).
 2. Per cutoff: absolute DPS per configuration, `deltaDPS`, `deltaPct`, rank; baseline = 0.
 3. Changing the baseline performs no simulation (provable by a spy on the simulator).
 4. Table, chart and CSV agree to the last digit for every cutoff, with boundary hits attributed
@@ -193,7 +214,8 @@ Decided by the user on 2026-11-04:
 -   **Q5 Snapshot storage:** IndexedDB for saved snapshots, `localStorage` stays for the live workspace.
     Snapshots sit behind a small store interface (in-memory store in tests). Every snapshot can also be
     exported as a JSON file, which is the durable copy.
--   **Q7 Cutoff presets:** no values yet; worked out during implementation and testing.
+-   **Q7 Cutoff presets:** decided on 2026-11-06: the default cutoffs are every 30 s, plus the end of
+    the fight. They are editable per comparison. No other presets or per-ruleset values exist yet.
 -   **Q8 Scenario:** configurations may differ in rotation and gear, but all share one scenario.
 -   **Q6 Drift** (all decided; seconds held, per interval):
     -   Tracked skills. Viper: Serpent's Ire; Vicewinder and Vicepit. Dragoon: Lance Charge,
@@ -206,7 +228,7 @@ Decided by the user on 2026-11-04:
         (confirmed by the user), so they are evaluated as **one pool**, not per skill. The engine's
         cooldown group should be checked when implementing to confirm that matches.
     -   Attribution (Q6b): the hold clock runs from `max(readyAt, end of any downtime containing
-        readyAt)` to the press (for stack skills, over the capped stretch), minus every downtime second
+readyAt)` to the press (for stack skills, over the capped stretch), minus every downtime second
         it spans. Hold seconds belong to the interval containing each second, where intervals are the
         stretches between downtime windows (plus optional manual boundaries). A skill that is ready
         during downtime is never reported as held for it.
