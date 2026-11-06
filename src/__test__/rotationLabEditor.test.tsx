@@ -455,6 +455,35 @@ describe("Rotation Lab - editor page", () => {
 		expect(stored()).toHaveLength(1);
 	});
 
+	it("imports a list of skills as a new rotation, undoably, and refuses a bad one", async () => {
+		const user = userEvent.setup();
+		const storage = memoryStorage();
+		render(<RotationLabApp storage={storage} />);
+		const saved = () => JSON.parse(storage.data.get(WORKSPACE_KEY)!);
+		const input = screen.getByLabelText("Import file");
+		const upload = (text: string, name: string) => {
+			const file = new File([text], name, { type: "text/csv" });
+			// jsdom's File has no text().
+			file.text = () => Promise.resolve(text);
+			return user.upload(input, file);
+		};
+
+		await upload("Reaving Fangs\nSteal Fangs\n", "broken.csv");
+		await screen.findByText(/Not imported: broken.csv has 1 problem/);
+		screen.getByText('Line 2: "Steal Fangs" is not a VPR skill.');
+		expect(saved().rotations).toHaveLength(1);
+
+		await upload("Time,skill_name\n0,Reaving Fangs\n2.5,Serpent's Ire\n", "opener.csv");
+		await screen.findByText("Imported 2 skills from opener.csv as a new rotation.");
+		screen.getByText(/Ignored columns: Time\./);
+		expect(saved().rotations).toHaveLength(2);
+		expect(saved().rotations[1].name).toBe("opener");
+		expect(screen.getAllByTestId("rotation-row")).toHaveLength(2);
+
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(saved().rotations).toHaveLength(1);
+	});
+
 	it("removes a row with its × button and shows debug timing columns", async () => {
 		const user = userEvent.setup();
 		render(<RotationLabApp storage={memoryStorage()} />);

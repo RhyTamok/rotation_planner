@@ -99,6 +99,7 @@ set changes.
     -   Damage per burst window and its difference from the baseline; windows are `(start, end]`,
         like cutoffs.
 -   **Persistence:** JSON workspace in `localStorage`, export/import as a file, schema migrations.
+-   **Rotation import:** a `.csv` or `.txt` list of displayed skill names becomes a new rotation.
 
 ## 4. Architecture map
 
@@ -324,6 +325,9 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
           in `RotationLab.css` and so beat the old `.rl-compare-table th` override: inside
           `.rl-table-scroll` the headers then covered the first rows. The override now uses two classes.
           jsdom cannot catch this; only a browser check does.
+
+    - M8a added `import/rotationList.ts`: Import also takes `.csv` and `.txt` lists of displayed skill
+      names, or a CSV with a `skill_name` column, as a new rotation. Only the order is read (roadmap M8a).
 
     Comparison extras that stay open:
 

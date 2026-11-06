@@ -14,7 +14,8 @@ document shape changes (M1, M7).
 | M1         | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
 | M2         | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
 | M3a        | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
-| M3         | done, awaiting commit and the user's visual review (2026-11-06): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired    |
+| M3         | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                             |
+| M8a        | done, awaiting commit (2026-11-06): rotation list import, `import/rotationList.ts`                                                                           |
 | M3b, M4–M8 | not started (update this row by row as each is committed). M3b (UI for M3a, local sensitivity) and M6b (event timeline) are additions                        |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
@@ -268,10 +269,18 @@ because M1's document shape should leave room for it); full snapshots land here.
     eviction (offer export as the durable path); the reproduction promise is bounded by stored
     results, not by rerunning an old engine.
 
-## M8 CSV rotation import and polish (M)
+## M8a Rotation list import (L, moved ahead for easier testing, 2026-11-06)
 
-Rotation CSV import (validated against `ActionKey`, bounded size, rejects unknown actions), preset
-management, snapshot list UI, optional revision diffs. Do after the others; the format needs a Q.
+Done, awaiting commit: `import/rotationList.ts`, through the existing Import button (`.csv`, `.txt`).
+The format was decided with the user: one displayed skill name per line. A CSV with a `skill_name`,
+`skill` or `action` column also works, and `#` lines are skipped. Only the order is read. Time and
+target columns are ignored and named in a message, because the simulator works out timing. Any
+unknown name rejects the whole file, with line numbers. It creates a new, undoable rotation on the
+current rotation's gear. Not read: gear stats (`#stats`), per-skill targets, waits.
+
+## M8 Preset management and polish (M)
+
+Preset management, snapshot list UI, optional revision diffs. Do after the others.
 
 ## Ordering notes
 

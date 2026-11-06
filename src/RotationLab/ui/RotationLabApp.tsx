@@ -21,6 +21,7 @@ import {
 	editComparison,
 	removeRotationFromComparisons,
 } from "../models/Comparison";
+import { MAX_LIST_BYTES, parseRotationList } from "../import/rotationList";
 import { createRotation, newId, RotationDocument } from "../models/Rotation";
 import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import {
@@ -54,6 +55,8 @@ import { ComparisonView } from "./ComparisonView";
 const NO_BUFFS: Required<PartyBuffWindow>[] = [];
 
 const JOB = "VPR" as const;
+
+const MAX_IMPORT_ERRORS_SHOWN = 10;
 
 function newRotation(name = "New rotation", gearSetId?: string): RotationDocument {
 	return createRotation({ name, job: JOB, steps: [], gearSetId });
@@ -352,7 +355,44 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 		select(undefined);
 	};
 
+	// A list of skills becomes a new rotation, on the current rotation's gear. Undoable.
+	const importRotationList = async (file: File) => {
+		if (file.size > MAX_LIST_BYTES) {
+			setMessages([`Not imported: ${file.name} is larger than 1 MB.`]);
+			return;
+		}
+		const parsed = parseRotationList(await file.text(), JOB);
+		if (!parsed.ok) {
+			const shown = parsed.errors.slice(0, MAX_IMPORT_ERRORS_SHOWN);
+			const more = parsed.errors.length - shown.length;
+			setMessages([
+				`Not imported: ${file.name} has ${parsed.errors.length} problem(s). Nothing was changed.`,
+				...shown,
+				...(more > 0 ? [`And ${more} more.`] : []),
+			]);
+			return;
+		}
+		const doc = createRotation({
+			name: file.name.replace(/\.[^.]*$/, ""),
+			job: JOB,
+			steps: parsed.steps,
+			gearSetId: rotation.gearSetId,
+		});
+		setWorkspace((ws) => ({ ...ws, rotations: [...ws.rotations, doc] }));
+		setRotationId(doc.id);
+		select(undefined);
+		setMessages([
+			`Imported ${parsed.steps.length} skills from ${file.name} as a new rotation.`,
+			...(parsed.ignoredColumns.length > 0
+				? [
+						`Ignored columns: ${parsed.ignoredColumns.join(", ")}. Timing comes from the simulation, and targets from this rotation's target settings.`,
+					]
+				: []),
+		]);
+	};
+
 	const importFile = async (file: File) => {
+		if (/\.(csv|txt)$/i.test(file.name)) return importRotationList(file);
 		const { workspace: imported, errors } = parseWorkspace(await file.text());
 		setWorkspace((ws) => mergeWorkspace(ws, imported));
 		setMessages([
@@ -473,7 +513,7 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 			<input
 				ref={fileInput}
 				type="file"
-				accept="application/json,.json"
+				accept="application/json,.json,text/csv,.csv,text/plain,.txt"
 				aria-label="Import file"
 				style={{ display: "none" }}
 				onChange={(e) => {
