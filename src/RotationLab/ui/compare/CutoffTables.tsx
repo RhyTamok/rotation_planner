@@ -44,6 +44,8 @@ export function CutoffTables(props: {
 	// False with one simulated configuration, or when the baseline could not be simulated.
 	showDeltas: boolean;
 	showRank: boolean;
+	// Who is within the threshold of the best at this instant: "All", or their letters.
+	withinAt: (time: number) => string;
 	onChange: (cutoffs: number[]) => void;
 }) {
 	const { entries, comparison, listed, endTime, perSecond, unit, showDeltas, showRank } = props;
@@ -103,6 +105,7 @@ export function CutoffTables(props: {
 							{e.label}
 							{showDeltas && e.id === comparison.baselineId && " (baseline)"}
 						</th>)}
+						{showRank && <th rowSpan={2}>Within ε</th>}
 						<th rowSpan={2} aria-label="Remove" />
 					</tr>
 					<tr>
@@ -120,6 +123,15 @@ export function CutoffTables(props: {
 							<CutoffTime time={row.time} endTime={endTime} />
 						</td>
 						{entries.map((_, i) => cellsFor(i, row))}
+						{showRank && <td
+							title={
+								props.withinAt(row.time) === "All"
+									? "All configurations within the selected threshold."
+									: undefined
+							}
+						>
+							{props.withinAt(row.time)}
+						</td>}
 						<td>
 							{isListedCutoff(listed, row.time) && <button
 								className="rl-remove"
@@ -133,6 +145,10 @@ export function CutoffTables(props: {
 				</tbody>
 			</table>
 		</div>
+		{showRank && <p className="rl-note">
+			Bold rank 1: the exact leader. Within ε: close to the best at that cutoff, whichever it
+			is, not to the baseline.
+		</p>}
 
 		<details className="rl-compare-details" open={entries.length === 1}>
 			<summary>{unit} and gauges at cutoffs</summary>

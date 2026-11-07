@@ -9,7 +9,12 @@ import { createScenario, ScenarioDocument } from "../RotationLab/models/Scenario
 import { SimulationCache } from "../RotationLab/simulation/SimulationManager";
 import { RotationResult } from "../RotationLab/simulation/types";
 import { ComparisonView } from "../RotationLab/ui/ComparisonView";
-import { formatDeltaPct, formatNumber, formatSigned } from "../RotationLab/ui/format";
+import {
+	formatDeltaPct,
+	formatNumber,
+	formatPercent,
+	formatSigned,
+} from "../RotationLab/ui/format";
 
 // A result with just the fields the comparison reads.
 function fakeResult(hits: [number, number][], endTime: number): RotationResult {
@@ -276,6 +281,237 @@ describe("Rotation Lab - comparison view", () => {
 
 		await user.click(within(region).getByRole("radio", { name: "Δ%" }));
 		expect(within(region).getByRole("img", { name: /difference/ }).textContent).toContain("%");
+	});
+
+	// A is 1 in 1001 behind B, which is 0.0999%: inside the default threshold, outside 0.05%.
+	const CLOSE: Record<string, [number, number][]> = {
+		Aa: [[10, 1000]],
+		Bb: [[10, 1001]],
+	};
+
+	it("changes classification with the threshold, and simulates nothing", async () => {
+		const user = userEvent.setup();
+		const { region, simulate, doc } = setup(CLOSE);
+		const runs = simulate.mock.calls.length;
+		const withinCell = () => cells(within(region).getAllByTestId("cutoff-row")[0]).at(-2);
+		const coverage = () =>
+			cells(within(region).getAllByTestId("competitive-row")[0]).slice(2, 4);
+		expect(withinCell()).toBe("All");
+		screen.getByTestId("all-within");
+		expect(coverage()).toEqual([formatPercent(0, 1), formatPercent(1, 1)]);
+
+		const epsilon = within(region).getByRole("spinbutton", {
+			name: "Relevance threshold percent",
+		});
+		await user.clear(epsilon);
+		await user.type(epsilon, "0.05");
+
+		expect(doc().analysis.epsilonPct).toBe(0.05);
+		expect(withinCell()).toBe("B");
+		expect(screen.queryByTestId("all-within")).toBeNull();
+		expect(coverage()).toEqual([formatPercent(0, 1), formatPercent(0, 1)]);
+		expect(simulate.mock.calls.length).toBe(runs);
+	});
+
+	it("shows a fight end carrying float noise without the noise", () => {
+		const { region } = setup(THREE, { endTime: 128.36699999999988 });
+		const value = (name: string) =>
+			within(region).getByRole<HTMLInputElement>("spinbutton", { name }).value;
+		expect(value("Evaluate to seconds")).toBe("128.367");
+		expect(value("Sensitivity cutoff seconds")).toBe("128.367");
+	});
+
+	it("does not claim all are within the threshold when the last hit breaks it", () => {
+		const { region } = setup({
+			Aa: [[10, 1000]],
+			Bb: [
+				[10, 1001],
+				[20, 500],
+			],
+		});
+		// Within ε for the whole duration, until a hit exactly at the end of the fight.
+		expect(cells(within(region).getAllByTestId("competitive-row")[0])[3]).toBe(
+			formatPercent(1, 1),
+		);
+		expect(cells(within(region).getAllByTestId("cutoff-row")[0]).at(-2)).toBe("B");
+		expect(screen.queryByTestId("all-within")).toBeNull();
+	});
+
+	it("never stores a threshold outside its range", async () => {
+		const user = userEvent.setup();
+		const { region, doc } = setup(CLOSE);
+		const epsilon = within(region).getByRole("spinbutton", {
+			name: "Relevance threshold percent",
+		});
+		await user.clear(epsilon);
+		await user.type(epsilon, "5");
+		expect(doc().analysis.epsilonPct).toBe(0.1);
+		await user.clear(epsilon);
+		await user.type(epsilon, "0");
+		expect(doc().analysis.epsilonPct).toBe(0.1);
+		await user.clear(epsilon);
+		await user.type(epsilon, "0.126");
+		expect(doc().analysis.epsilonPct).toBe(0.13);
+	});
+
+	it("reports regret against the best, whichever the baseline is", async () => {
+		const user = userEvent.setup();
+		const { region } = setup(THREE);
+		// Over the default 10-20 s: A trails B by 100, C by 150, from 10 s.
+		const rows = () =>
+			within(region)
+				.getAllByTestId("competitive-row")
+				.map((r) => cells(r).slice(2));
+		const expected = [
+			[
+				formatPercent(0, 1),
+				formatPercent(0, 1),
+				formatNumber(10, 1),
+				`${formatNumber(10, 2)} s`,
+				formatNumber((100 * Math.log(2)) / 10, 1),
+				formatPercent(0.5),
+			],
+			[
+				formatPercent(1, 1),
+				formatPercent(1, 1),
+				formatNumber(0, 1),
+				`${formatNumber(10, 2)} s`,
+				formatNumber(0, 1),
+				formatPercent(0),
+			],
+			[
+				formatPercent(0, 1),
+				formatPercent(0, 1),
+				formatNumber(15, 1),
+				`${formatNumber(10, 2)} s`,
+				formatNumber((150 * Math.log(2)) / 10, 1),
+				formatPercent(0.75),
+			],
+		];
+		expect(rows()).toEqual(expected);
+		await user.click(within(region).getByRole("radio", { name: "Baseline C" }));
+		expect(rows()).toEqual(expected);
+		screen.getByText(/Evaluated/, { selector: "[data-testid=competitive-interval]" });
+	});
+
+	it("shows the evaluated interval, limited to the fight, and copes with an empty one", async () => {
+		const user = userEvent.setup();
+		const { region, doc } = setup(THREE);
+		const to = within(region).getByRole("spinbutton", { name: "Evaluate to seconds" });
+		await user.clear(to);
+		await user.type(to, "500");
+		expect(doc().analysis.intervalEnd).toBe(500);
+		expect(screen.getByTestId("competitive-interval").textContent).toContain(
+			"limited to the fight",
+		);
+
+		const from = within(region).getByRole("spinbutton", { name: "Evaluate from seconds" });
+		await user.clear(from);
+		await user.type(from, "900");
+		// Stored, since the fight's length could change, and the rest of the view stays up.
+		expect(doc().analysis.intervalStart).toBe(900);
+		expect(screen.queryByTestId("competitive-interval")).toBeNull();
+		expect(region.textContent).toContain("no time left to evaluate");
+		expect(within(region).getAllByTestId("cutoff-row")).toHaveLength(1);
+
+		await user.click(within(region).getByRole("button", { name: "Use the chart's range" }));
+		expect(doc().analysis.intervalStart).toBeUndefined();
+		expect(screen.getByTestId("competitive-interval").textContent).not.toContain("limited");
+	});
+
+	it("shows local sensitivity with its effective bounds, without extrapolating", async () => {
+		const user = userEvent.setup();
+		const { region } = setup(THREE);
+		// The default is the end of the fight ± 10 s, so the far side is cut.
+		expect(screen.getByTestId("sensitivity-interval").textContent).toContain(
+			`Evaluated ${formatNumber(10, 2)}–${formatNumber(20, 2)} s (limited to the fight; asked for ${formatNumber(10, 2)}–${formatNumber(30, 2)} s)`,
+		);
+		const chart = within(region).getByRole("img", { name: /difference/ });
+		expect(chart.querySelectorAll("rect.rl-chart-highlight")).toHaveLength(1);
+
+		const [, b] = within(region).getAllByTestId("sensitivity-row");
+		// B against A: 100 / 10 at the start, 100 / 20 before and after the hits at 20 s.
+		expect(cells(b).slice(1)).toEqual([
+			"Yes",
+			formatSigned(5, 1),
+			formatSigned(10, 1),
+			formatNumber(0, 1),
+			formatPercent(0),
+		]);
+
+		const time = within(region).getByRole("spinbutton", {
+			name: "Sensitivity cutoff seconds",
+		});
+		await user.clear(time);
+		await user.type(time, "100");
+		expect(region.textContent).toContain("Nothing is extrapolated");
+		expect(screen.queryByTestId("sensitivity-interval")).toBeNull();
+	});
+
+	it("annotates changes within the threshold and lists them with what landed", () => {
+		const { region } = setup({
+			Aa: [
+				[10, 1000],
+				[15, 1000],
+			],
+			Bb: [
+				[10, 1001],
+				[15, 1200],
+			],
+		});
+		const chart = within(region).getByRole("img", { name: /difference/ });
+		const marks = within(chart).getAllByTestId("chart-annotation");
+		expect(marks.map((m) => m.textContent)).toEqual(["▼A"]);
+		const [change] = within(region).getAllByTestId("transition");
+		expect(change.textContent).toBe(
+			`${formatNumber(15, 2)} s: A falls outside ε (hit: A ${formatNumber(1000)}, B ${formatNumber(1200)})`,
+		);
+	});
+
+	it("lists but does not draw many tiny flips", () => {
+		// Each hit puts one ahead by 1000, then the next ties it: a change almost every second.
+		const hits = (from: number) =>
+			Array.from({ length: 30 }, (_, k): [number, number] => [from + 2 * k, 1000]);
+		const { region } = setup({ Aa: hits(11), Bb: hits(12) }, { endTime: 75 });
+		const chart = within(region).getByRole("img", { name: /difference/ });
+		expect(within(chart).queryAllByTestId("chart-annotation")).toEqual([]);
+		const listed = within(region).getAllByTestId("transition");
+		expect(listed.length).toBeGreaterThan(24);
+		expect(region.textContent).toContain(`${listed.length} such changes are too many to draw`);
+		expect(within(region).getAllByTestId("leader-change").length).toBeGreaterThan(24);
+	});
+
+	it("keeps competitiveness when the baseline fails, without baseline columns", () => {
+		const { region } = setup({ ...THREE, Aa: null });
+		expect(within(region).getAllByTestId("competitive-row")).toHaveLength(2);
+		const [row] = within(region).getAllByTestId("sensitivity-row");
+		expect(cells(row)).toHaveLength(4);
+		expect(region.textContent).not.toContain("Lowest");
+	});
+
+	it("hides the threshold and both sections with one configuration", () => {
+		const { region } = setup(THREE, { use: ["Aa"] });
+		expect(
+			within(region).queryByRole("spinbutton", { name: "Relevance threshold percent" }),
+		).toBeNull();
+		expect(within(region).queryByTestId("competitive-row")).toBeNull();
+		expect(within(region).queryByTestId("sensitivity-row")).toBeNull();
+		expect(region.textContent).not.toContain("Within ε");
+	});
+
+	it("stores the graph unit, and resimulates for no analysis setting", async () => {
+		const user = userEvent.setup();
+		const { region, doc, simulate } = setup(THREE);
+		const runs = simulate.mock.calls.length;
+		await user.click(within(region).getByRole("radio", { name: "Δ%" }));
+		expect(doc().analysis.graphUnit).toBe("pct");
+		const delta = within(region).getByRole("spinbutton", {
+			name: "Sensitivity seconds either side",
+		});
+		await user.clear(delta);
+		await user.type(delta, "2");
+		expect(doc().analysis.sensitivityDelta).toBe(2);
+		expect(simulate.mock.calls.length).toBe(runs);
 	});
 
 	it("shows burst totals per configuration against the baseline", () => {

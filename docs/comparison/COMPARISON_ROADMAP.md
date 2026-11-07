@@ -4,19 +4,20 @@ Milestone plan; see the status table for what is implemented. Based on [COMPARIS
 [COMPARISON_SPEC.md](COMPARISON_SPEC.md). Effort: L / M / H. Each milestone should be one reviewable
 commit series ending with `/verify-task`. Bump `AVAILABLE_RULESETS` only if a milestone changes
 game data or mechanics (none planned); bump `SCHEMA_VERSION` with a migration whenever a stored
-document shape changes (M1, M7).
+document shape changes (M1, M3b, M7).
 
 ## Status and how to use this file
 
-| Milestone  | Status                                                                                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0         | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
-| M1         | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
-| M2         | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
-| M3a        | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
-| M3         | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                             |
-| M8a        | done, awaiting commit (2026-11-06): rotation list import, `import/rotationList.ts`                                                                           |
-| M3b, M4–M8 | not started (update this row by row as each is committed). M3b (UI for M3a, local sensitivity) and M6b (event timeline) are additions                        |
+| Milestone | Status                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
+| M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
+| M2        | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
+| M3a       | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
+| M3        | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                             |
+| M8a       | done, committed (2026-11-06, aabd4893): rotation list import, `import/rotationList.ts`                                                                       |
+| M3b       | done, awaiting commit and the user's visual review (2026-11-07): schema 6, `comparison/sensitivity.ts`, competitiveness and sensitivity sections             |
+| M4–M8     | not started (update this row by row as each is committed). M6b (event timeline) is an addition                                                               |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
@@ -42,10 +43,10 @@ Status vocabulary follows DS section 11.
 | Landing-time cutoffs, `(start,end]`, ties      | Implemented | `compare.ts`, pinned by M0 tests                                                                                                                                   |
 | One settled simulation serves all cutoffs      | Implemented | Audit §2; answers DS open decision 5 (re-aggregation needs no rerun)                                                                                               |
 | `ΔDPS` over time                               | Implemented | M3: `comparison/curves.ts` draws `c/t` curves and `Δ%` steps for N configurations                                                                                  |
-| ε, competitive, leader coverage, regret        | Partial     | Maths done and exact (`competitive.ts`, M3a); no UI until M3b                                                                                                      |
-| Local cutoff sensitivity `T±δ`                 | Partial     | `intervalAnalysis` over `[T−δ,T+δ]` covers the maths; clamping and UI in M3b                                                                                       |
+| ε, competitive, leader coverage, regret        | Implemented | M3a maths, M3b UI: bars, regret columns, cutoff marks, annotations                                                                                                 |
+| Local cutoff sensitivity `T±δ`                 | Implemented | M3b: `comparison/sensitivity.ts`, clamped with effective bounds shown                                                                                              |
 | Mode (general / fight-specific)                | Dropped     | No mode field (decided). Fight-specific analysis is implied by custom timeframes (cutoffs, downtime, windows). Default cutoffs: every 30 s (Q7, M3)                |
-| Analysis settings (ε, interval, δ, units)      | Missing     | No home yet. They are analysis settings, not display: they belong beside `cutoffs`, outside the input fingerprint (schema 6 in M3b)                                |
+| Analysis settings (ε, interval, δ, units)      | Implemented | M3b: `ComparisonDocument.analysis`, schema 6, outside the input fingerprint                                                                                        |
 | Burst table                                    | Partial     | Exists as raid-buffed damage (party buffs included, tincture included) over scenario windows; windows still fall back to `burstWindows(resultA)` (DS: manual only) |
 | Weighted potency (DS 1, 4.6)                   | Dropped     | Decided not to implement. The burst metric stays raid-buffed expected damage as simulated; DS wording to be read accordingly                                       |
 | Downtime gauges, drift                         | Missing     | As M6. DS open decision 3 is already answered by CS Q6b                                                                                                            |
@@ -128,7 +129,7 @@ Between consecutive event times in the union of all series every `D_i` is consta
     -   A failed configuration no longer hides the others. If the baseline fails, differences hide
         while DPS, totals and ranks stay.
     -   The graph unit is session-only until M3b's stored analysis settings.
-    -   A configuration's letter, colour and pattern come from its position: stable across baseline
+    -   A configuration's letter and colour come from its position (lines solid since 2026-11-07): stable across baseline
         changes, but removing A renames the rest.
     -   Not built: stat summaries on cards, row-to-graph selection, line and overlay toggles.
 
@@ -136,6 +137,27 @@ Between consecutive event times in the union of all series every `D_i` is consta
 local sensitivity `[T−δ,T+δ]` clamped to the available positive-time domain with effective bounds shown,
 transition annotations, "all within threshold" message, analysis settings stored on the comparison
 (schema 6 + migration; ε default 0.10 within 0.01–1.00 step 0.01, interval, δ). Component tests for classification text and clamping.
+
+-   **As built (2026-11-07):**
+    -   `ComparisonDocument.analysis` holds ε, the graph unit (no longer session-only), the interval and
+        sensitivity's T and δ. `comparison/sensitivity.ts` is new; `competitive.ts` gained `competitiveAt`
+        and `leaderChanges`.
+    -   Defaults chosen here: the interval follows the chart range (start of the chart to the end of the
+        fight), so the opener does not dominate maximum regret; T is the end of the fight; δ is 10 s.
+    -   Times are limited to 1 s through the longest configuration's end, like the charts, and the
+        effective bounds are shown. T ± δ wholly outside the fight shows a message; nothing is extrapolated.
+    -   DS 4.5's "best/worst comparative DPS gap" is read as the lowest and highest `ΔDPS` against the
+        baseline, because a gap against the best would repeat maximum regret. Hidden without a baseline.
+    -   Competitiveness needs no baseline, so it stays when the baseline fails, and hides with one entry.
+    -   Validation checks each setting alone. An interval that is empty for now is stored, and the view
+        says so, because an invalid document would stop the whole workspace from saving.
+    -   The chart draws ▲/▼ for competitive-set changes in the evaluated interval, but none above 24
+        changes. Every change, with its landings, and every exact leader change are in a collapsed list.
+    -   Charts, after the user's review (2026-11-07): full panel width and `clamp(260px, 42vh, 640px)`
+        tall, drawn at their pixel size so text stays 12 px. Each chart zooms with the wheel around the
+        pointer, pans by dragging, resets on a double click or "Show all", and fits its y axis to the
+        range on show (`ui/compare/viewRange.ts`). Zoom is per chart and not stored.
+    -   Not built: an ε band on the graph (DS 3.1 only allows it relative to the baseline), sorting.
 
 **M5 (adjusted):** manual windows only (drop the `burstWindows(resultA)` fallback). No weighted potency.
 
@@ -271,7 +293,7 @@ because M1's document shape should leave room for it); full snapshots land here.
 
 ## M8a Rotation list import (L, moved ahead for easier testing, 2026-11-06)
 
-Done, awaiting commit: `import/rotationList.ts`, through the existing Import button (`.csv`, `.txt`).
+Done (aabd4893): `import/rotationList.ts`, through the existing Import button (`.csv`, `.txt`).
 The format was decided with the user: one displayed skill name per line. A CSV with a `skill_name`,
 `skill` or `action` column also works, and `#` lines are skipped. Only the order is read. Time and
 target columns are ignored and named in a message, because the simulator works out timing. Any

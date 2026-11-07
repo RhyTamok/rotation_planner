@@ -508,6 +508,14 @@ describe("Rotation Lab - comparison documents", () => {
 			baselineId: doc.configurations[1].id,
 			cutoffs: [120, 360.5],
 			burstWindows: [{ start: 0, end: 20, label: "Opener" }],
+			analysis: {
+				epsilonPct: 0.25,
+				graphUnit: "pct",
+				intervalStart: 30,
+				intervalEnd: 300,
+				sensitivityTime: 240,
+				sensitivityDelta: 15,
+			},
 			display: { chartsFrom: 30 },
 		};
 
@@ -515,6 +523,67 @@ describe("Rotation Lab - comparison documents", () => {
 		const storage = memoryStorage();
 		saveWorkspace(workspace, storage);
 		expect(loadWorkspace(storage)).toEqual({ workspace, errors: [] });
+	});
+
+	it("migrates version 5 workspaces: stored comparisons keep everything and gain settings", () => {
+		const workspace = sampleWorkspace();
+		const [stored] = workspace.comparisons;
+		const v5 = (doc: object) => ({ ...doc, schemaVersion: 5 });
+		const { analysis: _new, ...withoutAnalysis } = {
+			...stored,
+			baselineId: stored.configurations[1].id,
+			cutoffs: [60, 120],
+			display: { chartsFrom: 30 },
+		};
+		const text = JSON.stringify({
+			schemaVersion: 5,
+			rotations: workspace.rotations.map(v5),
+			scenarios: workspace.scenarios.map(v5),
+			gearSets: [],
+			comparisons: [v5(withoutAnalysis)],
+		});
+
+		const { workspace: migrated, errors } = parseWorkspace(text);
+		expect(errors).toEqual([]);
+		expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
+		expect(migrated.comparisons).toEqual([
+			{
+				...withoutAnalysis,
+				schemaVersion: SCHEMA_VERSION,
+				analysis: { epsilonPct: 0.1, graphUnit: "dps", sensitivityDelta: 10 },
+			},
+		]);
+		expect(migrated.rotations.map((r) => r.schemaVersion)).toEqual([
+			SCHEMA_VERSION,
+			SCHEMA_VERSION,
+			SCHEMA_VERSION,
+		]);
+	});
+
+	it("rejects analysis settings out of range, but not ones that only clash with each other", () => {
+		const workspace = sampleWorkspace();
+		const [doc] = workspace.comparisons;
+		const parsed = (analysis: object) =>
+			parseComparisonDocument(
+				{ ...doc, analysis: { ...doc.analysis, ...analysis } },
+				workspace,
+			);
+		const errors = (analysis: object) => {
+			const result = parsed(analysis);
+			return result.ok ? "" : result.errors.join();
+		};
+		expect(errors({ epsilonPct: 0.001 })).toContain("analysis.epsilonPct");
+		expect(errors({ epsilonPct: 1.01 })).toContain("analysis.epsilonPct");
+		expect(errors({ graphUnit: "hps" })).toContain("analysis.graphUnit");
+		expect(errors({ intervalStart: 0 })).toContain("analysis.intervalStart");
+		expect(errors({ sensitivityTime: -1 })).toContain("analysis.sensitivityTime");
+		expect(errors({ sensitivityDelta: 0 })).toContain("analysis.sensitivityDelta");
+		expect(parsed({ epsilonPct: 0.01 }).ok).toBe(true);
+		expect(parsed({ epsilonPct: 1 }).ok).toBe(true);
+		// An empty interval depends on the fight, so it must not stop the workspace from saving.
+		expect(parsed({ intervalStart: 90, intervalEnd: 10 }).ok).toBe(true);
+		const { analysis: _gone, ...missing } = doc;
+		expect(parseComparisonDocument(missing, workspace).ok).toBe(false);
 	});
 
 	it("rejects invalid documents with readable errors", () => {

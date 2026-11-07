@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import { BaselineComparison } from "../../comparison/baseline";
 import { burstTable } from "../../comparison/burst";
@@ -6,30 +6,7 @@ import { TimeWindow } from "../../comparison/compare";
 import { BurstWindow, ScenarioDocument } from "../../models/Scenario";
 import { formatNumber, formatSigned } from "../format";
 import { SimulatedEntry } from "./entries";
-
-// A number input that can be cleared and retyped freely; only valid numbers are committed.
-function NumberField(props: { label: string; value: number; onCommit: (value: number) => void }) {
-	const [text, setText] = useState(String(props.value));
-	const [shown, setShown] = useState(props.value);
-	if (props.value !== shown) {
-		// Changed from outside (e.g. another edit): show the new value.
-		setShown(props.value);
-		setText(String(props.value));
-	}
-	return <input
-		type="number"
-		aria-label={props.label}
-		value={text}
-		onChange={(e) => {
-			setText(e.target.value);
-			const v = Number(e.target.value);
-			if (e.target.value.trim() !== "" && Number.isFinite(v)) {
-				setShown(v);
-				props.onCommit(v);
-			}
-		}}
-	/>;
-}
+import { NumberField } from "./NumberField";
 
 // Editable burst windows; without custom ones, the scenario's merged party buffs are used.
 function BurstWindowEditor(props: {

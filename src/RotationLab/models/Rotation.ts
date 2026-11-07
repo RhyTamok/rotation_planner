@@ -9,7 +9,8 @@ import type { GearOverrides } from "./GearSet";
 // 2 → 3: rotations have a target count (used by the action recommendations).
 // 3 → 4: the target count is replaced by target ranges (used by damage and recommendations).
 // 4 → 5: workspaces have stored comparisons.
-export const SCHEMA_VERSION = 5;
+// 5 → 6: comparisons have analysis settings (threshold, intervals, graph unit).
+export const SCHEMA_VERSION = 6;
 
 export type CombatMode = "reborn" | "evolved";
 

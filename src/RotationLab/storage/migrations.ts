@@ -104,11 +104,31 @@ function v4ToV5(workspace: Obj): Obj {
 	};
 }
 
+// 5 → 6: comparisons get analysis settings. The values are written out because they describe this
+// step for good, whatever the defaults for new comparisons become.
+function v5ToV6(workspace: Obj): Obj {
+	const bump = (docs: unknown, extra: Obj = {}) =>
+		Array.isArray(docs)
+			? docs.map((doc) => (isObject(doc) ? { ...doc, ...extra, schemaVersion: 6 } : doc))
+			: docs;
+	return {
+		...workspace,
+		schemaVersion: 6,
+		rotations: bump(workspace.rotations),
+		scenarios: bump(workspace.scenarios),
+		gearSets: bump(workspace.gearSets),
+		comparisons: bump(workspace.comparisons, {
+			analysis: { epsilonPct: 0.1, graphUnit: "dps", sensitivityDelta: 10 },
+		}),
+	};
+}
+
 const STEPS: Record<number, (workspace: Obj) => Obj> = {
 	1: v1ToV2,
 	2: v2ToV3,
 	3: v3ToV4,
 	4: v4ToV5,
+	5: v5ToV6,
 };
 
 // Returns the workspace at SCHEMA_VERSION, or an error for versions it cannot upgrade.

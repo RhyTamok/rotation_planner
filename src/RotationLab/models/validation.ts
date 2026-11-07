@@ -5,7 +5,13 @@ import { ActionKey } from "../../Game/Data";
 import { ALL_JOBS, ShellJob } from "../../Game/Data/Jobs";
 import { jobHasSkill } from "../../Game/Skills";
 import { RotationStep, SimulationEnd } from "../simulation/types";
-import { ComparisonDocument, MAX_CONFIGURATIONS, MIN_CONFIGURATIONS } from "./Comparison";
+import {
+	ComparisonDocument,
+	MAX_CONFIGURATIONS,
+	MAX_EPSILON_PCT,
+	MIN_CONFIGURATIONS,
+	MIN_EPSILON_PCT,
+} from "./Comparison";
 import { GEAR_STAT_KEYS, GearSetDocument } from "./GearSet";
 import { CombatMode, RotationDocument, SCHEMA_VERSION } from "./Rotation";
 import { SCENARIO_STAT_KEYS, ScenarioDocument, ScenarioStats } from "./Scenario";
@@ -296,6 +302,7 @@ export function parseComparisonDocument(
 		errors.push("cutoffs must be an array of positive numbers");
 	}
 	validateBurstWindows(input.burstWindows, errors);
+	validateAnalysis(input.analysis, errors);
 	if (!isObject(input.display)) {
 		errors.push("display must be an object");
 	} else if (
@@ -308,6 +315,34 @@ export function parseComparisonDocument(
 	return errors.length > 0
 		? { ok: false, errors }
 		: { ok: true, value: input as unknown as ComparisonDocument };
+}
+
+// Each value alone. Whether they fit together depends on the fight's length, so the view handles
+// that: an interval that is empty for now must not stop the whole workspace from saving.
+function validateAnalysis(input: unknown, errors: string[]) {
+	if (!isObject(input)) {
+		errors.push("analysis must be an object");
+		return;
+	}
+	if (
+		!isFiniteNumber(input.epsilonPct) ||
+		input.epsilonPct < MIN_EPSILON_PCT ||
+		input.epsilonPct > MAX_EPSILON_PCT
+	) {
+		errors.push(`analysis.epsilonPct must be ${MIN_EPSILON_PCT} to ${MAX_EPSILON_PCT}`);
+	}
+	if (input.graphUnit !== "dps" && input.graphUnit !== "pct") {
+		errors.push(`analysis.graphUnit must be "dps" or "pct"`);
+	}
+	for (const key of ["intervalStart", "intervalEnd", "sensitivityTime"]) {
+		const value = input[key];
+		if (value !== undefined && !(isFiniteNumber(value) && value > 0)) {
+			errors.push(`analysis.${key} must be a positive number`);
+		}
+	}
+	if (!(isFiniteNumber(input.sensitivityDelta) && input.sensitivityDelta > 0)) {
+		errors.push("analysis.sensitivityDelta must be a positive number");
+	}
 }
 
 export function parseScenarioDocument(input: unknown): ParseResult<ScenarioDocument> {

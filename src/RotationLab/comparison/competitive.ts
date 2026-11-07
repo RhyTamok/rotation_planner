@@ -211,6 +211,37 @@ function competitiveTransitions(
 	return transitions;
 }
 
+// The state at one instant after the pull, by the same rule as the interval analysis, so that a
+// cutoff table's marks and the coverage bars cannot disagree.
+export function competitiveAt(
+	series: Record<string, CumulativeSeries>,
+	ids: string[],
+	t: number,
+	epsilonPct: number,
+): CompetitivePiece {
+	assertValid(series, ids, t, t + 1, epsilonPct);
+	return pieceAt(series, ids, t, t, epsilonFraction(epsilonPct));
+}
+
+export interface LeaderChange {
+	time: number;
+	// Who leads from this instant on. Several in a tie.
+	leaders: string[];
+}
+
+// Every change of the exact leader after T1, including tiny ones. The competitive-set transitions
+// are the ones worth annotating; these keep each exact reversal available to inspect.
+export function leaderChanges(pieces: CompetitivePiece[]): LeaderChange[] {
+	const changes: LeaderChange[] = [];
+	for (let i = 1; i < pieces.length; i++) {
+		const { leaders, start } = pieces[i];
+		if (leaders.join() !== pieces[i - 1].leaders.join()) {
+			changes.push({ time: start, leaders });
+		}
+	}
+	return changes;
+}
+
 // Exact leader and competitive coverage, regret and competitive-set changes over [T1, T2], with
 // 0 < T1 < T2. `epsilonPct` is in percentage points (0.10 = 0.10%). It decides only which entries are
 // competitive: the totals, leaders and regret do not depend on it.

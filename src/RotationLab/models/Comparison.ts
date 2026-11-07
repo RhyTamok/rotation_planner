@@ -23,6 +23,31 @@ export interface ComparisonDisplay {
 	chartsFrom?: number;
 }
 
+export type GraphUnit = "dps" | "pct";
+
+export const MIN_EPSILON_PCT = 0.01;
+export const MAX_EPSILON_PCT = 1;
+
+// How the results are read. Never an input to a simulation: changing these only re-aggregates, and
+// they stay out of the input fingerprint (roadmap M7). Which values make sense together depends on
+// the length of the fight, so the view clamps them and shows what it evaluated.
+export interface ComparisonAnalysis {
+	// The relevance threshold ε in percentage points (0.10 = 0.10%), measured against the best
+	// configuration. A decision threshold, not statistical significance.
+	epsilonPct: number;
+	graphUnit: GraphUnit;
+	// The interval competitiveness is evaluated over; missing = the chart start, the end of the fight.
+	intervalStart?: number;
+	intervalEnd?: number;
+	// Local cutoff sensitivity looks at T ± δ. A missing T means the end of the fight.
+	sensitivityTime?: number;
+	sensitivityDelta: number;
+}
+
+export function defaultAnalysis(): ComparisonAnalysis {
+	return { epsilonPct: 0.1, graphUnit: "dps", sensitivityDelta: 10 };
+}
+
 export interface ComparisonDocument {
 	schemaVersion: number;
 	id: string;
@@ -39,6 +64,7 @@ export interface ComparisonDocument {
 	cutoffs: number[];
 	// Not read yet: the view still uses the scenario's windows until roadmap M5 moves them here.
 	burstWindows?: BurstWindow[];
+	analysis: ComparisonAnalysis;
 	display: ComparisonDisplay;
 	updatedAt: string;
 }
@@ -61,6 +87,7 @@ export function createComparison(props: {
 		configurations,
 		baselineId: configurations[0]?.id ?? "",
 		cutoffs: [],
+		analysis: defaultAnalysis(),
 		display: {},
 		updatedAt: new Date().toISOString(),
 	};
@@ -71,7 +98,7 @@ export function editComparison(
 	patch: Partial<
 		Pick<
 			ComparisonDocument,
-			"name" | "scenarioId" | "configurations" | "baselineId" | "cutoffs"
+			"name" | "scenarioId" | "configurations" | "baselineId" | "cutoffs" | "analysis"
 		>
 	> & { display?: ComparisonDisplay },
 ): ComparisonDocument {

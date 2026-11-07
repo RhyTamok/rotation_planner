@@ -1,14 +1,19 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 import { compareConfigurations, cutoffTable } from "../comparison/baseline";
 import { burstWindows, dpsAt } from "../comparison/compare";
+import { competitiveAt, intervalAnalysis } from "../comparison/competitive";
 import { listedCutoffs, reportedCutoffs } from "../comparison/cutoffs";
 import { curveStart, deltaDpsCurve, deltaPctCurve, runningDpsCurve } from "../comparison/curves";
+import { effectiveInterval, localSensitivity } from "../comparison/sensitivity";
 import {
 	addConfiguration,
+	ComparisonAnalysis,
 	ComparisonDocument,
 	DEFAULT_CHARTS_FROM,
 	editComparison,
+	MAX_EPSILON_PCT,
+	MIN_EPSILON_PCT,
 	removeConfiguration,
 } from "../models/Comparison";
 import { GearSetDocument, resolveGear } from "../models/GearSet";
@@ -17,12 +22,16 @@ import { ScenarioDocument } from "../models/Scenario";
 import { SimulationCache } from "../simulation/SimulationManager";
 import { BurstSection } from "./compare/BurstSection";
 import { ConfigurationPicker } from "./compare/ConfigurationPicker";
+import { CompetitivenessSection } from "./compare/CompetitivenessSection";
 import { CutoffTables } from "./compare/CutoffTables";
 import { ConfigEntry, SimulatedEntry, slotOf } from "./compare/entries";
-import { ChartSeries, LineChart } from "./compare/LineChart";
+import { ChartAnnotation, ChartSeries, LineChart } from "./compare/LineChart";
+import { NumberField } from "./compare/NumberField";
+import { SensitivitySection } from "./compare/SensitivitySection";
 import { formatDeltaPct, formatNumber, formatSigned } from "./format";
 
-type GraphUnit = "dps" | "pct";
+// More changes than this are listed but not drawn, so that many tiny flips cannot flood the chart.
+const MAX_CHART_ANNOTATIONS = 24;
 
 export function ComparisonView(props: {
 	rotations: RotationDocument[];
@@ -40,8 +49,10 @@ export function ComparisonView(props: {
 	const { rotations, scenario, cache, comparison: doc, gearSets } = props;
 	const edit = (patch: Parameters<typeof editComparison>[1]) =>
 		props.onComparisonChange(editComparison(doc, patch));
-	// For this session only: stored analysis settings come with schema 6 (roadmap M3b).
-	const [graphUnit, setGraphUnit] = useState<GraphUnit>("dps");
+	const settings = doc.analysis;
+	const setAnalysis = (patch: Partial<ComparisonAnalysis>) =>
+		edit({ analysis: { ...settings, ...patch } });
+	const { graphUnit, epsilonPct } = settings;
 	const chartsFrom = doc.display.chartsFrom ?? DEFAULT_CHARTS_FROM;
 	const candidates = useMemo(
 		() => rotations.filter((r) => r.job === doc.job),
@@ -150,6 +161,56 @@ export function ComparisonView(props: {
 			}));
 	}, [comparison, showDeltas, simulated, graphUnit, chartFrom, endTime]);
 
+	// Everything below needs at least two configurations, and none of it reruns a simulation.
+	const intervalStart = settings.intervalStart ?? chartFrom;
+	const intervalEnd = settings.intervalEnd ?? endTime;
+	const interval = useMemo(
+		() => effectiveInterval(intervalStart, intervalEnd, endTime),
+		[intervalStart, intervalEnd, endTime],
+	);
+	const competitiveness = useMemo(
+		() =>
+			comparison && showRank && interval
+				? intervalAnalysis(
+						comparison.series,
+						comparison.ids,
+						interval.start,
+						interval.end,
+						epsilonPct,
+					)
+				: undefined,
+		[comparison, showRank, interval, epsilonPct],
+	);
+	const sensitivityTime = settings.sensitivityTime ?? endTime;
+	const sensitivity = useMemo(
+		() =>
+			comparison && showRank
+				? localSensitivity(
+						comparison,
+						sensitivityTime,
+						settings.sensitivityDelta,
+						endTime,
+						epsilonPct,
+					)
+				: undefined,
+		[comparison, showRank, sensitivityTime, settings.sensitivityDelta, endTime, epsilonPct],
+	);
+
+	const letterOf = (id: string) => simulated.find((e) => e.id === id)?.letter ?? id;
+	const stateAt = (t: number) =>
+		comparison && t > 0
+			? competitiveAt(comparison.series, comparison.ids, t, epsilonPct)
+			: undefined;
+	const withinAt = (t: number) => {
+		const within = stateAt(t)?.competitive ?? [];
+		return within.length === simulated.length ? "All" : within.map(letterOf).join(", ");
+	};
+	const transitions = competitiveness?.transitions ?? [];
+	const annotations: ChartAnnotation[] =
+		transitions.length > MAX_CHART_ANNOTATIONS
+			? []
+			: transitions.map((t) => ({ time: t.time, letter: letterOf(t.id), kind: t.kind }));
+
 	const baselineEntry = entries.find((e) => e.id === doc.baselineId);
 	const overlays = [
 		windows.length > 0 && "Shaded: burst windows.",
@@ -191,6 +252,20 @@ export function ComparisonView(props: {
 				/>{" "}
 				s
 			</label>
+			{showRank && <label className="rl-window-row">
+				Relevance threshold ε{" "}
+				<NumberField
+					label="Relevance threshold percent"
+					value={epsilonPct}
+					min={MIN_EPSILON_PCT}
+					max={MAX_EPSILON_PCT}
+					step={MIN_EPSILON_PCT}
+					valid={(v) => v >= MIN_EPSILON_PCT && v <= MAX_EPSILON_PCT}
+					// Whole steps of 0.01, so that a typed 0.123 cannot store more than it shows.
+					onCommit={(v) => setAnalysis({ epsilonPct: Math.round(v * 100) / 100 })}
+				/>{" "}
+				%
+			</label>}
 			<span className="rl-note">Scenario “{scenario.name}”</span>
 		</div>
 		<ConfigurationPicker
@@ -236,7 +311,7 @@ export function ComparisonView(props: {
 							type="radio"
 							name={`rl-graph-unit-${doc.id}`}
 							checked={graphUnit === "dps"}
-							onChange={() => setGraphUnit("dps")}
+							onChange={() => setAnalysis({ graphUnit: "dps" })}
 						/>{" "}
 						Δ{perSecond}
 					</label>
@@ -245,7 +320,7 @@ export function ComparisonView(props: {
 							type="radio"
 							name={`rl-graph-unit-${doc.id}`}
 							checked={graphUnit === "pct"}
-							onChange={() => setGraphUnit("pct")}
+							onChange={() => setAnalysis({ graphUnit: "pct" })}
 						/>{" "}
 						Δ%
 					</label>
@@ -259,18 +334,30 @@ export function ComparisonView(props: {
 					downtime={scenario.downtime}
 					cutoffs={cutoffs}
 					zeroLabel={`Baseline: ${baselineEntry?.label ?? ""}`}
-					format={(v) =>
-						graphUnit === "dps" ? formatSigned(v, 0) : `${formatSigned(v, 2)}%`
+					format={(v, d) =>
+						graphUnit === "dps"
+							? formatSigned(v, d)
+							: `${formatSigned(v, Math.max(2, d))}%`
 					}
 					formatExact={(v) =>
 						graphUnit === "dps" ? formatSigned(v, 1) : formatDeltaPct(v)
 					}
+					highlight={sensitivity?.interval}
+					annotations={annotations}
+					footerAt={(t) => {
+						const state = stateAt(t);
+						if (!state) return "";
+						return `Leader: ${state.leaders.map(letterOf).join(", ")} · Within ε: ${withinAt(t)}`;
+					}}
 				/>
 				<p className="rl-note">
 					{graphUnit === "dps"
 						? `Total so far ÷ time since the pull, minus the baseline's. Jumps when a hit lands, and drifts towards zero between hits.`
 						: "Difference from the baseline's total so far. Changes only when a hit lands."}{" "}
-					{overlays}
+					{overlays} ▲ and ▼: a configuration comes within ε of the best, or falls outside
+					it, in the evaluated interval.
+					{transitions.length > MAX_CHART_ANNOTATIONS &&
+						` ${transitions.length} such changes are too many to draw; see the list under Competitiveness.`}
 				</p>
 			</>}
 
@@ -284,8 +371,35 @@ export function ComparisonView(props: {
 				unit={unit}
 				showDeltas={showDeltas}
 				showRank={showRank}
+				withinAt={withinAt}
 				onChange={(next) => edit({ cutoffs: next })}
 			/>
+
+			{showRank && <>
+				<CompetitivenessSection
+					entries={simulated}
+					analysis={competitiveness}
+					interval={interval}
+					start={intervalStart}
+					end={intervalEnd}
+					custom={
+						settings.intervalStart !== undefined || settings.intervalEnd !== undefined
+					}
+					epsilonPct={epsilonPct}
+					perSecond={perSecond}
+					onInterval={setAnalysis}
+				/>
+				<SensitivitySection
+					entries={simulated}
+					sensitivity={sensitivity}
+					time={sensitivityTime}
+					delta={settings.sensitivityDelta}
+					endTime={endTime}
+					perSecond={perSecond}
+					showDeltas={showDeltas}
+					onChange={setAnalysis}
+				/>
+			</>}
 
 			<h2>
 				Running {perSecond}
@@ -301,7 +415,7 @@ export function ComparisonView(props: {
 				windows={windows}
 				downtime={scenario.downtime}
 				cutoffs={cutoffs}
-				format={(v) => formatNumber(v)}
+				format={(v, d) => formatNumber(v, d)}
 				formatExact={(v) => formatNumber(v, 1)}
 			/>
 			<p className="rl-note">Total so far ÷ time since the pull. {overlays}</p>
