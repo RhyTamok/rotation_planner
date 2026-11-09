@@ -46,7 +46,10 @@ import {
 } from "../storage/WorkspaceStore";
 import { formatNumber, RotationTable } from "./RotationTable";
 import { ScenarioPanel } from "./ScenarioPanel";
-import { SkillPalette } from "./SkillPalette";
+import { actionName, SkillPalette } from "./SkillPalette";
+import { CsvDownload } from "./CsvDownload";
+import { downloadText } from "./download";
+import { csvFileName, timelineCsv } from "../export/csv";
 import { RecommendationPanel } from "./RecommendationPanel";
 import { isRecommendationSupported } from "../recommend/recommender";
 import { ComparisonView } from "./ComparisonView";
@@ -108,15 +111,6 @@ function storeComparison(ws: Workspace, doc: ComparisonDocument): Workspace {
 			? ws.comparisons.map((c) => (c.id === doc.id ? doc : c))
 			: [...ws.comparisons, doc],
 	};
-}
-
-function downloadText(filename: string, text: string) {
-	const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = filename;
-	a.click();
-	URL.revokeObjectURL(url);
 }
 
 function Stat(props: { label: string; value: string }) {
@@ -468,6 +462,12 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 				Duplicate
 			</button>
 			<button onClick={deleteRotation}>Delete</button>
+			{mode === "edit" && <CsvDownload
+				label="Download timeline CSV"
+				fileName={csvFileName(rotation.name, "timeline")}
+				disabled={!result}
+				build={(format) => (result ? timelineCsv(result, actionName, format) : "")}
+			/>}
 			<span style={{ flex: 1 }} />
 			<label>
 				Scenario{" "}

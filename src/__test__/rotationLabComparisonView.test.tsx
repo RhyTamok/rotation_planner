@@ -528,4 +528,45 @@ describe("Rotation Lab - comparison view", () => {
 			formatSigned(-50, 0),
 		]);
 	});
+
+	it("downloads the cutoff table as CSV in the chosen format", async () => {
+		const user = userEvent.setup();
+		const blobs: Blob[] = [];
+		// jsdom has no object URLs and does not download.
+		URL.createObjectURL = vi.fn((blob: Blob) => {
+			blobs.push(blob);
+			return "blob:test";
+		});
+		URL.revokeObjectURL = vi.fn();
+		const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+		try {
+			const { region } = setup(THREE);
+			const button = within(region).getByRole("button", { name: "Download cutoffs CSV" });
+			await user.selectOptions(within(region).getByLabelText("CSV format"), "semicolon");
+			await user.click(button);
+
+			expect(click).toHaveBeenCalledTimes(1);
+			const anchor = click.mock.contexts[0] as HTMLAnchorElement;
+			expect(anchor.download).toMatch(/-cutoffs\.csv$/);
+			expect(blobs[0].type).toBe("text/csv;charset=utf-8");
+			// Read as bytes, since decoding as text drops the byte order mark.
+			const bytes = await new Promise<Uint8Array>((resolve) => {
+				const reader = new FileReader();
+				reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+				reader.readAsArrayBuffer(blobs[0]);
+			});
+			expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+			const lines = new TextDecoder().decode(bytes.slice(3)).split("\r\n");
+			// The same numbers as the table above: 10, 15 and 5 DPS at the 20 s end.
+			expect(lines.slice(0, 4)).toEqual([
+				"cutoff_s;configuration;rotation;baseline;total_damage;dps;delta_dps;delta_pct;rank;within_epsilon;epsilon_pct",
+				"20,000;A;Aa;true;200,00;10,00;0,00;0,0000;2;false;0,10",
+				"20,000;B;Bb;false;300,00;15,00;5,00;50,0000;1;true;0,10",
+				"20,000;C;Cc;false;100,00;5,00;-5,00;-50,0000;3;false;0,10",
+			]);
+		} finally {
+			click.mockRestore();
+			window.localStorage.removeItem("rotation-lab.csv-format");
+		}
+	});
 });

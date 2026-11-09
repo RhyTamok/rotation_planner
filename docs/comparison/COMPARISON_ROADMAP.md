@@ -16,8 +16,9 @@ document shape changes (M1, M3b, M7).
 | M3a       | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
 | M3        | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                             |
 | M8a       | done, committed (2026-11-06, aabd4893): rotation list import, `import/rotationList.ts`                                                                       |
-| M3b       | done, awaiting commit and the user's visual review (2026-11-07): schema 6, `comparison/sensitivity.ts`, competitiveness and sensitivity sections             |
-| M4–M8     | not started (update this row by row as each is committed). M6b (event timeline) is an addition                                                               |
+| M3b       | done, committed (2026-11-07, 59777f48), reviewed by the user: schema 6, `comparison/sensitivity.ts`, competitiveness and sensitivity sections                |
+| M4        | done, awaiting commit (2026-11-09): `export/csv.ts`, timeline CSV (edit tab) and cutoffs CSV (compare tab); no schema change                                 |
+| M5–M8     | not started (update this row by row as each is committed). M6b (event timeline) is an addition                                                               |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the
@@ -53,7 +54,7 @@ Status vocabulary follows DS section 11.
 | Event timeline tab                             | Missing     | `RotationTable` shows one rotation only; no milestone existed. Added as M6b                                                                                        |
 | One-configuration state                        | Implemented | M3: `MIN_CONFIGURATIONS = 1`; a comparison is dropped only with its last configuration; comparison metrics are hidden with one entry                               |
 | Provenance, fingerprints, states, snapshots    | Planned     | Matches M7 (CS section 4, IndexedDB Q5). DS open decision 7 is answered by CS section 4                                                                            |
-| CSV timeline and cutoff export                 | Planned     | M4. CSV rotation import M8                                                                                                                                         |
+| CSV timeline and cutoff export                 | Implemented | M4 `export/csv.ts`. CSV import M8a                                                                                                                                 |
 
 ### Conflicts and unit traps to settle
 
@@ -238,6 +239,22 @@ schema change, so it cannot disturb numerical correctness.
 -   **Accept:** every CSV cutoff cell equals the table cell computed by the same function.
     **Tests:** golden CSV, quoting/locale, round trip against `compare.ts`. **Risk:** locale and
     spreadsheet formula injection in text cells (prefix `'` for cells starting with `= + - @`).
+-   **As built (decided with the user, 2026-11-09):**
+    -   Two files, two places: "Download timeline CSV" in the header bar after Delete, edit tab only (one file per rotation, the one
+        on show) and "Download cutoffs CSV" with the cutoff controls in the compare tab (one file, one
+        row per cutoff and configuration). The UI is in `ui/CsvDownload.tsx`.
+    -   Format choice ("Comma" or "Semicolon", details in the option tooltips) beside each button, shared and kept in `localStorage` (per viewer, not in the
+        workspace): comma with decimal point, or semicolon with decimal comma for German-language
+        Excel. Fixed decimals (times 3, amounts 2, Δ% 4 in percentage points), UTF-8 byte order mark,
+        CRLF. Formula prefix only on text cells (also leading tab/CR), so negative numbers stay numbers.
+    -   Timeline: press time only, no landing times (the user's tools work out landings). `skill_name`
+        is the executed skill's displayed name, `pressed` the button; the M8a import reads the file
+        back as the same executed skills (tested, comma and semicolon). Gauges are one column each;
+        timers and modifiers are not exported. Steps without an action (simulation errors) have no row.
+    -   Summary: the cells the table hides are empty (differences without a baseline, rank and
+        within-ε with one configuration); within-ε comes from `competitiveAt`; failed configurations
+        are left out; potency headers (`pps`) without a damage model.
+    -   No landings CSV, so M6b must still link damage events to actions itself.
 
 ## M5 Burst windows in the comparison (L)
 

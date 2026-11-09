@@ -28,6 +28,8 @@ import { ConfigEntry, SimulatedEntry, slotOf } from "./compare/entries";
 import { ChartAnnotation, ChartSeries, LineChart } from "./compare/LineChart";
 import { NumberField } from "./compare/NumberField";
 import { SensitivitySection } from "./compare/SensitivitySection";
+import { CsvDownload } from "./CsvDownload";
+import { csvFileName, cutoffSummaryCsv } from "../export/csv";
 import { formatDeltaPct, formatNumber, formatSigned } from "./format";
 
 // More changes than this are listed but not drawn, so that many tiny flips cannot flood the chart.
@@ -373,6 +375,28 @@ export function ComparisonView(props: {
 				showRank={showRank}
 				withinAt={withinAt}
 				onChange={(next) => edit({ cutoffs: next })}
+				download={
+					<CsvDownload
+						label="Download cutoffs CSV"
+						fileName={csvFileName(doc.name, "cutoffs")}
+						build={(format) =>
+							cutoffSummaryCsv(
+								{
+									comparison,
+									entries: simulated.map((e) => ({
+										id: e.id,
+										letter: e.letter,
+										rotationName: e.rotation?.name ?? "",
+									})),
+									showDeltas,
+									showRank,
+									epsilonPct,
+								},
+								format,
+							)
+						}
+					/>
+				}
 			/>
 
 			{showRank && <>

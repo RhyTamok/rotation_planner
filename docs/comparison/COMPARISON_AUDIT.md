@@ -100,7 +100,8 @@ Findings on these semantics:
 
 -   **Status: Implemented** in the engine and `compare.ts` (section 2), and pinned by tests since M0,
     with the gaps listed there: float noise at downtime boundaries, DoT test gap (`it.todo`), per-result end
-    handling, no single source of truth shared with exports (there are no exports yet).
+    handling. Since M4 the CSV exports take their numbers from the same `compareConfigurations` and
+    `competitiveAt` results as the table.
 
 ### 2.4 DPS difference over time
 
@@ -175,8 +176,9 @@ Findings on these semantics:
 
 ### 2.11 Import / export
 
--   **Status: Missing for CSV.** Grep for `csv` in `src/RotationLab`, `vite.config`, `package.json`
-    finds nothing. Exists: whole-workspace JSON export/import (`serializeWorkspace`, `parseWorkspace`,
+-   **Status: Implemented for CSV (M4, M8a).** `export/csv.ts` writes the per-action timeline and
+    the per-cutoff summary (roadmap M4 "As built"); `import/rotationList.ts` reads a skill list.
+    Also exists: whole-workspace JSON export/import (`serializeWorkspace`, `parseWorkspace`,
     migrations, per-document validation in `models/validation.ts`) and xivgear gear import
     (`import/xivgear.ts`). Upstream XIV in the Shell has its own timeline file format; it is not wired
     to the Lab's rotations _(unverified whether Lab can import it; `RotationStep` supports `targets`

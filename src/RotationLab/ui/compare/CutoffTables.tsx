@@ -47,6 +47,8 @@ export function CutoffTables(props: {
 	// Who is within the threshold of the best at this instant: "All", or their letters.
 	withinAt: (time: number) => string;
 	onChange: (cutoffs: number[]) => void;
+	// The summary CSV download, shown with the cutoff controls.
+	download?: React.ReactNode;
 }) {
 	const { entries, comparison, listed, endTime, perSecond, unit, showDeltas, showRank } = props;
 	const [text, setText] = useState("");
@@ -93,6 +95,7 @@ export function CutoffTables(props: {
 					Every {DEFAULT_CUTOFF_STEP} s and the end of the fight.
 				</span>
 			)}
+			{props.download}
 		</div>
 		<div className="rl-table-scroll">
 			<table className="rl-table rl-compare-table rl-cutoff-table">

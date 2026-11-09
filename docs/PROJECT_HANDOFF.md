@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-07 (comparison milestone M3b: competitiveness, regret, sensitivity).
+Last updated 2026-11-09 (comparison milestone M4: CSV export).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -241,13 +241,13 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
     step's own `targets` (from upstream imports) is ignored by the simulator; the rotation's target
     ranges are the only source. The field stays on `RotationStep` so stored documents still parse.
 
-3.  **Comparison system (M0–M3, M3a, M3b and M8a done, M4–M8 not started):** the locked design is in
+3.  **Comparison system (M0–M4, M3a, M3b and M8a done, M5–M8 not started):** the locked design is in
     `docs/comparison/COMPARISON_SPEC.md` (N configurations vs a baseline, cutoff and fight-specific
     modes, burst/drift/resource analysis, provenance snapshots). The gap analysis is
     `COMPARISON_AUDIT.md` and the milestone plan `COMPARISON_ROADMAP.md` (MVP = M0–M3). All spec
     questions are decided (section 6); each later milestone awaits the user's go-ahead. Today's
     comparison is the N-way view described in section 3.
-    **Plan approved 2026-11-05** (M3b is implemented; the suggested next step is M4, awaiting the
+    **Plan approved 2026-11-05** (M4 is implemented; the suggested next step is M5, awaiting the
     user's go-ahead).
     `comparison-design-spec.md` is the UI/metric baseline; the roadmap's "Reconciliation" section maps it
     to the code and adds M3a (exact competitiveness/regret maths), M3b (its UI, local sensitivity,
@@ -344,6 +344,12 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
 
     -   M8a added `import/rotationList.ts`: Import also takes `.csv` and `.txt` lists of displayed skill
         names, or a CSV with a `skill_name` column, as a new rotation. Only the order is read (roadmap M8a).
+
+    -   M4 added `export/csv.ts` and `ui/CsvDownload.tsx` (roadmap M4 "As built"): a timeline CSV per
+        rotation in the edit tab, a cutoffs CSV in the compare tab, comma or semicolon/decimal-comma
+        format (the user works with German Excel and international tools). The timeline round-trips
+        through the M8a import; keep `skill_name` before any decimal-comma column, because that import
+        splits on commas too. `downloadText` moved from `RotationLabApp` to `ui/download.ts` (not a component file, so Vite Fast Refresh keeps working).
 
     Comparison extras that stay open:
 

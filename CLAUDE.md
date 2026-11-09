@@ -13,7 +13,7 @@ it when needed, don't read it whole.
 Treat both as context. Inspect the repository and run the tests before relying on any status
 described there.
 
-**Comparison system** (M0–M3, M3a, M3b and M8a done, M4–M8 and M6b planned, plan approved 2026-11-05, all spec questions decided), `docs/comparison/`; read only when
+**Comparison system** (M0–M4, M3a, M3b and M8a done, M5–M8 and M6b planned, plan approved 2026-11-05, all spec questions decided), `docs/comparison/`; read only when
 working on comparison features, not otherwise: start with `COMPARISON_ROADMAP.md` (status table and
 the milestone; its "Reconciliation" section maps `comparison-design-spec.md`, the UI/metric baseline, to the code), then `COMPARISON_SPEC.md` sections 2–3 for definitions and data model; the
 `COMPARISON_AUDIT.md` lists what exists today and where. Work one milestone at a time, only the one
