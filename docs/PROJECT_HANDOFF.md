@@ -355,6 +355,33 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
 
     -   optionally an "expired combo" note;
     -   a different UI for buff lanes, which the user may revisit.
+    -   **Feature request (2026-11-09): tincture lane.** Show a tincture's duration as a vertical bar,
+        the same way the table shows party buffs. The table's buff lanes currently draw only
+        `result.encounter.partyBuffs`. The tincture comes from the rotation itself, so its window has to
+        be taken from the simulation: the time its buff applies and its actual duration, read from the
+        engine's buff state rather than hard-coded. It would need a lane of its own, or a place in the
+        existing lanes.
+    -   **Feature request (2026-11-09): time zero for exports.** The pull rule (section 6) puts the first
+        damaging hit at 0 s, so the first press is usually negative in the timeline CSV. Some tools the
+        user imports into expect the first button press at 0 s. Wanted: a toggle between "first hit at
+        0 s" (today) and "first press at 0 s". Decided by the user on 2026-11-09:
+        -   **It changes the editor's clock, not only the export**, so that comparisons and tests
+            against other tools line up. Time 0 then moves for everything measured from the pull:
+            DPS denominators, cutoffs, downtime and burst windows, gauges at cutoffs, and the CSVs.
+        -   **The first damaging action is pressed at exactly 0 s.** Its hit lands after its
+            application delay. Non-damaging actions, such as a tincture, can still be pressed before
+            the pull at negative times.
+
+        Still to settle at the start of the milestone:
+        -   **Where the toggle lives.** The likely place is the scenario, so that every rotation in a
+            comparison uses the same clock. It would need a schema bump and migration, defaulting to
+            today's rule.
+        -   **How `countdownExtension` and the pull rules in `rules/encounterRules.ts` change** under
+            the new mode.
+        -   **Whether DPS still counts from 0 s,** which would now be the press, or from the first hit.
+            Other tools differ on this, so ask the user which tool to match.
+        -   **Effect on existing results.** The parity and workbook tests use today's rule, so they must
+            keep running with the default mode. This is engine-adjacent: run the full parity suite.
 
 4.  **Dragoon:**
     -   add damage-model constants (jobmod, delay, trait) from xivgear;
