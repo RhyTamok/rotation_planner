@@ -134,6 +134,7 @@ describe("Rotation Lab - scenario documents", () => {
 			partyBuffs: [{ buff: BuffType.TechnicalFinish, time: 7 }],
 			downtime: [{ start: 60, end: 70 }],
 			end: 120,
+			timeZero: "firstPress",
 		});
 		const parsed = parseScenarioDocument(JSON.parse(JSON.stringify(scenario)));
 
@@ -149,6 +150,7 @@ describe("Rotation Lab - scenario documents", () => {
 			downtime: [{ start: 60, end: 70 }],
 			end: 120,
 			encounterRules: true,
+			timeZero: "firstPress",
 		});
 	});
 
@@ -559,6 +561,33 @@ describe("Rotation Lab - comparison documents", () => {
 			SCHEMA_VERSION,
 			SCHEMA_VERSION,
 		]);
+	});
+
+	it("migrates version 6 workspaces: scenarios keep the first hit at 0 s", () => {
+		const workspace = sampleWorkspace();
+		const v6 = (doc: object) => ({ ...doc, schemaVersion: 6 });
+		const text = JSON.stringify({
+			schemaVersion: 6,
+			rotations: workspace.rotations.map(v6),
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			scenarios: workspace.scenarios.map(({ timeZero: _new, ...scenario }) => v6(scenario)),
+			gearSets: workspace.gearSets.map(v6),
+			comparisons: workspace.comparisons.map(v6),
+		});
+
+		const { workspace: migrated, errors } = parseWorkspace(text);
+		expect(errors).toEqual([]);
+		expect(migrated).toEqual(workspace);
+		expect(migrated.scenarios.map((s) => s.timeZero)).toEqual(
+			workspace.scenarios.map(() => "firstHit"),
+		);
+	});
+
+	it("rejects a scenario without a valid time zero", () => {
+		const scenario = createScenario({ timeZero: "firstPress" });
+		expect(parseScenarioDocument(scenario).ok).toBe(true);
+		expect(parseScenarioDocument({ ...scenario, timeZero: "pull" }).ok).toBe(false);
+		expect(parseScenarioDocument({ ...scenario, timeZero: undefined }).ok).toBe(false);
 	});
 
 	it("rejects analysis settings out of range, but not ones that only clash with each other", () => {

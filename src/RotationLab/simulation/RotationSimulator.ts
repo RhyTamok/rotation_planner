@@ -29,6 +29,7 @@ import {
 	SimulationEnd,
 	SimulationOptions,
 	StepError,
+	TimeZero,
 } from "./types";
 
 // Upper bound for "settled" so a pathological rotation cannot loop forever.
@@ -70,7 +71,9 @@ export class RotationSimulator {
 	#executed: ExecutedSkill[] = [];
 	#errors: StepError[] = [];
 	#stepCount = 0;
-	// With encounter rules: display time at which the first damaging action landed (the pull).
+	readonly #timeZero: TimeZero;
+	// With encounter rules: display time of the moment that defines 0 s, i.e. when the first
+	// damaging action landed ("firstHit") or was pressed ("firstPress").
 	#pullTime?: number;
 
 	constructor(job: ShellJob, options: SimulationOptions = {}) {
@@ -95,6 +98,7 @@ export class RotationSimulator {
 		config.initialResourceOverrides.forEach((override) => override.applyTo(this.game));
 		this.#tincturePotencyMultiplier = options.tincturePotencyMultiplier ?? 1;
 		this.#encounterRules = options.encounterRules ?? false;
+		this.#timeZero = options.timeZero ?? "firstHit";
 		this.#targets = effectiveRanges(options.targets ?? []);
 
 		const weaponDelay = options.weaponDelay ?? getDefaultWeaponDelay(job);
@@ -122,7 +126,8 @@ export class RotationSimulator {
 		return this.game.getDisplayTime();
 	}
 
-	// With encounter rules: when the first damaging action landed, if one has been used.
+	// With encounter rules: when the first damaging action landed ("firstHit") or was pressed
+	// ("firstPress"), if one has been used. It should be 0; a positive value means it came late.
 	get pullTime(): number | undefined {
 		return this.#pullTime;
 	}
@@ -171,9 +176,9 @@ export class RotationSimulator {
 			isDamaging(this.game, executedAction)
 		) {
 			landsAtPull = true;
-			const landing = this.game.getDisplayTime() + status.timeTillDamageApplication;
-			if (landing < -TIME_EPSILON) {
-				pullHold = -landing;
+			const anchor = this.game.getDisplayTime() + this.#pullOffset(status);
+			if (anchor < -TIME_EPSILON) {
+				pullHold = -anchor;
 				this.#tick(pullHold);
 				executedAction = getConditionalReplacement(requestedAction, this.game);
 				status = this.game.getSkillAvailabilityStatus(executedAction);
@@ -207,7 +212,7 @@ export class RotationSimulator {
 			comboBreaks = brokenCombos(this.game, combosBefore, executedAction);
 			node.tmp_invalid_reasons = [];
 			if (landsAtPull) {
-				this.#pullTime = this.game.getDisplayTime() + status.timeTillDamageApplication;
+				this.#pullTime = this.game.getDisplayTime() + this.#pullOffset(status);
 			}
 		} else {
 			this.game.useInvalidSkill(executedAction, node);
@@ -240,6 +245,11 @@ export class RotationSimulator {
 		// Manual mode fast-forwards to the end of the animation lock.
 		this.#tick(lockDuration);
 		executed.resources = snapshotResources(this.game);
+	}
+
+	// Seconds from the press of the first damaging action to the moment that defines 0 s.
+	#pullOffset(status: { timeTillDamageApplication: number }): number {
+		return this.#timeZero === "firstPress" ? 0 : status.timeTillDamageApplication;
 	}
 
 	// How late each GCD was pressed relative to the previous GCD's recast, and whether the oGCD
@@ -523,8 +533,9 @@ export function simulateRotation(
 	if (!options.encounterRules || late <= TIME_EPSILON) {
 		return simulator.result(input.id);
 	}
-	// The first hit defines 0 s. It landed late, so the pull happened earlier than the countdown
-	// assumed: lengthen the countdown so the same inputs put the first hit exactly at 0 s.
+	// The first damaging action defines 0 s (its hit or its press, by `timeZero`). It came late,
+	// so the pull happened earlier than the countdown assumed: lengthen the countdown so the same
+	// inputs put it exactly at 0 s.
 	const countdown = options.config?.countdown ?? makeDefaultConfig(job).countdown;
 	const result = run({
 		...options,

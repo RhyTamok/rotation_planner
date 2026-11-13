@@ -4,7 +4,7 @@ import { BuffType } from "../../Game/Common";
 import { ActionKey } from "../../Game/Data";
 import { ALL_JOBS, ShellJob } from "../../Game/Data/Jobs";
 import { jobHasSkill } from "../../Game/Skills";
-import { RotationStep, SimulationEnd } from "../simulation/types";
+import { RotationStep, SimulationEnd, TIME_ZERO_MODES, TimeZero } from "../simulation/types";
 import {
 	ComparisonDocument,
 	MAX_CONFIGURATIONS,
@@ -363,6 +363,9 @@ export function parseScenarioDocument(input: unknown): ParseResult<ScenarioDocum
 	validateBurstWindows(input.burstWindows, errors);
 	if (!isSimulationEnd(input.end)) {
 		errors.push('end must be "lastAction", "settled" or a number');
+	}
+	if (!TIME_ZERO_MODES.includes(input.timeZero as TimeZero)) {
+		errors.push('timeZero must be "firstHit" or "firstPress"');
 	}
 
 	if (!Array.isArray(input.partyBuffs)) {

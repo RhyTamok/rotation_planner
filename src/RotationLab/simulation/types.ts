@@ -54,7 +54,16 @@ export interface TargetRange {
 	enemies: number;
 }
 
+// Which moment of the first damaging action defines 0 s under the encounter rules.
+// - "firstHit": its damage lands at exactly 0 s (the pull as the game's combat log sees it).
+// - "firstPress": it is pressed at exactly 0 s and its damage lands after its application delay
+//   (the clock most other planners and sims use).
+export type TimeZero = "firstHit" | "firstPress";
+export const TIME_ZERO_MODES: readonly TimeZero[] = ["firstHit", "firstPress"];
+
 export interface SimulationOptions {
+	// Only read with `encounterRules`. Defaults to "firstHit".
+	timeZero?: TimeZero;
 	partyBuffs?: PartyBuffWindow[];
 	downtime?: DowntimeWindow[];
 	// Extra enemies over time. A skill step without explicit `targets` hits as many as are present
@@ -143,8 +152,9 @@ export interface RotationResult {
 	// False if any step was invalid. Invalid skills still roll their locks, as in upstream replay.
 	valid: boolean;
 	endTime: number;
-	// With encounter rules: seconds added to the countdown because the first hit would otherwise
-	// have landed after 0 s. Pre-pull actions moved earlier by this much.
+	// With encounter rules: seconds added to the countdown because the first damaging action would
+	// otherwise have landed (or, with timeZero "firstPress", been pressed) after 0 s. Pre-pull
+	// actions moved earlier by this much.
 	countdownExtension?: number;
 	actions: SimulatedAction[];
 	damageEvents: DamageEvent[];

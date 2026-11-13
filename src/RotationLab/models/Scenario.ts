@@ -5,6 +5,7 @@ import {
 	PartyBuffWindow,
 	SimulationEnd,
 	SimulationOptions,
+	TimeZero,
 } from "../simulation/types";
 import { NO_GEAR, ResolvedGear } from "./GearSet";
 import { newId, SCHEMA_VERSION } from "./Rotation";
@@ -36,6 +37,9 @@ export interface ScenarioDocument {
 	partyBuffs: PartyBuffWindow[];
 	downtime: DowntimeWindow[];
 	end: SimulationEnd;
+	// What 0 s means: the first damaging action's hit (the Lab's original rule) or its press. Every
+	// time measured from the pull follows it: DPS, cutoffs, downtime, party buffs, burst windows.
+	timeZero: TimeZero;
 	// Windows the comparison reports damage for (e.g. two-minute bursts). Not a simulation input.
 	// When absent, the comparison derives them from the party buffs.
 	burstWindows?: BurstWindow[];
@@ -60,6 +64,7 @@ export function createScenario(
 		partyBuffs: props.partyBuffs ?? [],
 		downtime: props.downtime ?? [],
 		end: props.end ?? "settled",
+		timeZero: props.timeZero ?? "firstHit",
 		updatedAt: new Date().toISOString(),
 	};
 }
@@ -77,5 +82,6 @@ export function scenarioToOptions(
 		downtime: scenario.downtime.map((w) => ({ ...w })),
 		end: scenario.end,
 		encounterRules: true,
+		timeZero: scenario.timeZero,
 	};
 }

@@ -9,7 +9,8 @@ import { getSkill } from "../../Game/Skills";
 // - Pull: the first damaging action starts the fight when it lands, so it is held until its damage
 //   lands at exactly 0 s. If it would land after 0 s, the countdown is lengthened instead so the
 //   first hit still defines 0 s (see simulateRotation). Non-damaging pre-pull actions (e.g. a
-//   tincture at -5 s) are unaffected.
+//   tincture at -5 s) are unaffected. With SimulationOptions.timeZero "firstPress" the same rule
+//   anchors the action's press at 0 s instead, and its damage lands after its application delay.
 // - Downtime: actions that need an enemy target are invalid while the boss is untargetable.
 //   An action pressed before downtime that lands inside it still applies its effects but deals no
 //   damage ("ghosting"); the engine already behaves this way.

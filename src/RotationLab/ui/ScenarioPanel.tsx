@@ -10,6 +10,7 @@ import {
 	ScenarioDocument,
 	ScenarioStats,
 } from "../models/Scenario";
+import { TimeZero } from "../simulation/types";
 
 const STAT_LABELS: Record<(typeof SCENARIO_STAT_KEYS)[number], string> = {
 	level: "Level",
@@ -102,6 +103,18 @@ export function ScenarioPanel(props: {
 		</div>
 
 		<h2>Fight</h2>
+		<div className="rl-field">
+			<span>Time 0 is</span>
+			<select
+				aria-label="Time 0 is"
+				title="Which moment of the first damaging action is 0 s. DPS, cutoffs, downtime, party buffs and burst windows all count from it."
+				value={scenario.timeZero}
+				onChange={(e) => update({ timeZero: e.target.value as TimeZero })}
+			>
+				<option value="firstHit">First hit lands</option>
+				<option value="firstPress">First press</option>
+			</select>
+		</div>
 		<div className="rl-field">
 			<span>Simulate until</span>
 			<select

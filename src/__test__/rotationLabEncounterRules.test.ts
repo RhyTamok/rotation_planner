@@ -56,6 +56,75 @@ describe("pull rule", () => {
 	});
 });
 
+describe("pull rule with time zero at the first press", () => {
+	const PRESS: SimulationOptions = { ...RULES, timeZero: "firstPress" };
+
+	it("presses the opener at exactly 0 s; its damage lands after the application delay", () => {
+		const result = run(["REAVING_FANGS"], PRESS);
+		const opener = result.actions[0];
+		expect(opener.startTime).toBeCloseTo(0, 6);
+		expect(opener.pullHold).toBeCloseTo(5, 6);
+		expect(firstHitTime(["REAVING_FANGS"], PRESS)).toBeCloseTo(delayOf("REAVING_FANGS"), 6);
+		expect(result.countdownExtension).toBeUndefined();
+	});
+
+	it("keeps non-damaging pre-pull actions at negative times", () => {
+		const result = run(["TINCTURE", "REAVING_FANGS"], PRESS);
+		expect(result.actions[0].startTime).toBeCloseTo(-5, 6);
+		expect(result.actions[1].startTime).toBeCloseTo(0, 6);
+	});
+
+	it("lengthens the countdown when the opener would be pressed after 0 s", () => {
+		const steps: RotationStep[] = [
+			{ type: "skill", action: "TINCTURE" },
+			{ type: "wait", seconds: 10 },
+			{ type: "skill", action: "REAVING_FANGS" },
+		];
+		const result = run(steps, PRESS);
+		expect(result.actions[1].startTime).toBeCloseTo(0, 6);
+		expect(result.countdownExtension).toBeGreaterThan(5);
+		expect(result.actions[0].startTime).toBeCloseTo(-5 - result.countdownExtension!, 6);
+	});
+
+	it("shifts every action and its hit by the opener's application delay, but not the autos", () => {
+		const steps: ActionKey[] = [
+			"REAVING_FANGS",
+			"SWIFTSKINS_STING",
+			"SERPENTS_IRE",
+			"VICEWINDER",
+		];
+		const hit = run(steps);
+		const press = run(steps, PRESS);
+		const shift = delayOf("REAVING_FANGS");
+		press.actions.forEach((a, i) => {
+			expect(a.startTime).toBeCloseTo(hit.actions[i].startTime + shift, 6);
+			expect(a.expectedDamage).toBeCloseTo(hit.actions[i].expectedDamage!, 6);
+		});
+		const skillHits = (r: typeof hit) => r.damageEvents.filter((e) => !e.isAutoAttack);
+		expect(skillHits(press).map((e) => e.time - shift)).toEqual(
+			skillHits(hit).map((e) => expect.closeTo(e.time, 6)),
+		);
+		// Not shifted: the engine starts auto-attacks at 0 s in both modes, so under "firstPress"
+		// they run ahead of the skills by the opener's application delay.
+		const firstAuto = (r: typeof hit) => r.damageEvents.find((e) => e.isAutoAttack)!.time;
+		// (to within the engine's 1e-6 s scheduling epsilon)
+		expect(firstAuto(press)).toBeCloseTo(firstAuto(hit), 4);
+		// DPS counts from 0 s, which is now the press.
+		expect(press.endTime).toBeCloseTo(hit.endTime + shift, 6);
+		expect(press.damage!.expectedDps).toBeCloseTo(
+			press.damage!.expectedDamage / press.endTime,
+			6,
+		);
+	});
+
+	it("measures downtime from the press", () => {
+		// Reaving Fangs lands inside a downtime that starts right after the press.
+		const result = run(["REAVING_FANGS"], { ...PRESS, downtime: [{ start: 0.1, end: 5 }] });
+		expect(result.actions[0].valid).toBe(true);
+		expect(result.actions[0].ghostedBy).toBeCloseTo(delayOf("REAVING_FANGS") - 0.1, 6);
+	});
+});
+
 describe("downtime rules", () => {
 	const downtime = { ...RULES, downtime: [{ start: 10, end: 20 }] };
 

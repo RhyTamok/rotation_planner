@@ -123,12 +123,30 @@ function v5ToV6(workspace: Obj): Obj {
 	};
 }
 
+// 6 → 7: scenarios say what 0 s means. Stored scenarios keep the rule they were built under: the
+// first damaging hit lands at 0 s.
+function v6ToV7(workspace: Obj): Obj {
+	const bump = (docs: unknown, extra: Obj = {}) =>
+		Array.isArray(docs)
+			? docs.map((doc) => (isObject(doc) ? { ...doc, ...extra, schemaVersion: 7 } : doc))
+			: docs;
+	return {
+		...workspace,
+		schemaVersion: 7,
+		rotations: bump(workspace.rotations),
+		scenarios: bump(workspace.scenarios, { timeZero: "firstHit" }),
+		gearSets: bump(workspace.gearSets),
+		comparisons: bump(workspace.comparisons),
+	};
+}
+
 const STEPS: Record<number, (workspace: Obj) => Obj> = {
 	1: v1ToV2,
 	2: v2ToV3,
 	3: v3ToV4,
 	4: v4ToV5,
 	5: v5ToV6,
+	6: v6ToV7,
 };
 
 // Returns the workspace at SCHEMA_VERSION, or an error for versions it cannot upgrade.

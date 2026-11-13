@@ -10,7 +10,7 @@ import type { GearOverrides } from "./GearSet";
 // 3 → 4: the target count is replaced by target ranges (used by damage and recommendations).
 // 4 → 5: workspaces have stored comparisons.
 // 5 → 6: comparisons have analysis settings (threshold, intervals, graph unit).
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export type CombatMode = "reborn" | "evolved";
 
