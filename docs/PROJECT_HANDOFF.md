@@ -107,8 +107,8 @@ set changes.
     `ruleset reborn-dt-2 / game patch 7.5 / engine 1`. It is shown at the end of the header, written
     as a trailing `simulated_with` column on every row of every CSV, and as `exportedWith` in the
     exported workspace file (ignored on import, not stored in `localStorage`).
-    -   `RULESET_GAME_PATCH` maps each ruleset version to its game patch. "7.5" comes from upstream's
-        changelog; the user has not confirmed it yet.
+    -   `RULESET_GAME_PATCH` maps each ruleset version to its game patch. "7.5" is confirmed by the user
+        (2026-11-13; the game is at 7.58 with no changes since).
     -   `ENGINE_VERSION` is bumped by hand whenever simulation code, damage formulas or game data
         change in a way that can change a number (an engine edit, an upstream merge touching shared
         engine code, a new simulation option). Never derive it from git or the build.
@@ -186,11 +186,11 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
     0 s and lands after its application delay; the countdown is lengthened the same way if the
     press would be late. Everything measured from the pull uses that clock: DPS denominators,
     cutoffs, downtime, burst windows, CSVs.
-    -   Chosen by Claude, not yet confirmed by the user: the toggle lives in the scenario, and DPS
-        counts from 0 s, which is the press in this mode.
+    -   Confirmed by the user on 2026-11-13: the toggle lives in the scenario, and DPS counts from
+        0 s, which is the press in this mode.
     -   Auto-attacks start at 0 s in both modes (the engine's behaviour). Under first press they
         therefore run ahead of the skills by the opener's application delay, so the two modes are
-        not a pure shift of each other. Not confirmed against the game.
+        not a pure shift of each other. Accepted by the user on 2026-11-13.
 -   **Downtime:**
     -   Actions needing a target are invalid: damaging single-target actions plus Feint, Leg Sweep
         and Slither. Arm's Length is self-cast and allowed.
@@ -447,7 +447,12 @@ Known limitations:
         replays a legalised list.
     -   Ouroboros: recast 2.0 s in xivgear, 3.0 s in the engine; animation lock 0.6 s against 0.7 s.
         So times and DPS are not compared, only damage per action.
-    -   The potency and Ouroboros differences await the user's word on which side is right.
+    -   Confirmed by the user on 2026-11-13: the Lab is right on both. The venom oGCDs are 120 base
+        and 170 when used in the correct order (Hunter's/Swiftskin's Venom, Poised for
+        Twinfang/Twinblood); Ouroboros has a 3.00 s base recast. In xivgear the four buffs exist in
+        `vpr_buffs.ts` with 170 but no action activates them, and `Ouroboros` in `vpr_actions.ts`
+        has `gcd: 2.0`. The user plans to fix both there; regenerate the fixture afterwards and
+        update the pinned differences.
     -   Do not set xivgear's `cutoffMode` to `"strict-gcd"`: its rotation loop never ends.
 -   **Self-play guard** (roadmap 1.7): `rotationLabSelfPlay.test.ts` follows the top recommendation
     for 150 s in both time-zero modes and requires a valid rotation with no warnings or combo
