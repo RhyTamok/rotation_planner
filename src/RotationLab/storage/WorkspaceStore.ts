@@ -1,6 +1,6 @@
 import { ComparisonDocument } from "../models/Comparison";
 import { GearSetDocument } from "../models/GearSet";
-import { newId, RotationDocument, SCHEMA_VERSION } from "../models/Rotation";
+import { newId, resultLabel, RotationDocument, SCHEMA_VERSION } from "../models/Rotation";
 import { ScenarioDocument } from "../models/Scenario";
 import {
 	parseComparisonDocument,
@@ -145,8 +145,10 @@ export function mergeWorkspace(current: Workspace, imported: Workspace): Workspa
 	};
 }
 
+// The text of an exported workspace file. `exportedWith` names the ruleset, game patch and engine
+// version of the build that wrote it; it is information for the reader and ignored on import.
 export function serializeWorkspace(workspace: Workspace): string {
-	return JSON.stringify(workspace, null, 2);
+	return JSON.stringify({ ...workspace, exportedWith: resultLabel() }, null, 2);
 }
 
 export function loadWorkspace(storage: KeyValueStorage = localStorage): WorkspaceParseResult {

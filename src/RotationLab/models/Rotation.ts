@@ -10,6 +10,7 @@ import type { GearOverrides } from "./GearSet";
 // 3 → 4: the target count is replaced by target ranges (used by damage and recommendations).
 // 4 → 5: workspaces have stored comparisons.
 // 5 → 6: comparisons have analysis settings (threshold, intervals, graph unit).
+// 6 → 7: scenarios say what 0 s means (`timeZero`: first hit or first press).
 export const SCHEMA_VERSION = 7;
 
 export type CombatMode = "reborn" | "evolved";
@@ -28,6 +29,42 @@ export const AVAILABLE_RULESETS: Readonly<Record<CombatMode, string | undefined>
 	reborn: "reborn-dt-2",
 	evolved: undefined,
 };
+
+// The game patch each ruleset's data stands for: the patch XIV in the Shell's job data was last
+// updated for when the ruleset was cut (its changelog says so). Add an entry with every new ruleset
+// version, and check it after merging upstream.
+export const RULESET_GAME_PATCH: Readonly<Record<string, string>> = {
+	"reborn-dt-2": "7.5",
+};
+
+// Identifies the code that produced a result. Bump it by hand whenever simulation code, damage
+// formulas or game data change in a way that can change a number: an engine edit, an upstream
+// merge that touches shared engine code, a new simulation option. It is never read from git or
+// the build (comparison spec Q3), so it is the same in tests and in every build.
+// 1: first labelled version (upstream merged 2026-11-13, time-zero setting).
+export const ENGINE_VERSION = "1";
+
+// What produced a result: shown in the UI and written into every export.
+export interface ResultLabel {
+	ruleset: string;
+	gamePatch: string;
+	engineVersion: string;
+}
+
+export function resultLabel(mode: CombatMode = "reborn"): ResultLabel {
+	const { version } = currentRuleset(mode);
+	return {
+		ruleset: version,
+		gamePatch: RULESET_GAME_PATCH[version] ?? "unknown",
+		engineVersion: ENGINE_VERSION,
+	};
+}
+
+// One line of plain text without commas, semicolons or bare numbers, so that it survives any CSV
+// dialect and spreadsheets do not turn "7.5" into a date.
+export function formatResultLabel(label: ResultLabel = resultLabel()): string {
+	return `ruleset ${label.ruleset} / game patch ${label.gamePatch} / engine ${label.engineVersion}`;
+}
 
 export function currentRuleset(mode: CombatMode = "reborn"): Ruleset {
 	const version = AVAILABLE_RULESETS[mode];

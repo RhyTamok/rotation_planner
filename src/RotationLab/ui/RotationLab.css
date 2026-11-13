@@ -938,3 +938,11 @@ select {
 	margin: 0;
 	color: var(--rl-muted);
 }
+
+/* Ruleset, game patch and engine version of the running build, at the end of the header. */
+.rl-build {
+	margin-left: auto;
+	font-size: 11px;
+	color: var(--rl-muted);
+	white-space: nowrap;
+}

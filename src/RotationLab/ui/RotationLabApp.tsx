@@ -22,7 +22,7 @@ import {
 	removeRotationFromComparisons,
 } from "../models/Comparison";
 import { MAX_LIST_BYTES, parseRotationList } from "../import/rotationList";
-import { createRotation, newId, RotationDocument } from "../models/Rotation";
+import { createRotation, formatResultLabel, newId, RotationDocument } from "../models/Rotation";
 import { createScenario, ScenarioDocument, scenarioToOptions } from "../models/Scenario";
 import {
 	parseComparisonDocument,
@@ -523,6 +523,12 @@ export function RotationLabApp(props: { storage?: KeyValueStorage }) {
 				}}
 			/>
 			<button onClick={() => fileInput.current?.click()}>Import</button>
+			<span
+				className="rl-build"
+				title="What produced these numbers. The same line is written into every export."
+			>
+				{formatResultLabel()}
+			</span>
 		</header>
 
 		<section className="rl-summary" aria-label="Summary">

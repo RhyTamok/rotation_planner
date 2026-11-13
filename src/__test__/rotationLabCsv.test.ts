@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest";
+import {
+	AVAILABLE_RULESETS,
+	ENGINE_VERSION,
+	formatResultLabel,
+	resultLabel,
+} from "../RotationLab/models/Rotation";
 
 import { ACTIONS } from "../Game/Data";
 import { compareConfigurations } from "../RotationLab/comparison/baseline";
@@ -117,17 +123,47 @@ const TIMELINE = {
 	],
 } as unknown as RotationResult;
 
+// Every export ends with the `simulated_with` column (roadmap 1.8); the goldens below spell out the
+// other columns. The first line is the header.
+const LABEL = formatResultLabel();
+const labelled = (lines: string[], delimiter = ",") =>
+	lines.map((line, i) =>
+		line === "" ? line : `${line}${delimiter}${i === 0 ? "simulated_with" : LABEL}`,
+	);
+
 describe("Rotation Lab - CSV export", () => {
 	it("writes the per-action timeline (golden, comma format)", () => {
 		expect(timelineCsv(TIMELINE, nameOf, comma)).toBe(
-			[
+			labelled([
 				"step,skill_name,pressed,press_time_s,lock_end_s,type,valid,gcd_delay_s,clipped,pull_hold_s,ghosted_by_s,targets,potency,pending_potency,damage,pending_damage,Rattling Coil,Serpent Offering,notes",
 				"1,Steel Fangs,Steel Fangs,-0.500,0.100,GCD,true,,,0.250,,1,200.00,0.00,12345.68,,1,50,",
 				"3,Hunter's Sting,Steel Fangs,2.500,3.100,GCD,true,0.000,true,,,1,300.50,0.00,20000.00,0.00,1,50,breaks the single-target combo",
 				"4,Serpent's Ire,Serpent's Ire,3.100,3.700,oGCD,false,,,,1.000,0,0.00,100.00,,5000.25,1,50,not ready; lands after the end",
 				"",
-			].join("\r\n"),
+			]).join("\r\n"),
 		);
+	});
+
+	it("labels every row with the ruleset, game patch and engine version", () => {
+		// Plain text in every dialect: no comma, semicolon or bare number a spreadsheet could
+		// reinterpret ("7.5" alone becomes a date in German Excel).
+		expect(LABEL).toBe(
+			`ruleset ${resultLabel().ruleset} / game patch ${resultLabel().gamePatch} / engine ${ENGINE_VERSION}`,
+		);
+		expect(resultLabel()).toEqual({
+			ruleset: AVAILABLE_RULESETS.reborn,
+			gamePatch: "7.5",
+			engineVersion: ENGINE_VERSION,
+		});
+		expect(LABEL).not.toMatch(/[,;"]/);
+		for (const [format, delimiter] of [
+			[comma, ","],
+			[semicolon, ";"],
+		] as const) {
+			const rows = parseCsv(timelineCsv(TIMELINE, nameOf, format), delimiter);
+			expect(rows[0].at(-1)).toBe("simulated_with");
+			expect(rows.slice(1).map((row) => row.at(-1))).toEqual(rows.slice(1).map(() => LABEL));
+		}
 	});
 
 	it("uses decimal commas with semicolons, whatever the browser's locale", () => {
@@ -247,7 +283,7 @@ describe("Rotation Lab - cutoff summary CSV", () => {
 				comma,
 			),
 		).toBe(
-			[
+			labelled([
 				"cutoff_s,configuration,rotation,baseline,total_damage,dps,delta_dps,delta_pct,rank,within_epsilon,epsilon_pct",
 				"10.000,A,Opener; v2,true,1000.00,100.00,0.00,0.0000,1,true,0.10",
 				"10.000,B,Late,false,800.00,80.00,-20.00,-20.0000,3,false,0.10",
@@ -256,7 +292,7 @@ describe("Rotation Lab - cutoff summary CSV", () => {
 				"20.000,B,Late,false,1800.00,90.00,30.00,50.0000,1,true,0.10",
 				"20.000,C,Close,false,1200.00,60.00,0.00,0.0000,2,false,0.10",
 				"",
-			].join("\r\n"),
+			]).join("\r\n"),
 		);
 	});
 
@@ -286,7 +322,7 @@ describe("Rotation Lab - cutoff summary CSV", () => {
 		expect(noBaseline.slice(3, 9)).toEqual(["", "1000.00", "100.00", "", "", "1"]);
 		// One configuration: no rank and no threshold.
 		const alone = summary(false, false)[1];
-		expect(alone.slice(8)).toEqual(["", "", ""]);
+		expect(alone.slice(8)).toEqual(["", "", "", LABEL]);
 	});
 
 	it("names potency columns when there is no damage model", () => {

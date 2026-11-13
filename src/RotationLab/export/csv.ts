@@ -1,3 +1,4 @@
+import { formatResultLabel } from "../models/Rotation";
 import { ActionKey } from "../../Game/Data";
 import { BaselineComparison } from "../comparison/baseline";
 import { competitiveAt } from "../comparison/competitive";
@@ -53,8 +54,11 @@ function field(cell: Cell, format: CsvFormat): string {
 }
 
 // RFC 4180: CRLF line ends, including after the last line.
+// Every export ends with a `simulated_with` column naming the ruleset, game patch and engine
+// version that produced the numbers, on every row so that it survives sorting and filtering.
 function toCsv(header: string[], rows: Cell[][], format: CsvFormat): string {
-	return [header.map(text), ...rows]
+	const label = text(formatResultLabel());
+	return [[...header, "simulated_with"].map(text), ...rows.map((row) => [...row, label])]
 		.map((row) => row.map((cell) => field(cell, format)).join(format.delimiter) + "\r\n")
 		.join("");
 }

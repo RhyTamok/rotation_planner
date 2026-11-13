@@ -4,7 +4,11 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ComparisonDocument, createComparison } from "../RotationLab/models/Comparison";
-import { createRotation, RotationDocument } from "../RotationLab/models/Rotation";
+import {
+	createRotation,
+	formatResultLabel,
+	RotationDocument,
+} from "../RotationLab/models/Rotation";
 import { createScenario, ScenarioDocument } from "../RotationLab/models/Scenario";
 import { SimulationCache } from "../RotationLab/simulation/SimulationManager";
 import { RotationResult } from "../RotationLab/simulation/types";
@@ -559,10 +563,10 @@ describe("Rotation Lab - comparison view", () => {
 			const lines = new TextDecoder().decode(bytes.slice(3)).split("\r\n");
 			// The same numbers as the table above: 10, 15 and 5 DPS at the 20 s end.
 			expect(lines.slice(0, 4)).toEqual([
-				"cutoff_s;configuration;rotation;baseline;total_damage;dps;delta_dps;delta_pct;rank;within_epsilon;epsilon_pct",
-				"20,000;A;Aa;true;200,00;10,00;0,00;0,0000;2;false;0,10",
-				"20,000;B;Bb;false;300,00;15,00;5,00;50,0000;1;true;0,10",
-				"20,000;C;Cc;false;100,00;5,00;-5,00;-50,0000;3;false;0,10",
+				"cutoff_s;configuration;rotation;baseline;total_damage;dps;delta_dps;delta_pct;rank;within_epsilon;epsilon_pct;simulated_with",
+				`20,000;A;Aa;true;200,00;10,00;0,00;0,0000;2;false;0,10;${formatResultLabel()}`,
+				`20,000;B;Bb;false;300,00;15,00;5,00;50,0000;1;true;0,10;${formatResultLabel()}`,
+				`20,000;C;Cc;false;100,00;5,00;-5,00;-50,0000;3;false;0,10;${formatResultLabel()}`,
 			]);
 		} finally {
 			click.mockRestore();

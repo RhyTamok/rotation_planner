@@ -11,6 +11,7 @@ import {
 import {
 	AVAILABLE_RULESETS,
 	createRotation,
+	resultLabel,
 	RotationDocument,
 	SCHEMA_VERSION,
 } from "../RotationLab/models/Rotation";
@@ -580,6 +581,17 @@ describe("Rotation Lab - comparison documents", () => {
 		expect(migrated.scenarios.map((s) => s.timeZero)).toEqual(
 			workspace.scenarios.map(() => "firstHit"),
 		);
+	});
+
+	it("writes what produced it into an exported workspace; importing ignores it", () => {
+		const workspace = sampleWorkspace();
+		const text = serializeWorkspace(workspace);
+		expect(JSON.parse(text).exportedWith).toEqual(resultLabel());
+		expect(parseWorkspace(text)).toEqual({ workspace, errors: [] });
+		// The stored workspace itself carries no label: it is always re-simulated on load.
+		const storage = memoryStorage();
+		saveWorkspace(workspace, storage);
+		expect(JSON.parse(storage.data.get(WORKSPACE_KEY)!).exportedWith).toBeUndefined();
 	});
 
 	it("rejects a scenario without a valid time zero", () => {
