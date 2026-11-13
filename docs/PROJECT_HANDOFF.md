@@ -48,8 +48,9 @@ set changes.
 
 ## 3. Current state (verified 2026-11-13)
 
--   Branch `feature/rotation-lab`. Full suite: 49 files, 438 passed + 9 expected-fail (upstream
-    `it.fails`) + 1 todo (DoT after a cutoff). `tsc --noEmit` clean; repo-wide `npm run lint` and
+-   Branch `feature/rotation-lab`. Full suite: 51 files, 460 passed + 9 expected-fail (upstream
+    `it.fails`) + 2 todo (DoT after a cutoff; golden rotations, waiting for the user's opener and
+    two-minute loop). Upstream was merged on 2026-11-13 (3 commits, no Viper data changed). `tsc --noEmit` clean; repo-wide `npm run lint` and
     `prettier-no-jsx-parens --check .` clean (the commands CI runs); production build passes.
 -   Measured on 2026-11-13: a 10-minute fight (485 actions) simulates in about 11 ms, and one edit
     costs about 28 ms in all (simulation, recommendation, palette). Do not optimise simulation speed.
@@ -85,7 +86,8 @@ set changes.
 -   **Gear** (`ui/GearPanel.tsx`): each rotation picks a gear set and can override single values;
     the base GCD is shown. Gear sets can be imported from xivgear set, sheet or BiS links.
 -   **Scenario** (`ui/ScenarioPanel.tsx`), shared by every rotation compared under it: level, party
-    bonus, countdown, FPS tax (0 = off, the default), gemdraught grade, end mode or cutoff, party
+    bonus, countdown, what 0 s means (first hit lands, the default, or first press; section 6),
+    FPS tax (0 = off, the default), gemdraught grade, end mode or cutoff, party
     buffs, downtime, and custom burst windows.
 -   **Compare** (`ui/ComparisonView.tsx`):
     -   Pick one to four configurations (A to D) and a baseline, each simulated with its own gear
@@ -99,7 +101,17 @@ set changes.
         editable. Totals and gauges in a collapsible table below it.
     -   Damage per burst window and its difference from the baseline; windows are `(start, end]`,
         like cutoffs.
--   **Persistence:** JSON workspace in `localStorage`, export/import as a file, schema migrations.
+-   **Persistence:** JSON workspace in `localStorage`, export/import as a file, schema migrations
+    (schema 7).
+-   **Result label** (roadmap 1.8, `models/Rotation.ts`): `formatResultLabel()` gives
+    `ruleset reborn-dt-2 / game patch 7.5 / engine 1`. It is shown at the end of the header, written
+    as a trailing `simulated_with` column on every row of every CSV, and as `exportedWith` in the
+    exported workspace file (ignored on import, not stored in `localStorage`).
+    -   `RULESET_GAME_PATCH` maps each ruleset version to its game patch. "7.5" comes from upstream's
+        changelog; the user has not confirmed it yet.
+    -   `ENGINE_VERSION` is bumped by hand whenever simulation code, damage formulas or game data
+        change in a way that can change a number (an engine edit, an upstream merge touching shared
+        engine code, a new simulation option). Never derive it from git or the build.
     -   With two or more configurations: a relevance threshold ε, competitiveness and regret over an
         interval, local cutoff sensitivity, and marks when an entry comes within ε or falls outside it.
 -   **Rotation import:** a `.csv` or `.txt` list of displayed skill names becomes a new rotation.
@@ -169,6 +181,16 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
 -   **Pull:** the first damaging action's damage lands at exactly 0 s, whatever the clock says when
     it is pressed. If it would land late, the countdown is lengthened instead
     (`countdownExtension`). Non-damaging pre-pull actions (e.g. a tincture at −5 s) stay in place.
+-   **Time zero** (scenario setting `timeZero`, roadmap 1.5, schema 7): `"firstHit"` is the rule
+    above and the default. With `"firstPress"` the first damaging action is **pressed** at exactly
+    0 s and lands after its application delay; the countdown is lengthened the same way if the
+    press would be late. Everything measured from the pull uses that clock: DPS denominators,
+    cutoffs, downtime, burst windows, CSVs.
+    -   Chosen by Claude, not yet confirmed by the user: the toggle lives in the scenario, and DPS
+        counts from 0 s, which is the press in this mode.
+    -   Auto-attacks start at 0 s in both modes (the engine's behaviour). Under first press they
+        therefore run ahead of the skills by the opener's application delay, so the two modes are
+        not a pure shift of each other. Not confirmed against the game.
 -   **Downtime:**
     -   Actions needing a target are invalid: damaging single-target actions plus Feint, Leg Sweep
         and Slither. Arm's Length is self-cast and allowed.
@@ -369,29 +391,6 @@ Dawntrail.
         be taken from the simulation: the time its buff applies and its actual duration, read from the
         engine's buff state rather than hard-coded. It would need a lane of its own, or a place in the
         existing lanes.
-    -   **Feature request (2026-11-09): time zero for exports.** The pull rule (section 6) puts the first
-        damaging hit at 0 s, so the first press is usually negative in the timeline CSV. Some tools the
-        user imports into expect the first button press at 0 s. Wanted: a toggle between "first hit at
-        0 s" (today) and "first press at 0 s". Decided by the user on 2026-11-09:
-
-        -   **It changes the editor's clock, not only the export**, so that comparisons and tests
-            against other tools line up. Time 0 then moves for everything measured from the pull:
-            DPS denominators, cutoffs, downtime and burst windows, gauges at cutoffs, and the CSVs.
-        -   **The first damaging action is pressed at exactly 0 s.** Its hit lands after its
-            application delay. Non-damaging actions, such as a tincture, can still be pressed before
-            the pull at negative times.
-
-        Still to settle at the start of the milestone:
-
-        -   **Where the toggle lives.** The likely place is the scenario, so that every rotation in a
-            comparison uses the same clock. It would need a schema bump and migration, defaulting to
-            today's rule.
-        -   **How `countdownExtension` and the pull rules in `rules/encounterRules.ts` change** under
-            the new mode.
-        -   **Whether DPS still counts from 0 s,** which would now be the press, or from the first hit.
-            Other tools differ on this, so ask the user which tool to match.
-        -   **Effect on existing results.** The parity and workbook tests use today's rule, so they must
-            keep running with the default mode. This is engine-adjacent: run the full parity suite.
 
 4.  **Dragoon:**
     -   add damage-model constants (jobmod, delay, trait) from xivgear;
@@ -436,5 +435,22 @@ Known limitations:
     cross-checks damage against the 7.2 workbook in `reference/`. That workbook is historical: don't
     assume its values for newer patches, and estimate the token cost before reading it (its sheets
     are large).
+-   **xivgear cross-check** (roadmap 1.6): `rotationLabXivgearSim.test.ts` replays the action list
+    of xivgear's own Viper sim on the same gear and compares against the fixture
+    `src/__test__/Asset/xivgear/vpr_100_crosscheck.json`. Regenerate the fixture from the local
+    clone with `npm exec -- vitest run -c tools/xivgear-crosscheck/vitest.config.mts`
+    (`tools/xivgear-crosscheck/README.md`). The damage formula agrees to 1e-6 relative on every
+    action. Three differences are pinned and explained in the test, not tuned away:
+    -   Twinfang/Twinblood Bite and Uncoiled Twinfang/Twinblood: xivgear uses 120 potency, the Lab
+        170 (with the venom buff). About 2.5 % of skill damage over 250 s.
+    -   xivgear's list names finishers that are not legal after its second combo step; the test
+        replays a legalised list.
+    -   Ouroboros: recast 2.0 s in xivgear, 3.0 s in the engine; animation lock 0.6 s against 0.7 s.
+        So times and DPS are not compared, only damage per action.
+    -   The potency and Ouroboros differences await the user's word on which side is right.
+    -   Do not set xivgear's `cutoffMode` to `"strict-gcd"`: its rotation loop never ends.
+-   **Self-play guard** (roadmap 1.7): `rotationLabSelfPlay.test.ts` follows the top recommendation
+    for 150 s in both time-zero modes and requires a valid rotation with no warnings or combo
+    breaks. It guards against regressions; it does not measure optimality.
 -   **Reference repo** for formulas and the xivgear API: the local clone `~/dev/gear-planner/gear-planner`
     (the xivgear author permits reuse). Search it locally.

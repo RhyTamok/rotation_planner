@@ -60,6 +60,9 @@ the user names; update the roadmap status table when it is done.
 -   All Rotation Lab workspace changes go through `setWorkspace` in `RotationLabApp`, so they are undoable.
 -   When game data or mechanics change, bump `AVAILABLE_RULESETS` in `models/Rotation.ts`. When a
     stored document's shape changes, bump `SCHEMA_VERSION` and add a step in `storage/migrations.ts`.
+-   Bump `ENGINE_VERSION` in `models/Rotation.ts` by hand whenever a change can alter a simulated
+    number (engine edit, upstream merge touching shared engine code, new simulation option), and
+    add the game patch to `RULESET_GAME_PATCH` with every new ruleset version.
 
 ## Working Practices
 
@@ -116,6 +119,7 @@ they are the regression net for shared engine code (handoff section 7, codebase 
     ask the user for the file if it is missing). Historical 7.2 Viper workbook, used for regression
     tests. Its values may be outdated; its sheets are large, so estimate the token cost before reading.
 -   `~/dev/gear-planner/gear-planner`: local clone of xivgear (clone https://github.com/xiv-gear-planner/gear-planner into `~/dev/gear-planner` if missing): formulas, API, and its Viper and Dragoon sims in `packages/sims/src/melee/`. The author permits reuse.
+    `tools/xivgear-crosscheck/` regenerates the Viper cross-check fixture from it (handoff section 8).
 
 ## graphify
 
