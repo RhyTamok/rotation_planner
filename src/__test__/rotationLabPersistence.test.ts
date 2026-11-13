@@ -569,7 +569,6 @@ describe("Rotation Lab - comparison documents", () => {
 		const text = JSON.stringify({
 			schemaVersion: 6,
 			rotations: workspace.rotations.map(v6),
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			scenarios: workspace.scenarios.map(({ timeZero: _new, ...scenario }) => v6(scenario)),
 			gearSets: workspace.gearSets.map(v6),
 			comparisons: workspace.comparisons.map(v6),

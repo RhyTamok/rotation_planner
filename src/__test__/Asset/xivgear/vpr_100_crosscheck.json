@@ -1,0 +1,2571 @@
+{
+	"source": {
+		"repository": "https://github.com/xiv-gear-planner/gear-planner",
+		"commit": "b26c935e88b86ce9a588ff299211019f43a552d7",
+		"sim": "vpr-sheet-sim",
+		"generator": "tools/xivgear-crosscheck/vpr.gen.ts"
+	},
+	"level": 100,
+	"gear": {
+		"dexterity": 6000,
+		"wdPhys": 152,
+		"weaponDelay": 2.64,
+		"crit": 3300,
+		"dhit": 2100,
+		"determination": 2400,
+		"skillspeed": 420,
+		"tenacity": 420
+	},
+	"partyBonus": 0,
+	"settings": {
+		"cycles": 6,
+		"totalTime": 250,
+		"which": "totalTime",
+		"useAutos": true,
+		"cutoffMode": "prorate-gcd"
+	},
+	"derived": {
+		"mainStatMulti": 30.94,
+		"wdMulti": 2,
+		"aaMulti": 1.76,
+		"detMulti": 1.098,
+		"critChance": 0.257,
+		"critMulti": 1.607,
+		"dhitChance": 0.332,
+		"gcd": 2.5,
+		"gcdHasted15": 2.12
+	},
+	"totalDamage": 8676466.056,
+	"totalTime": 250,
+	"records": [
+		{
+			"time": -0.6,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 200,
+			"damage": 17011.455,
+			"buffs": []
+		},
+		{
+			"time": 0,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": []
+		},
+		{
+			"time": 0,
+			"name": "Serpent's Ire",
+			"type": "ogcd",
+			"potency": 0,
+			"damage": 0,
+			"buffs": []
+		},
+		{
+			"time": 1.9,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 25517.182,
+			"buffs": []
+		},
+		{
+			"time": 2.64,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 4.4,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 45931.428,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 4.884,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 6.95,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 57839.948,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 7.128,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 7.55,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 8.15,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 9.372,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 9.5,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 10.1,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 10.7,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 11.616,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 12.05,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Ready to Reawaken", "Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 13.86,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 13.92,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 14.52,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 15.62,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 16.104,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 16.22,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 17.32,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 17.92,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 18.348,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 19.02,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 19.62,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 20.592,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 20.72,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 22.42,
+			"name": "Flanksbane Fang",
+			"type": "gcd",
+			"potency": 400,
+			"damage": 37425.2,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 22.836,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 23.02,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 24.54,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 25.08,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 25.14,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 25.74,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 27.324,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 27.51,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 28.11,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 28.71,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 29.568,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 30.48,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 31.812,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 33.03,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 33.63,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 34.056,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 34.23,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 36,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 36.3,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 36.6,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 37.2,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 38.544,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 38.55,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 39.15,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 39.75,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 40.788,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 41.1,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Honed Steel", "Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 43.032,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 43.22,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 45.276,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 45.34,
+			"name": "Hindsbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hindsbane Venom", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 45.94,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 47.46,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 47.52,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 49.764,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 50.01,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 50.61,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 51.21,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 52.008,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 52.56,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 53.16,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 53.76,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 54.252,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 55.11,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 56.496,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 56.98,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 57.58,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 58.68,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 58.74,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 59.28,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 60.38,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 60.98,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 60.984,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 62.08,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 62.68,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 63.228,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 63.78,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 65.472,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 65.48,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Honed Reavers", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 67.6,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 67.716,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct"]
+		},
+		{
+			"time": 69.72,
+			"name": "Flanksting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Flankstung Venom", "Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 70.32,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 70.356,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 71.84,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 72.6,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 73.96,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 74.844,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 76.08,
+			"name": "Hindsting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Swiftscaled", "Hindstung Venom", "Hunter's Instinct"]
+		},
+		{
+			"time": 76.68,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 77.088,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 78.2,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Honed Reavers", "Hunter's Instinct"]
+		},
+		{
+			"time": 79.332,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 80.32,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 81.576,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 82.44,
+			"name": "Flanksbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flanksbane Venom", "Swiftscaled"]
+		},
+		{
+			"time": 83.04,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 83.82,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 84.56,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 86.064,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 86.68,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 88.308,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 89.23,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 89.83,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 90.43,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 90.552,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 91.78,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 92.38,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 92.796,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 92.98,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 94.33,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 95.04,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 96.45,
+			"name": "Hindsbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hindsbane Venom", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 97.05,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 97.284,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 98.57,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Honed Reavers", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 99.528,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 100.69,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 101.772,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 102.81,
+			"name": "Flanksting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flankstung Venom", "Swiftscaled"]
+		},
+		{
+			"time": 103.41,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 104.016,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 104.93,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 106.26,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 107.05,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 108.504,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 109.17,
+			"name": "Hindsting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Swiftscaled", "Hindstung Venom", "Hunter's Instinct"]
+		},
+		{
+			"time": 109.77,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 110.748,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 111.29,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Honed Reavers", "Hunter's Instinct"]
+		},
+		{
+			"time": 112.992,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 113.41,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 115.236,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 115.53,
+			"name": "Flanksbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flanksbane Venom", "Swiftscaled"]
+		},
+		{
+			"time": 116.13,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 117.48,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 117.65,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 119.724,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 119.77,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 120.37,
+			"name": "Serpent's Ire",
+			"type": "ogcd",
+			"potency": 0,
+			"damage": 0,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 121.89,
+			"name": "Hindsbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Swiftscaled", "Hindsbane Venom", "Hunter's Instinct"]
+		},
+		{
+			"time": 121.968,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 122.49,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 124.01,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Swiftscaled", "Hunter's Instinct", "Ready to Reawaken"]
+		},
+		{
+			"time": 124.212,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 125.88,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 126.456,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 126.48,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 127.58,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 128.18,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 128.7,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 129.28,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 129.88,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 130.944,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 130.98,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 131.58,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 132.68,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 133.188,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 134.38,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 135.432,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 136.25,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 136.85,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 137.676,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 137.95,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 138.55,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 139.65,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 139.92,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 140.25,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 141.35,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 141.95,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 142.164,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 143.05,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 144.408,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 144.75,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 145.35,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 145.95,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 146.652,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 147.72,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Honed Reavers", "Hunter's Instinct"]
+		},
+		{
+			"time": 148.896,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 149.84,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 151.14,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 151.96,
+			"name": "Flanksting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flankstung Venom", "Swiftscaled"]
+		},
+		{
+			"time": 152.56,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 153.384,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 154.08,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 155.628,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 156.63,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 157.23,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 157.83,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 157.872,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 159.18,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 159.78,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 160.116,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 160.38,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 161.73,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 162.36,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 163.6,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 164.2,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 164.604,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 165.3,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 165.9,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 166.848,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 167,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 167.6,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 168.7,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 169.092,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 169.3,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 170.4,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 171.336,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 172.1,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 172.7,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 173.3,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 173.58,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 175.07,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 175.824,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 177.62,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 178.068,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 6734.222,
+			"buffs": ["Swiftscaled"]
+		},
+		{
+			"time": 178.22,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 178.82,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 180.17,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 180.312,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct"]
+		},
+		{
+			"time": 180.77,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 181.37,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 182.72,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 182.952,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 183.32,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 183.92,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 185.196,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 185.69,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Honed Steel", "Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 187.44,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 187.81,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 189.684,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 189.93,
+			"name": "Hindsting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hindstung Venom", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 190.53,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 191.928,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 192.05,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Honed Reavers", "Hunter's Instinct"]
+		},
+		{
+			"time": 194.17,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 194.172,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct"]
+		},
+		{
+			"time": 196.29,
+			"name": "Flanksbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flanksbane Venom", "Swiftscaled"]
+		},
+		{
+			"time": 196.812,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 196.89,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 198.41,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 199.056,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 200.53,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 201.3,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 202.65,
+			"name": "Hindsbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Swiftscaled", "Hindsbane Venom", "Hunter's Instinct"]
+		},
+		{
+			"time": 203.25,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 203.544,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 204.77,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 205.788,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 206.64,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 207.24,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 208.032,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 208.34,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 208.94,
+			"name": "Second Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 210.04,
+			"name": "Third Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 210.276,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 210.64,
+			"name": "Third Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 211.74,
+			"name": "Fourth Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 212.34,
+			"name": "Fourth Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 212.52,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 213.44,
+			"name": "Ouroboros",
+			"type": "gcd",
+			"potency": 1150,
+			"damage": 107601.582,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 214.764,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 215.14,
+			"name": "Vicewinder",
+			"type": "gcd",
+			"potency": 540,
+			"damage": 50524.571,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 217.008,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 217.69,
+			"name": "Swiftskin's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 218.29,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 218.89,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 219.252,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 220.24,
+			"name": "Hunter's Coil",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 220.84,
+			"name": "Twinfang Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 221.44,
+			"name": "Twinblood Bite",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 221.496,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 222.79,
+			"name": "Uncoiled Fury",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 223.39,
+			"name": "Uncoiled Twinfang",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 223.74,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 223.99,
+			"name": "Uncoiled Twinblood",
+			"type": "ogcd",
+			"potency": 120,
+			"damage": 11223.704,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 225.76,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Honed Reavers", "Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 225.984,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 227.88,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 228.228,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct"]
+		},
+		{
+			"time": 230,
+			"name": "Flanksting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Flankstung Venom", "Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 230.6,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 230.868,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 232.12,
+			"name": "Steel Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Honed Steel", "Swiftscaled"]
+		},
+		{
+			"time": 233.112,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 234.24,
+			"name": "Hunter's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 235.356,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 236.36,
+			"name": "Hindsting Strike",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Swiftscaled", "Hindstung Venom", "Hunter's Instinct"]
+		},
+		{
+			"time": 236.96,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 237.6,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 238.48,
+			"name": "Reaving Fangs",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Honed Reavers", "Hunter's Instinct"]
+		},
+		{
+			"time": 239.844,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 240.6,
+			"name": "Swiftskin's Sting",
+			"type": "gcd",
+			"potency": 300,
+			"damage": 28068.9,
+			"buffs": ["Swiftscaled", "Hunter's Instinct"]
+		},
+		{
+			"time": 241.2,
+			"name": "Serpent's Ire",
+			"type": "ogcd",
+			"potency": 0,
+			"damage": 0,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 242.088,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 242.72,
+			"name": "Flanksbane Fang",
+			"type": "gcd",
+			"potency": 500,
+			"damage": 46784.255,
+			"buffs": ["Hunter's Instinct", "Flanksbane Venom", "Swiftscaled"]
+		},
+		{
+			"time": 243.32,
+			"name": "Death Rattle",
+			"type": "ogcd",
+			"potency": 280,
+			"damage": 26195.988,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 244.332,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 244.84,
+			"name": "Reawaken",
+			"type": "gcd",
+			"potency": 750,
+			"damage": 70176.382,
+			"buffs": ["Hunter's Instinct", "Swiftscaled", "Ready to Reawaken"]
+		},
+		{
+			"time": 246.576,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 246.71,
+			"name": "First Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 63623.942,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 247.31,
+			"name": "First Legacy",
+			"type": "ogcd",
+			"potency": 320,
+			"damage": 29939.059,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		},
+		{
+			"time": 248.41,
+			"name": "Second Generation",
+			"type": "gcd",
+			"potency": 680,
+			"damage": 59507.099,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"],
+			"partial": 0.9352941176470106
+		},
+		{
+			"time": 248.82,
+			"name": "Auto Attack",
+			"type": "autoattack",
+			"potency": 90,
+			"damage": 7407.645,
+			"buffs": ["Hunter's Instinct", "Swiftscaled"]
+		}
+	]
+}
