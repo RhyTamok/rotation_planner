@@ -333,11 +333,6 @@ export function jobHasSkill(job: ShellJob, skillName: ActionKey): boolean {
 	return skillMap.get(job)!.has(skillName);
 }
 
-// Return the map of all skills for a job.
-export function getAllSkills<T extends GameState>(job: ShellJob): Map<ActionKey, Skill<T>> {
-	return skillMap.get(job)!;
-}
-
 function setSkill<T extends GameState>(job: ShellJob, skillName: ActionKey, skill: Skill<T>) {
 	// Initialize a bunch of different hashmaps for looking up skills by different keys.
 	skillMap.get(job)!.set(skillName, skill as Skill<GameState>);
@@ -714,6 +709,22 @@ export function makeAbility<T extends GameState>(
 		(state) => (params.requiresCombat ? state.isInCombat() : true),
 		params.validateAttempt ?? ((state) => true),
 	);
+	const jobPotencyModifiers: PotencyModifierFn<T> = (state) => {
+		const mods = [];
+		if (params.potency && params.positional) {
+			mods.push(
+				...state.computeComboAndPositionalModifiers(
+					getBasePotency(state, params.potency!),
+					undefined,
+					params.positional,
+				),
+			);
+		}
+		if (params.jobPotencyModifiers) {
+			mods.push(...params.jobPotencyModifiers(state));
+		}
+		return mods;
+	};
 	const info: Ability<T> = {
 		kind: "ability",
 		name: name,
@@ -733,7 +744,7 @@ export function makeAbility<T extends GameState>(
 		animationLockFn: (state) => fnify(params.animationLock, state.config.animationLock)(state),
 		manaCostFn: fnify(params.manaCost, 0),
 		potencyFn: (state) => getBasePotency(state, params.potency),
-		jobPotencyModifiers: params.jobPotencyModifiers ?? ((state) => []),
+		jobPotencyModifiers: jobPotencyModifiers ?? ((state) => []),
 		jobTargetPotencyModifiers: params.jobTargetPotencyModifiers ?? ((state) => new Map()),
 		drawsAggro: params.drawsAggro ?? false,
 		savesTargets: params.savesTargets ?? false,

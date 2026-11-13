@@ -110,7 +110,6 @@ export const enum PotencyModifierType {
 	CONFESSION,
 	ASYLUM,
 	TEMPERANCE,
-	EXTRA_BELL_STACKS,
 
 	HUNTERS_INSTINCT,
 	HONED,
@@ -448,11 +447,12 @@ export const Modifiers = {
 		source: PotencyModifierType.TINGLEB,
 		additiveAmount: 300,
 	} as PotencyAdder,
+	// TODO make BLU code actually reference this modifier instead of hard-coding the potency multiplier
 	Surpanakha: {
-		kind: "adder",
+		kind: "multiplier",
 		source: PotencyModifierType.SURPANAKHA,
-		additiveAmount: 100,
-	} as PotencyAdder,
+		potencyFactor: 1.5,
+	} as PotencyMultiplier,
 	WingedReprobation: {
 		kind: "adder",
 		source: PotencyModifierType.WINGED_REPROBATION,
@@ -1042,8 +1042,9 @@ export class Potency {
 			this.config.directHit,
 			this.config.determination,
 			1,
-			1 + critBonus,
-			1 + dhBonus,
+			critBonus,
+			dhBonus,
+			{ isAutoCrit: true, isAutoDh: true },
 		);
 
 		return buffed / base;
@@ -1066,8 +1067,9 @@ export class Potency {
 			this.config.directHit,
 			this.config.determination,
 			1,
-			1 + critBonus,
+			critBonus,
 			dhBonus,
+			{ isAutoCrit: true },
 		);
 
 		return buffed / base;

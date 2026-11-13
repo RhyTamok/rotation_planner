@@ -864,7 +864,10 @@ export class GameState {
 		const rsc = this.resources.get(buffName);
 
 		// Ley lines, paint lines, and positionals can be toggled.
-		if (RESOURCES[buffName].mayBeToggled) {
+		if (!(buffName in RESOURCES)) {
+			console.error("timeline attempted to toggle unknown resource:", buffName);
+			return false;
+		} else if (RESOURCES[buffName].mayBeToggled) {
 			if (rsc.available(1)) {
 				// buff exists and enabled
 				rsc.enabled = false;
@@ -2234,6 +2237,10 @@ export class GameState {
 		}
 		if (skill.aoeHeal) {
 			node.setHealTargetCount(this.resources.get("PARTY_SIZE").availableAmount());
+		}
+		// Fix for an old bug where Living Muse would drop targets on timeline rearrange.
+		if (skill.savesTargets && node.targetList.length === 0) {
+			node.forceOneTarget();
 		}
 		// Process the remainder of the skills effects dependent on the kind of skill
 		if (skill.kind === "spell" || skill.kind === "weaponskill") {
