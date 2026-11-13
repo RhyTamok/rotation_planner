@@ -50,7 +50,12 @@ const root = dom.window.document.getElementById("root");
 console.log(
 	"errors:",
 	errors.length
-		? errors.map((e) => String(e?.stack ?? e).split("\n").slice(0, 3).join(" | "))
+		? errors.map((e) =>
+				String(e?.stack ?? e)
+					.split("\n")
+					.slice(0, 3)
+					.join(" | "),
+			)
 		: "none",
 );
 console.log("rendered:", JSON.stringify((root?.textContent ?? "").slice(0, 120)));

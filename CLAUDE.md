@@ -10,6 +10,9 @@ engine pitfalls, the game rules the user has confirmed, open work and how to ver
 The detailed history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: search
 it when needed, don't read it whole.
 
+**`docs/ROADMAP.md` sets the order of work** across the project (agreed 2026-11-13) and holds the
+upstream merge routine. Work only on the step the user names and update its status when done.
+
 Treat both as context. Inspect the repository and run the tests before relying on any status
 described there.
 
@@ -33,6 +36,8 @@ the user names; update the roadmap status table when it is done.
 
 -   WSL2 Ubuntu (bash), VS Code with the WSL extension, Claude Code. The repo lives in the Linux
     filesystem (`~/dev/rotation_planner`), never under `/mnt/c`. `git` is on PATH.
+-   XIV in the Shell (`upstream` remote) is pull-only: never push to it or open pull requests
+    there. Merge upstream only with the user's go-ahead, following `docs/ROADMAP.md`.
 -   Claude may run `git commit` (small, reviewable commits with the suggested message). The user
     pushes. Never push, force-push or rewrite history.
 -   React, TypeScript, Vite, Vitest, npm. Use plain `npm` from bash.
@@ -61,7 +66,8 @@ the user names; update the roadmap status table when it is done.
 -   Inspect relevant source code before modifying it.
 -   Prefer complete, tested implementations over pseudocode.
 -   Add or update Vitest tests for simulation changes.
--   Run relevant tests and TypeScript checks after code changes.
+-   Run relevant tests and TypeScript checks after code changes. Lint and format checks are
+    repo-wide (`npm run lint`, `npm exec -- prettier-no-jsx-parens --check .`), as in CI.
 -   Never silently modify expected test values just to make tests pass.
 -   Verify whether files already exist before creating replacements.
 -   Distinguish actual test results from assumptions.
@@ -106,6 +112,19 @@ they are the regression net for shared engine code (handoff section 7, codebase 
 
 ## Reference Material
 
--   `reference/VPR 7.2 DT Planner v2.22.xlsx`: historical 7.2 Viper workbook, used for regression
+-   `reference/VPR 7.2 DT Planner v2.22.xlsx`: local only (git-ignored since 2026-11-13, never commit it;
+    ask the user for the file if it is missing). Historical 7.2 Viper workbook, used for regression
     tests. Its values may be outdated; its sheets are large, so estimate the token cost before reading.
--   `~/dev/gear-planner`: local clone of xivgear (clone it from https://github.com/xiv-gear-planner/gear-planner if missing) (formulas, API). The author permits reuse.
+-   `~/dev/gear-planner/gear-planner`: local clone of xivgear (clone https://github.com/xiv-gear-planner/gear-planner into `~/dev/gear-planner` if missing): formulas, API, and its Viper and Dragoon sims in `packages/sims/src/melee/`. The author permits reuse.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+
+-   When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+-   If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+-   Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+-   After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+-   A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.

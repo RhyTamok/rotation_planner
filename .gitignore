@@ -40,3 +40,6 @@ yarn-error.log*
 
 /screen_recordings
 /resources
+
+# third-party reference material: kept locally, not published
+/reference

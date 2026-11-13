@@ -12,3 +12,8 @@ scripts
 package.json
 package-lock.json
 tsconfig.json
+
+# generated or local tooling
+graphify-out
+.playwright-mcp
+.claude

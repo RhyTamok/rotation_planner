@@ -529,6 +529,7 @@ describe("Rotation Lab - comparison documents", () => {
 		const workspace = sampleWorkspace();
 		const [stored] = workspace.comparisons;
 		const v5 = (doc: object) => ({ ...doc, schemaVersion: 5 });
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { analysis: _new, ...withoutAnalysis } = {
 			...stored,
 			baselineId: stored.configurations[1].id,
@@ -582,6 +583,7 @@ describe("Rotation Lab - comparison documents", () => {
 		expect(parsed({ epsilonPct: 1 }).ok).toBe(true);
 		// An empty interval depends on the fight, so it must not stop the workspace from saving.
 		expect(parsed({ intervalStart: 90, intervalEnd: 10 }).ok).toBe(true);
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { analysis: _gone, ...missing } = doc;
 		expect(parseComparisonDocument(missing, workspace).ok).toBe(false);
 	});

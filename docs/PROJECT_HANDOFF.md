@@ -1,7 +1,7 @@
 # Project Handoff: FFXIV Viper Rotation Lab
 
 Current state of the project for a new Claude Code session. Read this after `CLAUDE.md`.
-Last updated 2026-11-09 (comparison milestone M4: CSV export).
+Last updated 2026-11-13 (project review, overall roadmap in `docs/ROADMAP.md`, Phase 0 clean-up).
 
 The full history of sessions 1–3 is in `docs/archive/PROJECT_HANDOFF_sessions-1-3.md`: every
 finding, decision and bug in detail, with the original roadmap. Search it rather than reading it
@@ -46,12 +46,13 @@ set changes.
 -   Keep this file and `CLAUDE.md` up to date at the end of every task: add new facts, remove stale
     ones.
 
-## 3. Current state (verified 2026-11-04)
+## 3. Current state (verified 2026-11-13)
 
--   Branch `feature/rotation-lab`. Full suite: 41 files, 320 passed + 9 expected-fail (upstream
-    `it.fails`) + 1 todo (DoT after a cutoff). `tsc --noEmit` clean;
-    ESLint clean on `src/RotationLab`; dev-load page check `errors: none` (M1, no browser review
-    yet).
+-   Branch `feature/rotation-lab`. Full suite: 49 files, 438 passed + 9 expected-fail (upstream
+    `it.fails`) + 1 todo (DoT after a cutoff). `tsc --noEmit` clean; repo-wide `npm run lint` and
+    `prettier-no-jsx-parens --check .` clean (the commands CI runs); production build passes.
+-   Measured on 2026-11-13: a 10-minute fight (485 actions) simulates in about 11 ms, and one edit
+    costs about 28 ms in all (simulation, recommendation, palette). Do not optimise simulation speed.
 -   The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
 -   Rotation Lab: http://localhost:3000/rotation-lab.html (`npm run start`).
 
@@ -217,7 +218,14 @@ The Lab applies these rules (with `encounterRules`), beyond what XIV in the Shel
 
 ## 7. Open work
 
-Ordered roughly by the user's priorities. Discuss each with the user before starting.
+**The order of work is in `docs/ROADMAP.md`** (agreed 2026-11-13: validation first, comparison
+milestones paused after M4, Dragoon as the rehearsal for Evercold). The list below holds the detail
+for each topic. Discuss each with the user before starting.
+
+Standing decisions of 2026-11-13: upstream is pull-only (never push or open pull requests there;
+merge routine in `docs/ROADMAP.md`); the recommender advises while the user builds a rotation by
+hand, it is not meant to build rotations on its own; holding gauge for Serpent's Ire is dropped for
+Dawntrail.
 
 1.  **Recommendations:**
     -   Viper is implemented (session 4). The user reviewed it in the browser and confirmed the
@@ -365,6 +373,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
         damaging hit at 0 s, so the first press is usually negative in the timeline CSV. Some tools the
         user imports into expect the first button press at 0 s. Wanted: a toggle between "first hit at
         0 s" (today) and "first press at 0 s". Decided by the user on 2026-11-09:
+
         -   **It changes the editor's clock, not only the export**, so that comparisons and tests
             against other tools line up. Time 0 then moves for everything measured from the pull:
             DPS denominators, cutoffs, downtime and burst windows, gauges at cutoffs, and the CSVs.
@@ -373,6 +382,7 @@ Ordered roughly by the user's priorities. Discuss each with the user before star
             the pull at negative times.
 
         Still to settle at the start of the milestone:
+
         -   **Where the toggle lives.** The likely place is the scenario, so that every rotation in a
             comparison uses the same clock. It would need a schema bump and migration, defaulting to
             today's rule.
@@ -407,8 +417,9 @@ Known limitations:
 ## 8. Verification
 
 -   **Tests:** `npm exec -- vitest run src/__test__/rotationLab` while iterating, then the full
-    `npm exec -- vitest run` once. Also `npm run typecheck` and
-    `npm exec -- eslint src/RotationLab`. (The full suite printed 49 files passed in WSL on
+    `npm exec -- vitest run` once. Also `npm run typecheck`, `npm run lint` (repo-wide: the Lab's
+    tests live in `src/__test__`) and `npm exec -- prettier-no-jsx-parens --check .`, the same
+    commands as `.github/workflows/precommit.yml`. (The full suite printed 49 files passed in WSL on
     2026-11-11; the `ECONNREFUSED 127.0.0.1:3000` noise from `sanity.test.tsx` is harmless, it
     only means no dev server is running.)
 -   **Dev-server page check** (after adding engine imports to the page, or a new entry point):
@@ -425,5 +436,5 @@ Known limitations:
     cross-checks damage against the 7.2 workbook in `reference/`. That workbook is historical: don't
     assume its values for newer patches, and estimate the token cost before reading it (its sheets
     are large).
--   **Reference repo** for formulas and the xivgear API: the local clone `~/dev/gear-planner`
+-   **Reference repo** for formulas and the xivgear API: the local clone `~/dev/gear-planner/gear-planner`
     (the xivgear author permits reuse). Search it locally.

@@ -13,9 +13,10 @@ run per step, and only quote failing output.
 
 1. **Changed files.** List them with `git status --short`.
 2. **Format** changed `.ts`/`.tsx`/`.md` files with
-   `npm exec -- prettier-no-jsx-parens -w <paths>`. Never plain `prettier`.
+   `npm exec -- prettier-no-jsx-parens -w <paths>`. Never plain `prettier`. Then check the
+   whole repo as CI does: `npm exec -- prettier-no-jsx-parens --check .`
 3. **Typecheck:** `npm run typecheck`
-4. **Lint:** `npm exec -- eslint src/RotationLab`
+4. **Lint:** `npm run lint` (repo-wide, as CI does; the Lab's tests live in `src/__test__`)
 5. **Tests:** the full suite once: `npm exec -- vitest run`.
    - Never edit expected test values just to make tests pass. If one fails, report it.
    - Upstream VPR opener totals in the parity tests must stay exact.

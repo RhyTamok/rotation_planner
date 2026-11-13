@@ -8,17 +8,17 @@ document shape changes (M1, M3b, M7).
 
 ## Status and how to use this file
 
-| Milestone | Status                                                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                       |
-| M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5 |
-| M2        | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                             |
-| M3a       | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                         |
-| M3        | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                             |
-| M8a       | done, committed (2026-11-06, aabd4893): rotation list import, `import/rotationList.ts`                                                                       |
-| M3b       | done, committed (2026-11-07, 59777f48), reviewed by the user: schema 6, `comparison/sensitivity.ts`, competitiveness and sensitivity sections                |
-| M4        | done, awaiting commit (2026-11-09): `export/csv.ts`, timeline CSV (edit tab) and cutoffs CSV (compare tab); no schema change                                 |
-| M5–M8     | not started (update this row by row as each is committed). M6b (event timeline) is an addition                                                               |
+| Milestone | Status                                                                                                                                                                              |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0        | done, committed (2026-11-04), including the time tolerance and pull-hit rule (spec Q1)                                                                                              |
+| M1        | done, committed (2026-11-04, 38a42150); schema 5. The view stays A/B over the first two configurations until M3; burst windows stay on the scenario until M5                        |
+| M2        | done, committed (2026-11-05, 698c0f28): `comparison/baseline.ts`; `compareRotations` stays until M3 moves the UI                                                                    |
+| M3a       | done, committed (2026-11-05, df2679e1): `comparison/competitive.ts`, `deltaPctSeries` in `baseline.ts`; pure, not yet used by the UI                                                |
+| M3        | done, committed (2026-11-06, d8cb1176): N-way view, `comparison/cutoffs.ts`, `curves.ts`, `burst.ts`; `compareRotations` retired                                                    |
+| M8a       | done, committed (2026-11-06, aabd4893): rotation list import, `import/rotationList.ts`                                                                                              |
+| M3b       | done, committed (2026-11-07, 59777f48), reviewed by the user: schema 6, `comparison/sensitivity.ts`, competitiveness and sensitivity sections                                       |
+| M4        | done, committed (2026-11-09, f450e98): `export/csv.ts`, timeline CSV (edit tab) and cutoffs CSV (compare tab); no schema change                                                     |
+| M5–M8     | paused on 2026-11-13 until Phase 1 of `docs/ROADMAP.md` is done; M5 may be slotted in on request (update this row by row as each is committed). M6b (event timeline) is an addition |
 
 For a session on one milestone, read its section plus spec sections 2–3 (definitions, data model),
 and section 4 for M7. Skip the audit unless the milestone touches code it describes. Update the

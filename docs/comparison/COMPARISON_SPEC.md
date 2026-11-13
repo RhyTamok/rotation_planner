@@ -217,21 +217,17 @@ Decided by the user on 2026-11-04:
 -   **Q7 Cutoff presets:** decided on 2026-11-06: the default cutoffs are every 30 s, plus the end of
     the fight. They are editable per comparison. No other presets or per-ruleset values exist yet.
 -   **Q8 Scenario:** configurations may differ in rotation and gear, but all share one scenario.
--   **Q6 Drift** (all decided; seconds held, per interval):
-    -   Tracked skills. Viper: Serpent's Ire; Vicewinder and Vicepit. Dragoon: Lance Charge,
-        Geirskogul, Battle Litany, High Jump, Dragonfire Dive. Every tracked skill gets the same
-        treatment; there is no special rule for Lance Charge or Battle Litany for now.
-    -   "Overcap" is not a gauge metric. For stack skills it means a recharge going unused: the skill
-        sits at maximum stacks, so spending a stack before downtime avoids it and loses no stack.
-    -   Stack skills (Q6a): held seconds = time spent at maximum stacks, excluding untargetable time.
-        Single-use skills: the wait between ready and press. Vicewinder and Vicepit share a cooldown
-        (confirmed by the user), so they are evaluated as **one pool**, not per skill. The engine's
-        cooldown group should be checked when implementing to confirm that matches.
-    -   Attribution (Q6b): the hold clock runs from `max(readyAt, end of any downtime containing
+-   **Q6 Drift** (all decided; seconds held, per interval): - Tracked skills. Viper: Serpent's Ire; Vicewinder and Vicepit. Dragoon: Lance Charge,
+    Geirskogul, Battle Litany, High Jump, Dragonfire Dive. Every tracked skill gets the same
+    treatment; there is no special rule for Lance Charge or Battle Litany for now. - "Overcap" is not a gauge metric. For stack skills it means a recharge going unused: the skill
+    sits at maximum stacks, so spending a stack before downtime avoids it and loses no stack. - Stack skills (Q6a): held seconds = time spent at maximum stacks, excluding untargetable time.
+    Single-use skills: the wait between ready and press. Vicewinder and Vicepit share a cooldown
+    (confirmed by the user), so they are evaluated as **one pool**, not per skill. The engine's
+    cooldown group should be checked when implementing to confirm that matches. - Attribution (Q6b): the hold clock runs from `max(readyAt, end of any downtime containing
 readyAt)` to the press (for stack skills, over the capped stretch), minus every downtime second
-        it spans. Hold seconds belong to the interval containing each second, where intervals are the
-        stretches between downtime windows (plus optional manual boundaries). A skill that is ready
-        during downtime is never reported as held for it.
+    it spans. Hold seconds belong to the interval containing each second, where intervals are the
+    stretches between downtime windows (plus optional manual boundaries). A skill that is ready
+    during downtime is never reported as held for it.
 
 Decided by the user on 2026-11-05 (amends Q6 and 2.5):
 

@@ -13,6 +13,6 @@ node tools/dev-load/dev-load.mjs "$PWD" http://localhost:3100 /src/RotationLab/u
 Prints `errors: none` (or the error with its first stack lines) and the start of the rendered
 text. Stop the server afterwards.
 
-- `http-loader.mjs`: Node module hooks that resolve and load modules over HTTP.
-- `dev-load.mjs`: sets up jsdom and the React refresh preamble that Vite normally injects, then
-  imports the entry.
+-   `http-loader.mjs`: Node module hooks that resolve and load modules over HTTP.
+-   `dev-load.mjs`: sets up jsdom and the React refresh preamble that Vite normally injects, then
+    imports the entry.
