@@ -31,10 +31,14 @@ the user names; update the roadmap status table when it is done.
 
 ## Environment
 
--   Windows, VS Code with Claude Code, GitHub Desktop for Git (the user commits; `git` is not on PATH).
--   React, TypeScript, Vite, Vitest, npm. Use `npm.cmd` from PowerShell.
--   Dev server: `npm.cmd run start` → http://localhost:3000/ (original app) and
-    http://localhost:3000/rotation-lab.html (Rotation Lab).
+-   WSL2 Ubuntu (bash), VS Code with the WSL extension, Claude Code. The repo lives in the Linux
+    filesystem (`~/dev/rotation_planner`), never under `/mnt/c`. `git` is on PATH.
+-   Claude may run `git commit` (small, reviewable commits with the suggested message). The user
+    pushes. Never push, force-push or rewrite history.
+-   React, TypeScript, Vite, Vitest, npm. Use plain `npm` from bash.
+-   Dev server: `npm run start` → http://localhost:3000/ (original app) and
+    http://localhost:3000/rotation-lab.html (Rotation Lab). Open them in the Windows browser; WSL2
+    forwards localhost.
 
 ## Architecture Rules
 
@@ -87,11 +91,9 @@ the user names; update the roadmap status table when it is done.
 
 -   **New browser entry points must import `Components/Main` first** (see `src/RotationLab/ui/main.tsx`).
     The engine's circular imports otherwise leave the page blank. Only the dev server reproduces
-    this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8). Run it from
-    PowerShell with an absolute root path.
--   Format with `npm.cmd exec -- prettier-no-jsx-parens -w <paths>`, never plain `prettier`.
--   Run Vitest from PowerShell. From Git Bash (`cd /c/Dev/...`) every suite failed at `describe` with
-    "Cannot read properties of undefined (reading 'config')", though the tests were fine.
+    this, not Vitest or the build: verify with `tools/dev-load/` (handoff section 8). Pass an
+    absolute root path (`"$PWD"`); Node rejects `.`.
+-   Format with `npm exec -- prettier-no-jsx-parens -w <paths>`, never plain `prettier`.
 -   `DEFAULT_CONFIG` is Black Mage's; use `makeDefaultConfig(job)`.
 -   Never reference `controller` in a GameState field initializer.
 -   Lab potency/damage calls pass `bossDebuffsOnPrimaryOnly: true`; a new `getAmount`/`getPotency`
@@ -106,4 +108,4 @@ they are the regression net for shared engine code (handoff section 7, codebase 
 
 -   `reference/VPR 7.2 DT Planner v2.22.xlsx`: historical 7.2 Viper workbook, used for regression
     tests. Its values may be outdated; its sheets are large, so estimate the token cost before reading.
--   `C:\Dev\gear-planner`: local clone of xivgear (formulas, API). The author permits reuse.
+-   `~/dev/gear-planner`: local clone of xivgear (clone it from https://github.com/xiv-gear-planner/gear-planner if missing) (formulas, API). The author permits reuse.

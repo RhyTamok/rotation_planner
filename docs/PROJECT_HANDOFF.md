@@ -35,8 +35,8 @@ set changes.
 
 ## 2. Working with this user
 
--   Commits are made by the user in GitHub Desktop. At the end of each task, give a suggested
-    commit message and the file list. Never commit or push yourself; never force-push.
+-   Development runs in WSL2 Ubuntu. Claude may `git commit`; at the end of each task, give the
+    commit message and the file list. The user pushes. Never push or force-push.
 -   The user is cost-conscious. Read narrowly (grep, line ranges), batch shell checks, iterate on
     `src/__test__/rotationLab*` tests and run the full suite once at the end.
 -   The user knows Viper mechanics in depth and corrects them readily. Ask when mechanics are
@@ -53,7 +53,7 @@ set changes.
     ESLint clean on `src/RotationLab`; dev-load page check `errors: none` (M1, no browser review
     yet).
 -   The original app at `/` is unchanged in behaviour; the user confirmed it after the engine changes.
--   Rotation Lab: http://localhost:3000/rotation-lab.html (`npm.cmd run start`).
+-   Rotation Lab: http://localhost:3000/rotation-lab.html (`npm run start`).
 
 ### Features
 
@@ -152,10 +152,10 @@ time + duration`) and snapshot at press time.
 -   **Multi-target damage:** the engine already scales a hit by `1 + (1 − falloff) × (n − 1)` from
     the node's target list (`Potency.#getAmountWithModifiers`) and cuts skills without `falloff`
     to one target (`GameState.useSkill`). The Lab only builds the target list at the press.
--   **Formatting:** `npm.cmd exec -- prettier-no-jsx-parens -w <paths>`. Never plain `prettier`
+-   **Formatting:** `npm exec -- prettier-no-jsx-parens -w <paths>`. Never plain `prettier`
     (npx fetches stock prettier, which reformats JSX differently).
--   **Git:** not on PATH; use `%LOCALAPPDATA%\GitHubDesktop\app-3.6.1\resources\app\git\cmd\git.exe`
-    for read-only checks.
+-   **Git:** on PATH in WSL. Some files may still have CRLF line endings from the Windows era;
+    Prettier's `endOfLine = "auto"` preserves them, so don't convert them in unrelated commits.
 -   **Locale:** numbers are formatted in the user's locale (German: `2,50`). Tests compare against
     `formatNumber`, not literal strings.
 -   **Clipboard:** browsers send copy/cut/paste to `document.body` when no text is selected, and
@@ -406,15 +406,15 @@ Known limitations:
 
 ## 8. Verification
 
--   **Tests:** `npm.cmd exec -- vitest run src/__test__/rotationLab` while iterating, then the full
-    `npm.cmd exec -- vitest run` once. Also `npm.cmd run typecheck` and
-    `npm.cmd exec -- eslint src/RotationLab`. Run Vitest from PowerShell: from Git Bash every suite
-    failed at `describe` with "reading 'config'" (seen in M1; exact cause not investigated).
+-   **Tests:** `npm exec -- vitest run src/__test__/rotationLab` while iterating, then the full
+    `npm exec -- vitest run` once. Also `npm run typecheck` and
+    `npm exec -- eslint src/RotationLab`. (The full suite printed 49 files passed in WSL on
+    2026-11-11; the `ECONNREFUSED 127.0.0.1:3000` noise from `sanity.test.tsx` is harmless, it
+    only means no dev server is running.)
 -   **Dev-server page check** (after adding engine imports to the page, or a new entry point):
-    start a second server with `npm.cmd exec -- vite --port 3100 --strictPort` in the background,
-    then run `node tools/dev-load/dev-load.mjs C:\Dev\rotation_planner http://localhost:3100 /src/RotationLab/ui/main.tsx`
-    **from PowerShell**. The root must be an absolute path (Node 26 rejects `.`), and Git Bash
-    rewrites the `/src/...` argument into a Windows path.
+    start a second server with `npm exec -- vite --port 3100 --strictPort` in the background,
+    then run `node tools/dev-load/dev-load.mjs "$PWD" http://localhost:3100 /src/RotationLab/ui/main.tsx`
+    from the repo root. The root must be an absolute path (Node rejects `.`).
     It loads the page's native ES modules in Node with jsdom and prints `errors: none` plus the
     start of the rendered text. Stop the server afterwards. The user's own server on port 3000 is
     never touched.
@@ -425,5 +425,5 @@ Known limitations:
     cross-checks damage against the 7.2 workbook in `reference/`. That workbook is historical: don't
     assume its values for newer patches, and estimate the token cost before reading it (its sheets
     are large).
--   **Reference repo** for formulas and the xivgear API: the local clone `C:\Dev\gear-planner`
+-   **Reference repo** for formulas and the xivgear API: the local clone `~/dev/gear-planner`
     (the xivgear author permits reuse). Search it locally.
